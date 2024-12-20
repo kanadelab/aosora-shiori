@@ -31,10 +31,13 @@ talk OnMenuClose {
 
 talk OnChagneTalkInterval {
 	\s[0]どうする？\_q
+
 	{TalkIntervalItem(120, "２分")}
 	{TalkIntervalItem(180, "３分")}
 	{TalkIntervalItem(240, "４分")}
 	{TalkIntervalItem(0, "喋らない")}
+
+	\![*]\q[閉じる,OnMenuClose]
 }
 
 function TalkIntervalItem(seconds, label) {
@@ -48,7 +51,7 @@ function TalkIntervalItem(seconds, label) {
 function OnSetTalkInterval {
 	local interval = Shiori.Reference[0];
 	SetTalkInterval(interval);
-	return interval + OnChagneTalkInterval();
+	return OnChagneTalkInterval();
 }
 
 /*
