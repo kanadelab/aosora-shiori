@@ -1,0 +1,4 @@
+name,BUGTRAQ Sample Calendar
+dllname,schedule.dll
+post,support
+id,DD2514E2-D949-4cdc-A54C-6A7A67C981A8

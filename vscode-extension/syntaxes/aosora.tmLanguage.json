@@ -1,0 +1,208 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Aosora SHIORI",
+	"patterns": [
+		{
+			"include": "#rootblock"
+		},
+		{
+			"include": "#comments"
+		}
+	],
+	"repository": {
+		"talkblock":{
+			"begin": "\\b(talk)\\s+((\\w|,)*)\\s*\\{",
+			"end": "\\}",
+			"beginCaptures": {
+				"1": {"patterns": [{"include": "#keywords"}]},
+				"2": {"patterns": [{"include": "#symbols"}]}
+			},
+			"patterns": [
+				{
+					"match": "^\\s*(\\>)\\s*([^:]*)\\s*:?(.*)$",
+					"captures": {
+						"1":{"name": "storage"},
+						"2":{"patterns": [
+							{
+								"match": "\\b\\w+",
+								"name": "entity.name.function"
+							},
+							{"include": "#rootblock"}
+						]},
+						"3":{"patterns": [{"include": "#rootblock"}]}
+					}
+				},
+				{
+					"include": "#stringcontent"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.aosora",
+				"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|true|false|try|catch|finally|new|throw|class|member|init)\\b"
+			}]
+		},
+		"rootblock":{
+			"patterns": [
+				{
+					"begin": "/\\*",
+					"end": "\\*/",
+					"name": "comment.block"
+				},
+				{
+					"begin": "//",
+					"end": "$",
+					"name": "comment.line"
+				},
+				{
+					"match": "\\b(class)\\s+(\\w+)\\s*:?\\s*(\\w+)?",
+					"captures": {
+						"1": {
+							"name": "keyword.control.aosora"
+						},
+						"2":{
+							"name": "support.class"
+						},
+						"3":{
+							"name": "support.class"
+						}
+					}
+				},
+				{
+					"match": "\\b(function)\\s+(\\w+)",
+					"captures": {
+						"1": {
+							"name": "keyword.control.aosora"
+						},
+						"2": {
+							"name": "entity.name.function"
+						}
+					}
+				},
+				{
+					"match": "\\-?[0-9]+\\.?[0-9]*",
+					"name": "constant.numeric"
+				},
+				{
+					"include": "#talkblock"
+				},
+				{
+					"include": "#strings"
+				},
+				{
+					"include": "#keywords"
+				},
+				{
+					"match": "\\b(\\w+)\\(",
+					"captures": {
+						"1":{"name": "entity.name.function"}
+					}
+				},
+				{
+					"match": "\\b\\w+\\b",
+					"name": "variable"
+				}
+			]
+		},
+		"strings": {
+			"begin": "\"",
+			"end": "\"",
+			"beginCaptures": {
+				"0": {"name": "string"}
+			},
+			"endCaptures": {
+				"0": {"name": "string"}
+			},
+			"patterns": [
+				{
+					"include": "#stringcontent"
+				}
+			]
+		},
+		"stringcontent": {
+			"patterns": [
+				{
+					"match": "\\\\s\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\s[0-9]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\!\\[(raise|embed|get,property|timerraise|notify),.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\[!pibncjmfx\\&]\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_[wblvums]\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\__w\\[\\d+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\&\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\[01456huncvCxt\\*e\\-\\+]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_[nqs\\?\\+V]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\w[0-9]",
+					"name": "markup.underline"
+				},
+				{
+					"begin": "\\\\q\\[",
+					"end": "\\]",
+					"name": "markup.underline",
+					"patterns": [
+						{
+							"include": "#stringcontent"
+						}
+					]
+				},
+				{
+					"match": "\\\\__q\\[.+?\\].+?\\\\__q",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_a\\[.+?\\].+?\\\\_a",
+					"name": "markup.underline"
+				},
+				{
+					"begin": "\\{",
+					"end": "\\}",
+					"patterns": [{
+						"include": "#rootblock"
+					}]
+				},
+				{
+					"begin": "%\\{",
+					"end": "\\}",
+					"patterns": [{
+						"include": "#rootblock"
+					}]
+				}
+				
+			]
+		},
+		"symbols": {
+			"patterns": [{
+				"name": "entity.name.function",
+				"match": "\\b(\\w*)\\b"
+			}]
+		}
+	},
+	"scopeName": "aosora"
+}

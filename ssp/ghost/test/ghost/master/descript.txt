@@ -1,0 +1,10 @@
+charset,UTF-8
+type,ghost
+name,Aosora SHIORI デモゴースト
+sakura.name,蒼空 栞
+kero.name,none
+
+craftman,nanachi
+craftmanw,ななっち
+
+shiori,aosora.dll

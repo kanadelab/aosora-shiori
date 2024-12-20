@@ -1,0 +1,23 @@
+charset,Shift_JIS
+name,coollittle
+id,coollittle
+type,shell
+
+craftmanw,半歩
+
+seriko.use_self_alpha,1
+
+sakura.seriko.alignmenttodesktop,free
+kero.seriko.alignmenttodesktop,free
+char2.seriko.alignmenttodesktop,free
+
+sakura.balloon.alignment,none
+kero.balloon.alignment,none
+
+//-- 着せ替え定義 --//
+
+///// ヘアアクセ /////
+
+sakura.bindgroup10.name,ヘアアクセ,アクセ1
+sakura.bindgroup11.name,ヘアアクセ,アクセ2
+sakura.bindgroup12.name,ヘアアクセ,アクセ3

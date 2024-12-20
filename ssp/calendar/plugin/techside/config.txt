@@ -1,0 +1,21 @@
+charset,Shift_JIS
+
+parse.start,<TH COLSPAN=3 BGCOLOR="#ffffff">
+parse.end,管理パスワード：
+
+date.start,<TD ALIGN="right"  BGCOLOR="#??????">
+date.end,</b></TD>
+
+element.start,<TD BGCOLOR="#??????" WIDTH="100%">
+element.end,</TD>
+element.token,<br>
+element.skipbytes,2
+
+get.url,http://park16.wakwak.com/~tech/cgi-bin/calender/webcalen.cgi
+get.data,year=%[y]&month=%[m]
+get.method,GET
+
+post.url,http://park16.wakwak.com/~tech/cgi-bin/calender/webcalen.cgi
+post.data,task=write2&pwd=&year=%[y]
+post.method,POST
+

@@ -1,0 +1,353 @@
+charset,Shift_JIS
+//satolist.palette.offset,35,60
+
+descript
+{
+version,1
+}
+
+
+/////-- ベース画像定義 --/////
+
+surface0-9,11-42
+{
+element0,overlay,surface0000.png,0,0
+}
+
+surface100-109,111-142
+{
+element0,overlay,surface10000.png,0,0
+}
+
+surface200-209,211-242
+{
+element0,overlay,surface10001.png,0,0
+}
+
+surface300-309,311-342
+{
+element0,overlay,surface10002.png,0,0
+}
+
+surface10,110,210,310
+{
+element0,overlay,surface0010.png,0,0
+}
+
+
+/////-- 当たり判定付け --/////
+
+// 通常
+surface.append0-9,11-42
+{
+	collisionex0,head,rect,26,22,175,82
+	collisionex1,cheek,polygon,58,140,40,140,40,147,47,154,58,158
+	collisionex2,cheek,polygon,116,140,116,159,129,155,137,151,137,140
+	collisionex3,necktie,rect,85,179,92,203
+	collisionex4,bust,polygon,76,176,71,184,71,188,77,195,89,195,103,198,107,189,106,174,89,179
+	collisionex5,hand,polygon,109,237,103,249,105,251,105,255,107,255,113,242
+	collisionex6,hand,polygon,85,263,85,272,90,275,95,275,98,270
+	collisionex7,skirt,polygon,72,247,63,310,141,310,124,244,107,251,85,251
+	collisionex8,leg,rect,65,307,128,386
+}
+
+// こちら
+surface.append100-109,111-142
+{
+	collisionex0,head,rect,26,22,175,82
+	collisionex1,cheek,polygon,58,140,40,140,40,147,47,154,58,158
+	collisionex2,cheek,polygon,116,140,116,159,129,155,137,151,137,140
+	collisionex3,necktie,rect,85,179,92,203
+	collisionex4,bust,polygon,76,176,71,184,71,188,77,195,89,195,103,198,113,189,106,174,89,179,76,176
+	collisionex5,hand,polygon,138,260,138,267,155,267,150,256
+	collisionex6,hand,polygon,16,162,16,177,41,177,43,175,40,167,31,162
+	collisionex7,skirt,polygon,72,247,63,310,141,310,124,244,107,251,85,251
+	collisionex8,leg,rect,65,307,128,386
+}
+
+// 人差し指
+surface.append200-209,211-242
+{
+	collisionex0,head,rect,26,22,175,82
+	collisionex1,cheek,polygon,58,140,40,140,40,147,47,154,58,158
+	collisionex2,cheek,polygon,116,140,116,159,129,155,137,151,137,140
+	collisionex3,necktie,rect,85,179,92,203
+	collisionex4,bust,polygon,76,176,71,184,71,188,77,195,89,195,103,198,113,189,106,174,89,179,76,176
+	collisionex5,hand,polygon,138,260,138,267,155,267,150,256
+	collisionex6,hand,polygon,36,150,35,161,27,161,27,176,42,175,44,169,39,162,39,150
+	collisionex7,skirt,polygon,72,247,63,310,141,310,124,244,107,251,85,251
+	collisionex8,leg,rect,65,307,128,386
+}
+
+// ピース
+surface.append300-309,311-342
+{
+	collisionex0,head,rect,26,22,175,82
+	collisionex1,cheek,polygon,58,140,40,140,40,147,47,154,58,158
+	collisionex2,cheek,polygon,116,140,116,159,129,155,137,151,137,140
+	collisionex3,necktie,rect,85,179,92,203
+	collisionex4,bust,polygon,76,176,71,184,71,188,77,195,89,195,103,198,113,189,106,174,89,179,76,176
+	collisionex5,hand,polygon,138,260,138,267,155,267,150,256
+	collisionex6,hand,polygon,26,150,26,177,35,177,43,173,43,168,40,165,40,151,37,151,36,162,32,150
+	collisionex7,skirt,polygon,72,247,63,310,141,310,124,244,107,251,85,251
+	collisionex8,leg,rect,65,307,128,386
+}
+
+
+/////-- 表情付け --/////
+
+// 【通常】 //
+
+// [眉] //
+
+// 怒り眉
+surface.append7,13,14,15,16,33,39,107,113,114,115,116,133,139,207,213,214,215,216,233,239,307,313,314,315,316,333,339
+{
+	element1,overlay,surface10100.png,0,0
+}
+
+// 悲しみ眉
+surface.append5,6,8,19,20,21,22,23,25,26,28,29,30,35,36,37,38,40,41,105,106,108,119,120,121,122,123,125,126,128,129,130,135,136,137,138,140,141,205,206,208,219,220,221,222,223,225,226,228,229,230,235,236,237,238,240,241,305,306,308,319,320,321,322,323,325,326,328,329,330,335,336,337,338,340,341
+{
+	element1,overlay,surface10101.png,0,0
+}
+
+// 驚き眉
+surface.append4,12,24,27,31,32,34,42,104,112,124,127,131,132,134,142,204,212,224,227,231,232,234,242,304,312,324,327,331,332,334,342
+{
+	element1,overlay,surface10102.png,0,0
+}
+
+
+// [目] //
+
+// 半目
+surface.append1,6,12,13,21,23,24,101,106,112,113,121,123,124,201,206,212,213,221,223,224,301,306,312,313,321,323,324
+{
+	element2,overlay,surface10200.png,0,0
+}
+
+// 閉じ目
+surface.append2,7,8,15,19,22,34,35,41,102,107,108,115,119,122,134,135,141,202,207,208,215,219,222,234,235,241,302,307,308,315,319,322,334,335,341
+{
+	element2,overlay,surface10201.png,0,0
+}
+
+// 笑顔目
+surface.append3,4,5,9,38,103,104,105,109,138,203,204,205,209,238,303,304,305,309,338
+{
+	element2,overlay,surface10202.png,0,0
+}
+
+// 逸らし
+surface.append11,29,36,111,129,136,211,229,236,311,329,336
+{
+	element2,overlay,surface10203.png,0,0
+}
+
+// 逸らし半目
+surface.append20,40,120,140,220,240,320,340
+{
+	element2,overlay,surface10204.png,0,0
+}
+
+// ジト目
+surface.append16,17,18,39,116,117,118,139,216,217,218,239,316,317,318,339
+{
+	element2,overlay,surface10205.png,0,0
+}
+
+// ＞＜目
+surface.append14,37,114,137,214,237,314,337
+{
+	element2,overlay,surface10206.png,0,0
+}
+
+// 白抜き目
+surface.append26,30,31,126,130,131,226,230,231,326,330,331
+{
+	element2,overlay,surface10207.png,0,0
+}
+
+// しいたけ目
+surface.append32,33,132,133,232,233,332,333
+{
+	element2,overlay,surface10208.png,0,0
+}
+
+// 驚き目
+surface.append25,27,28,42,125,127,128,142,225,227,228,242,325,327,328,342
+{
+	element2,overlay,surface10209.png,0,0
+}
+
+
+// [口] //
+
+// 微笑口
+surface.append3,5,6,7,103,105,106,107,203,205,206,207,303,305,306,307
+{
+	element3,overlay,surface10300.png,0,0
+}
+
+// 笑顔口
+surface.append4,9,24,28,32,38,104,109,124,128,132,138,204,209,224,228,232,238,304,309,324,328,332,338
+{
+	element3,overlay,surface10301.png,0,0
+}
+
+// 開口
+surface.append13,18,27,30,36,41,42,113,118,127,130,136,141,142,213,218,227,230,236,241,242,313,318,327,330,336,341,342
+{
+	element3,overlay,surface10302.png,0,0
+}
+
+// 大開口
+surface.append16,23,25,39,116,123,125,139,216,223,225,239,316,323,325,339
+{
+	element3,overlay,surface10303.png,0,0
+}
+
+// への字口
+surface.append12,15,29,35,40,112,115,129,135,140,212,215,229,235,240,312,315,329,335,340
+{
+	element3,overlay,surface10304.png,0,0
+}
+
+// への字開口
+surface.append21,121,221,321
+{
+	element3,overlay,surface10305.png,0,0
+}
+
+// 猫口
+surface.append8,31,33,34,108,131,133,134,208,231,233,234,308,331,333,334
+{
+	element3,overlay,surface10306.png,0,0
+}
+
+// 叫び口
+surface.append14,26,114,126,214,226,314,326
+{
+	element3,overlay,surface10307.png,0,0
+}
+
+
+// [エフェクト] //
+
+// 赤面
+surface.append35-42,135-142,235-242,335-342
+{
+	animation100.interval,runonce
+	animation100.pattern0,overlay,10400,0,0,0
+}
+
+// 涙
+surface.append22-24,122-124,222-224,322-324
+{
+	animation101.interval,runonce
+	animation101.pattern0,overlay,10401,0,0,0
+}
+
+// 汗
+surface.append25,28-31,40,125,128-131,140,225,228-231,240,325,328-331,340
+{
+	animation102.interval,runonce
+	animation102.pattern0,overlay,10402,0,0,0
+}
+
+// 青ざめ
+surface.append9,18,109,118,209,218,309,318
+{
+	animation103.interval,runonce
+	animation103.pattern0,overlay,10403,0,0,0
+}
+
+// 怒り
+surface.append14,39,114,139,214,239,314,339
+{
+	animation104.interval,runonce
+	animation104.pattern0,overlay,10404,0,0,0
+}
+
+// 焦り
+surface.append28-31,40,128-131,140,228-231,240,328-331,340
+{
+	animation105.interval,runonce
+	animation105.pattern0,overlay,10405,0,0,0
+}
+
+// 溜息
+surface.append6,33,34,41,106,133,134,141,206,233,234,241,306,333,334,341
+{
+	animation106.interval,runonce
+	animation106.pattern0,overlay,10406,0,0,0
+}
+
+
+/////-- 瞬き --/////
+
+// 通常
+surface.append0,100,200,300
+{
+animation0.interval,periodic,4
+animation0.pattern0,overlayfast,-1,0-700,0,0
+animation0.pattern1,overlayfast,10200,30,0,0
+animation0.pattern2,overlayfast,10201,40,0,0
+animation0.pattern3,overlayfast,10200,40,0,0
+animation0.pattern4,overlayfast,-1,40,0,0
+}
+
+// 半目
+surface.append1,6,13,21,23,24,101,106,113,121,123,124,201,206,213,221,223,224,301,306,313,321,323,324
+{
+animation0.interval,periodic,4
+animation0.pattern0,overlayfast,-1,0-700,0,0
+animation0.pattern1,overlayfast,10201,40,0,0
+animation0.pattern2,overlayfast,-1,80,0,0
+}
+
+
+// 逸らし
+surface.append11,29,36,111,129,136,211,229,236,311,329,336
+{
+animation0.interval,periodic,4
+animation0.pattern0,overlayfast,10203,0-700,0,0
+animation0.pattern1,overlayfast,10204,30,0,0
+animation0.pattern2,overlayfast,10201,40,0,0
+animation0.pattern3,overlayfast,10204,40,0,0
+animation0.pattern4,overlayfast,10203,40,0,0
+}
+
+// 逸らし半目
+surface.append12,20,40,112,120,140,212,220,240,312,320,340
+{
+animation0.interval,periodic,4
+animation0.pattern0,overlayfast,-1,0-700,0,0
+animation0.pattern1,overlayfast,10201,40,0,0
+animation0.pattern2,overlayfast,-1,80,0,0
+}
+
+// 驚き目+しいたけ目
+surface.append25,27,28,42,32,33,125,127,128,142,132,133,225,227,228,242,232,233,325,327,328,342,332,333
+{
+animation0.interval,periodic,6
+animation0.pattern0,overlayfast,-1,0-700,0,0
+animation0.pattern1,overlayfast,10201,50,0,0
+animation0.pattern2,overlayfast,-1,80,0,0
+}
+
+
+
+/////-- 着せ替え --/////
+
+// ヘアアクセ
+surface.append0-9,11-42,100-109,111-142,200-209,211-242,300-309,311-342
+{
+animation10.interval,bind
+animation10.pattern0,overlay,11000,0,0,0
+animation11.interval,bind
+animation11.pattern0,overlay,11001,0,0,0
+animation12.interval,bind
+animation12.pattern0,overlay,11002,0,0,0
+}

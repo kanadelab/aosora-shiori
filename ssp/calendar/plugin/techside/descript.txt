@@ -1,0 +1,4 @@
+name,TECHSIDE Calendar!!!
+dllname,schedule.dll
+id,6EC3C49F-398E-4ca8-B4AF-A8797D85702F
+

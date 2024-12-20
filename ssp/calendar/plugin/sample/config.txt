@@ -1,0 +1,22 @@
+charset,Shift_JIS
+
+parse.start,<TABLE BORDER=1 WIDTH=500 CELLPADDING=2 CELLSPACING=1 BGCOLOR=#??????>
+parse.end,管理パスワード：
+
+date.start,<TD ALIGN="right"  BGCOLOR="#??????" NOWRAP>&nbsp;
+date.end,&nbsp;</TD>
+
+element.start,<TD BGCOLOR="#??????" WIDTH="100%">&nbsp;
+element.end,&nbsp;</TD>
+element.token, <!--SPLIT-->
+element.skipbytes,0
+element.skip,　
+
+get.url,http://ssp.shillest.net/heper/wc/webcalen.cgi
+get.data,year=%[y]&month=%[m]
+get.method,GET
+
+post.url,http://ssp.shillest.net/heper/wc/webcalen.cgi
+post.data,task=write2&pwd=test&year=%[y]&month=%[m]&day=%[d]&title=%[t]&color=none&bold=off&url=
+post.method,POST
+

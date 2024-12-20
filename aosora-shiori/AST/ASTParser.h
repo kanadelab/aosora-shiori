@@ -1,0 +1,83 @@
+﻿#pragma once
+
+#include "Tokens/Tokens.h"
+#include "AST/ASTNodes.h"
+
+namespace sakura {
+
+	class ASTParseContext;
+	class ScriptToken;
+	class ScriptVariableDef;
+
+	//パースリザルト
+	struct ASTParseResult {
+		ConstASTNodeRef root;
+		std::map<std::string, ScriptClassRef> classMap;
+	};
+
+	//ソースコードパーサ
+	class ASTParser {
+	private:
+		enum class BlockType {
+			Function,
+			Talk
+		};
+
+		
+
+		//変数定義
+		struct ScriptVariableDef {
+			std::string name;
+			ASTNodeRef initializer;
+			SourceCodeRange range;
+		};
+
+	public:
+		static const OperatorInformation* TokenToOperator(const ScriptToken& token, bool isRequireOperand);
+		static ASTNodeRef ParseASTStatement(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTExpression(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
+
+		static void ParseASTExpressionList(ASTParseContext& parseContext, std::vector<ConstASTNodeRef>& result, uint32_t sequenceEndFlags);
+		static void ParseASTArgumentList(ASTParseContext& parseContext, std::vector<std::string>& result, uint32_t sequenceEndFlags);
+		static bool IsSequenceEnd(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
+
+		static ASTNodeRef ParseASTSourceRoot(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTCodeBlock(ASTParseContext& parseContext, bool isBlacketEnd = false);
+		static ASTNodeRef ParseASTTalkBlock(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTLocalVariable(ASTParseContext& parseContext);
+		static bool ParseVariableDef(ASTParseContext& parseContext, std::vector<ScriptVariableDef>& defs);
+		static ASTNodeRef ParseASTWhile(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTFor(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTIf(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTReturn(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTBreak(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTContinue(ASTParseContext& parseContext);
+
+		static ASTNodeRef ParseASTNumberLiteral(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTString(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTStringLiteral(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTSymbol(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTArrayInitializer(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTObjectInitializer(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTFunctionInitializer(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTFunctionStatement(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTTalkInitializer(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTTalkStatement(ASTParseContext& parseContext);
+
+		static ScriptFunctionDef ParseFunctionDef(ASTParseContext& parseContext, BlockType blockType);
+
+		static ASTNodeRef ParseASTSet(ASTParseContext& parseContext, const ASTNodeRef& target, const ASTNodeRef& value);
+		static ASTNodeRef ParseASTNew(ASTParseContext& parseContext, const ScriptToken& operatorToken, const ASTNodeRef& target);
+
+		//クラスはASTを返さない
+		static void ParseASTClass(ASTParseContext& parseContext);
+
+		//例外系
+		static ASTNodeRef ParseASTTry(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTThrow(ASTParseContext& parseContext);
+
+	public:
+		static std::shared_ptr<const ASTParseResult> Parse(const std::shared_ptr<const TokensParseResult>& tokens);
+	};
+
+}

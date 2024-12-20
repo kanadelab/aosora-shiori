@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Shiori.cpp" />
+    <ClCompile Include="Tokens\TokenParser.cpp">
+      <Filter>Tokens</Filter>
+    </ClCompile>
+    <ClCompile Include="AST\ASTNodeBase.cpp">
+      <Filter>AST</Filter>
+    </ClCompile>
+    <ClCompile Include="AST\ASTParser.cpp">
+      <Filter>AST</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonLibrary\CommonClasses.cpp">
+      <Filter>CommonLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="CoreLibrary\CoreClasses.cpp">
+      <Filter>CoreLibrary</Filter>
+    </ClCompile>
+    <ClCompile Include="Misc\Json.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="Misc\Utility.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="Interpreter\ObjectSystem.cpp">
+      <Filter>Interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="Interpreter\ScriptExecutor.cpp">
+      <Filter>Interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="Interpreter\ScriptVariable.cpp">
+      <Filter>Interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="CoreLibrary\PrimitiveMethod.cpp">
+      <Filter>CoreLibrary</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Shiori.h" />
+    <ClInclude Include="Tokens\TokenParser.h">
+      <Filter>Tokens</Filter>
+    </ClInclude>
+    <ClInclude Include="Tokens\Tokens.h">
+      <Filter>Tokens</Filter>
+    </ClInclude>
+    <ClInclude Include="AST\AST.h">
+      <Filter>AST</Filter>
+    </ClInclude>
+    <ClInclude Include="AST\ASTNodeBase.h">
+      <Filter>AST</Filter>
+    </ClInclude>
+    <ClInclude Include="AST\ASTNodes.h">
+      <Filter>AST</Filter>
+    </ClInclude>
+    <ClInclude Include="AST\ASTParser.h">
+      <Filter>AST</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonLibrary\CommonClasses.h">
+      <Filter>CommonLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreLibrary\CoreClasses.h">
+      <Filter>CoreLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreLibrary\CoreLibrary.h">
+      <Filter>CoreLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\Json.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\Utility.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="Interpreter\Interpreter.h">
+      <Filter>Interpreter</Filter>
+    </ClInclude>
+    <ClInclude Include="Interpreter\ObjectSystem.h">
+      <Filter>Interpreter</Filter>
+    </ClInclude>
+    <ClInclude Include="Interpreter\ScriptExecutor.h">
+      <Filter>Interpreter</Filter>
+    </ClInclude>
+    <ClInclude Include="Interpreter\ScriptVariable.h">
+      <Filter>Interpreter</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreLibrary\PrimitiveMethod.h">
+      <Filter>CoreLibrary</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Tokens">
+      <UniqueIdentifier>{3023d929-e1d2-4eba-aa83-1b997fe0e3e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AST">
+      <UniqueIdentifier>{7820ac08-9af0-4554-ac9c-4a795542b96f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Misc">
+      <UniqueIdentifier>{01138563-bc0f-4c9f-b4e3-862f53b44cf1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CoreLibrary">
+      <UniqueIdentifier>{26020485-e69a-4634-8034-995ae10031ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CommonLibrary">
+      <UniqueIdentifier>{dddb066d-9410-45d1-b212-87235cbd43d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Interpreter">
+      <UniqueIdentifier>{e87eb298-eb0b-42a0-93af-54306256102c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

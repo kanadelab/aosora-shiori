@@ -1,0 +1,173 @@
+
+SSP用カレンダーオーバーライド仕様書
+
+
+calendarフォルダの下にサブフォルダを掘って置く
+
+INSTALL/1.0
+type,calendar
+path,...
+
+
+■背景画像
+bkgnd[month].png
+
+month:1-12  各月用の画像
+month:0     各月共通にする場合(この場合他のは読まれない)
+
+3,6,9,12 のように指定するとその数字以降次のが表れるまで
+同じものが使われる．この例の場合，
+(12,1,2),(3,4,5),(6,7,8),(9,10,11)が同じになる．
+
+
+img[month]_[id].png
+背景以外の画像
+
+
+■アイコン画像
+・穴埋め用画像
+spacer[id].png
+
+月の初めと終わりのスペースを埋めるためのアイコン．
+省略すると空白．
+idの順番に使用される．(0だけでも良い)
+
+
+・ボタン
+月送りボタン
+prev.png
+next.png
+
+
+・数字
+num[id].png
+
+id=0-9
+
+土曜日
+num[id]s.png
+
+休日
+num[id]h.png
+
+
+・スケジュールアイコン
+スケジュール表示用のアイコン
+
+ic_etc[id].png     汎用
+
+ic_mtg[id].png     ミーティング，会議
+ic_appo[id].png     アポイントメント
+ic_test[id].png    試験など
+ic_nomi[id].png    飲み会
+ic_evnt[id].png    イベント（汎用）
+
+ic_bait[id].png    アルバイト
+ic_date[id].png    デート
+
+ic_tv[id].png      テレビ番組
+ic_radio[id].png   ラジオ番組
+ic_rec[id].png     録画予定
+
+ic_book[id].png    本発売日
+ic_cd[id].png      CD発売日
+ic_game[id].png    ゲーム発売日
+
+
+ない場合はデフォルトが使用される
+
+idアニメーション用
+
+
+■設定ファイル(descript.txt)
+
+//年表示位置(省略可)
+year.pos.x,
+year.pos.y,
+year.template,%y年              //strftime準拠
+year.font.face,ＤＦPPOP体,ＭＳ ゴシック   //優先順に書く
+year.font.size,30
+year.font.color,0,0,0
+year.font.italic,true
+year.font.bold,true
+
+
+//月表示位置(省略可)
+month.pos.x,
+month.pos.y,
+month.template,%m月              //strftime準拠
+month.font.face,ＭＳ ゴシック
+month.font.size,30
+month.font.color,0,0,0
+month.font.italic,true
+month.font.bold,true
+
+//月送り
+next.pos.x,
+next.pos.y,
+next.text.x,
+next.text.y,
+next.template,%Y年%m月
+
+prev.pos.x,
+prev.pos.y,
+prev.text.x,
+prev.text.y,
+prev.template,%Y年%m月
+
+
+
+//カレンダーの文字部分の位置を指定する
+table.left,
+table.top,
+table.right,
+table.bottom,
+
+//左端の曜日を指定
+table.firstday,Sun
+
+//曜日ごとにセルの幅を指定する
+cell.width.Sat,100
+//省略された曜日はテーブルの幅の残りを等分する
+//高さはheight/6  (6行必要なときはあんまりなくて無駄だけどこうするしかない)
+
+
+//表示
+day.font.face,
+day.font.size,
+day.font.color,
+day.font.italic,
+day.font.bold,
+sunday.font.color,
+saturday.font.color,
+holiday.font.color,
+day.halign,CENTER     //right,center,left
+day.valign,TOP        //top,middle,bottom
+
+//アイコン
+icon.offset.x,        //アイコンを表示する，セル左上からの位置
+icon.offset.y,
+
+
+//ネットワークカレンダー(デフォルト値:かならずこれを使用するわけではない)
+calendar.server.get,http://doichan.netbank.co.jp/ssp/calendar/getcal.cgi
+calendar.server.post,http://doichan.netbank.co.jp/ssp/calendar/postcal.cgi
+
+
+
+■ネットワークカレンダープロトコル
+みんなでスケジュールを共有するため，
+スケジュールを積極的に発信するため，
+入力するのがめんどうな人向け．
+
+
+基本的にHTTPを使用する．
+
+・サーバからカレンダーの情報を取得する
+
+
+・サーバにカレンダーエントリ（スケジュール）を投稿する
+
+
+
+
