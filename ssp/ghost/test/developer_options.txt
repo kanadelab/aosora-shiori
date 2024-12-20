@@ -1,0 +1,3 @@
+shell/master/•\îƒTƒ“ƒvƒ‹/,nonar,noupdate
+ghost/master/savedata.asv,nonar,noupdate
+.gitignore,nonar,noupdate

@@ -1,0 +1,3 @@
+type,ghost
+name,Aosora SHIORI デモゴースト
+directory,aosora_shiori_demo
