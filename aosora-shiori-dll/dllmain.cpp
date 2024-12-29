@@ -79,10 +79,11 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 		return CreateResponseMemory(BAD_REQUEST, len);
 	}
 
+	bool isGet = false;
 	if (line.starts_with("GET SHIORI")) {
-
+		isGet = true;
 	}
-	else if (line.starts_with("NOTIFY_SHIORI")) {
+	else if (line.starts_with("NOTIFY SHIORI")) {
 
 	}
 	else {
@@ -92,6 +93,8 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	std::string charset;
 	std::string eventId;
 	sakura::ShioriRequest shioriRequest;
+	shioriRequest.SetIsGet(isGet);
+
 	bool isEmptyLine = false;
 
 	//必要なものを取り出して処理
@@ -157,6 +160,7 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	response.append("Charset: UTF-8\r\n");
 	response.append("Sender: Aosora\r\n");
 
+	//本文
 	if (!shioriResponse.GetValue().empty()) {
 		//改行の除去
 		std::string value = shioriResponse.GetValue();
@@ -165,6 +169,16 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 		response.append("Value: ");
 		response.append(value);
 		response.append("\\e");	//念の為えんいー
+		response.append("\r\n");
+	}
+
+	//エラー
+	if (shioriResponse.HasError()) {
+		response.append("ErrorLevel: ");
+		response.append(shioriResponse.GetErrorLevelList());
+		response.append("\r\n");
+		response.append("ErrorDescription: ");
+		response.append(shioriResponse.GetErrorDescriptionList());
 		response.append("\r\n");
 	}
 

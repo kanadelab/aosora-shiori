@@ -76,14 +76,17 @@ namespace sakura {
 		std::vector<std::string> references;
 		std::set<std::string> statuses;
 		std::map<std::string, std::string> rawMap;
+		bool isGet;
 
 	public:
 		ShioriRequest(const std::string& id) :
-			eventId(id)
+			eventId(id),
+			isGet(true)
 		{}
 
 		ShioriRequest() :
-			eventId()
+			eventId(),
+			isGet(true)
 		{}
 
 		void SetEventId(const std::string& id) {
@@ -92,6 +95,14 @@ namespace sakura {
 
 		const std::string GetEventId() const {
 			return eventId;
+		}
+
+		void SetIsGet(bool get) {
+			isGet = get;
+		}
+
+		bool IsGet() const {
+			return isGet;
 		}
 
 		void SetReference(uint32_t index, const std::string& value) {
@@ -137,11 +148,55 @@ namespace sakura {
 		}
 	};
 
+	//SHIORIエラー情報
+	class ShioriError {
+	public:
+		enum class ErrorLevel {
+			Info,
+			Notice,
+			Warning,
+			Error,
+			Critical
+		};
+
+	private:
+		ErrorLevel level;
+		std::string message;
+
+	public:
+		ShioriError(ErrorLevel errorLevel, const std::string& errorMessage):
+			level(errorLevel),
+			message(errorMessage)
+		{}
+
+		ErrorLevel GetLevel() const { return level; }
+		const std::string& GetMessage() const { return message; }
+
+		const std::string GetLevelString() const {
+			switch (level) {
+			case ErrorLevel::Info:
+				return "info";
+			case ErrorLevel::Notice:
+				return "notice";
+			case ErrorLevel::Warning:
+				return "warning";
+			case ErrorLevel::Error:
+				return "error";
+			case ErrorLevel::Critical:
+				return "critical";
+			default:
+				assert(false);
+				return "";
+			}
+		}
+	};
+
 	//SHIORIレスポンスオブジェクト
 	class ShioriResponse {
 	private:
 		std::string status;
 		std::string value;
+		std::vector<ShioriError> errors;
 
 	public:
 		void SetBadRequest() {
@@ -154,6 +209,10 @@ namespace sakura {
 
 		void SetValue(const std::string& val) {
 			value = val;
+		}
+
+		void AddError(const ShioriError& err) {
+			errors.push_back(err);
 		}
 
 		const std::string& GetValue() const {
@@ -172,6 +231,36 @@ namespace sakura {
 			else {
 				return "200 OK";
 			}
+		}
+
+		bool HasError() const {
+			return !errors.empty();
+		}
+
+		//SHIORIのErrorDescriptionヘッダを取得
+		std::string GetErrorDescriptionList() const {
+			assert(HasError());
+			std::string result;
+			for (size_t i = 0; i < errors.size(); i++) {
+				if (i > 0) {
+					result += (char)1;
+				}
+				result += errors[i].GetMessage();
+			}
+			return result;
+		}
+
+		//SHIORIのErrorLevelヘッダを取得
+		std::string GetErrorLevelList() {
+			assert(HasError());
+			std::string result;
+			for (size_t i = 0; i < errors.size(); i++) {
+				if (i > 0) {
+					result += (char)1;
+				}
+				result += errors[i].GetLevelString();
+			}
+			return result;
 		}
 	};
 

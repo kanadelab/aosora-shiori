@@ -149,12 +149,49 @@ namespace sakura {
 		{}
 	};
 
+	//パースエラー定義
+	struct ScriptParseErrorData {
+		std::string errorCode;
+		std::string message;
+		std::string hint;
+	};
+
+	//発生したパースエラー
+	class ScriptParseError {
+	private:
+		ScriptParseErrorData data;
+		SourceCodeRange position;
+		std::string previewErrorBefore;
+		std::string previewErrorAfter;
+
+	public:
+		ScriptParseError(const ScriptParseErrorData& errorData, const SourceCodeRange& sourceRange) :
+			data(errorData),
+			position(sourceRange)
+		{}
+
+		const SourceCodeRange& GetPosition() const {
+			return position;
+		}
+
+		const ScriptParseErrorData& GetData() const {
+			return data;
+		}
+
+		//コンソール出力用のエラーを報告
+		std::string MakeConsoleErrorString() const {
+			return "ERROR: " + GetPosition().ToString() + " [" + GetData().errorCode + "] " + GetData().message;
+		}
+	};
+
 	//EOFを示すトークン
 	const ScriptToken TOKEN_EOF("EOF", ScriptTokenType::Invalid, nullptr, 0, 0, 0, 0);
 
 	//解析結果
 	struct TokensParseResult {
 		std::list<ScriptToken> tokens;
+		bool success;
+		std::shared_ptr<ScriptParseError> error;
 	};
 
 	//トークン単位のパーサ

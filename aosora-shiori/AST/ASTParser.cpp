@@ -6,6 +6,46 @@
 
 namespace sakura {
 
+	const ScriptParseErrorData ERROR_AST_001 = { "A001", "コードブロック終了の閉じ括弧 } が見つかりませんでした。", "コードブロックは { } で囲まれる一連の処理ですが、始まりに対して終わりが見つからないエラーです。コードブロックや、付近の { の閉じ括弧を忘れていないか確認してください。"};
+	const ScriptParseErrorData ERROR_AST_002 = { "A002", "演算子の使い方が正しくありません。", "2つの要素を足したり掛けたりするタイプの計算式で、足す側と足される側といったような２つの要素が揃っていないようです。"};
+	const ScriptParseErrorData ERROR_AST_003 = { "A003", "カッコの対応関係が間違っています。", "計算式に使うカッコ ( ) の対応関係が正しくないようです。計算式を確認してください。"};
+	const ScriptParseErrorData ERROR_AST_004 = { "A004", "演算子が必要か、ここでは使えない演算子です。", "値を2つ連続することはできません。足し合わせるなら + を使うなど、式にする必要があります。"};
+	const ScriptParseErrorData ERROR_AST_005 = { "A005", "メンバ名を指定する必要があります。", "Value.Item のように、ピリオドはオブジェクトのメンバーを参照するために使用します。"};
+	const ScriptParseErrorData ERROR_AST_006 = { "A006", "ここでセミコロン ; は使えません。", "この式ではセミコロン ; を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_007 = { "A007", "ここでコロン : は使えません。", "この式ではコロン : を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_008 = { "A008", "ここで閉じ括弧 } は使えません。", "この式では閉じ括弧 } を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_009 = { "A009", "ここで閉じ括弧 ] は使えません。", "この式では閉じ括弧 ] を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_010 = { "A010", "ここでカンマ , は使えません。", "この式ではカンマ , を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_011 = { "A011", "ここで閉じ括弧 ) は使えません。", "ここでは閉じ括弧 ) を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
+	const ScriptParseErrorData ERROR_AST_012 = { "A012", "カッコの対応関係が正しくありません。", "リストの始端終端のカッコが揃っていないようです。"};
+	const ScriptParseErrorData ERROR_AST_013 = { "A013", "引数名が必要です。", "ここは引数リストなので、引数名を書かないといけません"};
+	const ScriptParseErrorData ERROR_AST_014 = { "A014", "カンマ , で引数を区切るか、閉じ括弧 ) で引数リストを閉じる必要があります。"};
+	const ScriptParseErrorData ERROR_AST_015 = { "A015", "カッコの対応関係が正しくありません。", "引数リストが正しく閉じられていません。"};
+	const ScriptParseErrorData ERROR_AST_016 = { "A016", "キーが必要です。", "連想配列の式では キー: 値　の形式で内容を記述します。キーが正しい形式ではないようです。"};
+	const ScriptParseErrorData ERROR_AST_017 = { "A017", "コロン : が必要です。", "連想配列の式では キー: 値 の形式で内容を記述します。キーと値を分けるコロンが無いようです。"};
+	const ScriptParseErrorData ERROR_AST_018 = { "A018", "開き括弧 { が必要です。", "関数式では { から関数本体を始める必要があります。"};
+	const ScriptParseErrorData ERROR_AST_019 = { "A019", "開き括弧 { が必要です。", "トーク式では { からトーク本体を始める必要があります。"};
+	const ScriptParseErrorData ERROR_AST_020 = { "A020", "関数名が必要です。", "関数定義ではfunction に続けて関数名が必要です。"};
+	const ScriptParseErrorData ERROR_AST_021 = { "A021", "開き括弧 ( が必要です。", "関数定義の発生条件を使用する場合は if に続けて括弧 ( ) で条件を記述します。"};
+	const ScriptParseErrorData ERROR_AST_022 = { "A022", "開き括弧 { が必要です。", "関数定義では { から関数本体を始める必要があります。"};
+	const ScriptParseErrorData ERROR_AST_023 = { "A023", "書き込めない対象に書き込もうとしています。", "読み取り専用の情報に代入等で変更をしようとしています。"};
+	const ScriptParseErrorData ERROR_AST_024 = { "A024", "newキーワードには呼出式 ( ) が必要です。", "new Class() のように、newキーワードには呼出式が必要です。"};
+	const ScriptParseErrorData ERROR_AST_025 = { "A025", "クラス名が必要です。", "クラス定義では class キーワードに続いてクラス名を記述します。"};
+	const ScriptParseErrorData ERROR_AST_026 = { "A026", "継承クラス名が必要です。", "クラスを継承する場合はクラス名の後のコロン : に続けて継承元のクラス名を記述します。"};
+	const ScriptParseErrorData ERROR_AST_027 = { "A027", "開き括弧 { が必要です。", "クラス本体の記述前に始端の括弧 { が必要です。"};
+	const ScriptParseErrorData ERROR_AST_028 = { "A028", "開き括弧 { が必要です。", "initの本体の前に始端の括弧 { が必要です。"};
+	const ScriptParseErrorData ERROR_AST_029 = { "A029", "閉じ括弧 } が必要です。", "クラス終端の括弧 } が必要です。"};
+	const ScriptParseErrorData ERROR_AST_030 = { "A030", "変数名が必要です。", "ここでは変数名が必要です。変数名に使用できないキーワードか記号が使われているかもしれません。"};
+	const ScriptParseErrorData ERROR_AST_031 = { "A031", "開き括弧 ( が必要です。", "for文の開き括弧が必要です。"};
+	const ScriptParseErrorData ERROR_AST_032 = { "A032", "開き括弧 ( が必要です。", "while文の開き括弧が必要です。"};
+	const ScriptParseErrorData ERROR_AST_033 = { "A033", "開き括弧 ( が必要です。", "if文の開き括弧が必要です。"};
+	const ScriptParseErrorData ERROR_AST_034 = { "A034", "セミコロン ; が必要です。", "break文の終わりにはセミコロンが必要です。"};
+	const ScriptParseErrorData ERROR_AST_035 = { "A035", "セミコロン ; が必要です。", "continue文の終わりにはセミコロンが必要です。"};
+	const ScriptParseErrorData ERROR_AST_036 = { "A036", "開き括弧 { が必要です。", "tryブロック始端には開き括弧 { が必要です。"};
+	const ScriptParseErrorData ERROR_AST_037 = { "A037", "開き括弧 { が必要です。", "catchブロック始端には開き括弧 { が必要です。"};
+	const ScriptParseErrorData ERROR_AST_038 = { "A038", "開き括弧 { が必要です。", "finallyブロック始端には開き括弧 { が必要です。"};
+
+
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
 	const OperatorInformation OPERATOR_SUB = { OperatorType::Sub, 6, 2, true, "-" };
@@ -62,8 +102,6 @@ namespace sakura {
 	const uint32_t SEQUENCE_END_FLAG_COLON = 1u << 6u;
 	const uint32_t SEQUENCE_END_FALG_TALK_NEWLINE = 1u << 7u;
 
-	const std::string GENERAL_SYNTAX_ERROR = "構文エラー";
-
 	//ASTパース
 	class ASTParseContext {
 	private:
@@ -71,10 +109,9 @@ namespace sakura {
 		const std::list<ScriptToken>& tokens;
 		std::list<ScriptToken>::const_iterator current;
 
-		//エラーが出ているかどうか
-		//とりあえず1個でもエラーが出ればその場で脱出させてみる
+		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
-		std::string errorMessage;
+		ScriptParseErrorData errorData;
 		const ScriptToken* errorToken;
 
 	public:
@@ -110,12 +147,14 @@ namespace sakura {
 		}
 
 		//エラーのセット
-		ASTNodeRef Error(const std::string& message, const ScriptToken& token) {
+		ASTNodeRef Error(const ScriptParseErrorData& error, const ScriptToken& token) {
 
+#if 0
 			//デバッグのためエラーだったら即止め
 			assert(false);
+#endif
 
-			errorMessage = message;
+			errorData = error;
 			errorToken = &token;
 			hasError = true;
 
@@ -143,7 +182,11 @@ namespace sakura {
 		}
 
 		std::string GetErrorMessage() const {
-			return errorMessage;
+			return errorData.message;
+		}
+
+		const ScriptParseErrorData& GetErrorData() const {
+			return errorData;
 		}
 
 		const ScriptToken* GetErrorToken() const {
@@ -155,16 +198,22 @@ namespace sakura {
 		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
 		ASTParseContext parseContext(tokens->tokens, *parseResult);
 		auto codeBlock = ParseASTSourceRoot(parseContext);
+		parseResult->success = !parseContext.HasError();
 
+#if 0
 		printf("---AST---\n");
 		codeBlock->DebugDump(0);
 
+#endif
 		if (parseContext.HasError()) {
-			//エラートークン位置を表示したい
+#if 0
 			printf("Error: %s\n", parseContext.GetErrorMessage().c_str());
 			if (parseContext.GetErrorToken() != nullptr) {
 				printf("Position: %s\n", parseContext.GetErrorToken()->sourceRange.ToString().c_str());
 			}
+#endif
+			assert(parseContext.GetErrorToken() != nullptr);
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken()->sourceRange));
 		}
 
 		parseResult->root = codeBlock;
@@ -216,7 +265,7 @@ namespace sakura {
 
 		//閉じ括弧終了なのになければエラー
 		if (isBlacketEnd) {
-			return parseContext.Error("ブロックの終了が見つかりませんでした。", beginToken);
+			return parseContext.Error(ERROR_AST_001, beginToken);
 		}
 
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
@@ -511,7 +560,7 @@ namespace sakura {
 
 				if (expressionStack.size() < 3) {
 					//２項演算子なのにオペランドが足りない
-					parseContext.Error("演算子の使い方が正しくありません。", expressionStack[expressionStack.size() - 2].operatorToken);
+					parseContext.Error(ERROR_AST_002, expressionStack[expressionStack.size() - 2].operatorToken);
 					return;
 				}
 
@@ -603,7 +652,7 @@ namespace sakura {
 
 			if (blacketCount <= 0) {
 				//１つもカッコがないのに要求された場合
-				parseContext.Error("カッコの対応関係が間違っています", closeBracketToken);
+				parseContext.Error(ERROR_AST_003, closeBracketToken);
 				return;
 			}
 
@@ -666,7 +715,7 @@ namespace sakura {
 				case ScriptTokenType::BlockBegin:
 				case ScriptTokenType::Function:
 				case ScriptTokenType::Talk:
-					return parseContext.Error("演算子が必要です。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
 				}
 			}
 
@@ -726,7 +775,7 @@ namespace sakura {
 				parseStack.Reduce(OPERATOR_MEMBER, parseContext);
 				parseContext.FetchNext();
 				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-					return parseContext.Error("メンバ名を指定する必要があります", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_005, parseContext.GetCurrent());
 				}
 
 				//メンバ解決
@@ -741,14 +790,14 @@ namespace sakura {
 
 				//セミコロンで終了可能なら終了
 				if (!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_SEMICOLON)) {
-					return parseContext.Error("ここで ; は使えません。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_006, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 				break;
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 				if (!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_COLON)) {
-					return parseContext.Error("ここで : は使えません。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_007, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 				break;
@@ -756,14 +805,14 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
 				// } で終了させられる場合は終了
 				if (!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_BLOCK_BLACKET)) {
-					return parseContext.Error("ここで } は使えません。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_008, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 				break;
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::ArrayEnd) {
 				if (!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_ARRAY_BLACKET)) {
-					return parseContext.Error("ここで ] は使えません。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_009, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 				break;
@@ -771,7 +820,7 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
 				if (!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_COMMA)) {
 					//タプルみたいなのがあってもいいかもだけど、今は考慮しない
-					return parseContext.Error("ここで , は使えません。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_010, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 				break;
@@ -858,7 +907,7 @@ namespace sakura {
 					}
 					else {
 						//オペランドが必要なところではカッコ閉じは不可
-						return parseContext.Error("ここで閉じ括弧は使えません", parseContext.GetCurrent());
+						return parseContext.Error(ERROR_AST_011, parseContext.GetCurrent());
 					}
 				}
 				else {
@@ -873,7 +922,7 @@ namespace sakura {
 					}
 					else {
 						//使用できるオペレータが存在しないため不正
-						return parseContext.Error("ここでは使用できない演算子です。", parseContext.GetCurrent());
+						return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
 					}
 				}	
 			}
@@ -907,7 +956,7 @@ namespace sakura {
 
 		//終端がみつかってないのでエラー
 		if (!parseContext.HasError()) {
-			parseContext.Error("カッコの対応関係が正しくありません。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_012, parseContext.GetCurrent());
 		}
 	}
 
@@ -929,7 +978,7 @@ namespace sakura {
 
 			//まずシンボル
 			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error("引数名が必要です。", parseContext.GetCurrent());
+				parseContext.Error(ERROR_AST_013, parseContext.GetCurrent());
 				return;
 			}
 
@@ -946,13 +995,13 @@ namespace sakura {
 				continue;
 			}
 
-			parseContext.Error(", か閉じ括弧が必要です。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_014, parseContext.GetCurrent());
 			return;
 		}
 
 		//終端がみつかってないのでエラー
 		if (!parseContext.HasError()) {
-			parseContext.Error("カッコの対応関係が正しくありません。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_015, parseContext.GetCurrent());
 		}
 	}
 
@@ -1103,12 +1152,12 @@ namespace sakura {
 					parseContext.FetchNext();
 				}
 				else {
-					return parseContext.Error("キーが必要です。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_016, parseContext.GetCurrent());
 				}
 
 				//コロン
 				if (parseContext.GetCurrent().type != ScriptTokenType::Colon) {
-					return parseContext.Error(": が必要です。", parseContext.GetCurrent());
+					return parseContext.Error(ERROR_AST_017, parseContext.GetCurrent());
 				}
 				parseContext.FetchNext();
 
@@ -1144,7 +1193,7 @@ namespace sakura {
 
 		//中括弧開
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			return parseContext.Error("{ が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_018, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1185,7 +1234,7 @@ namespace sakura {
 
 		//中括弧開
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			return parseContext.Error("{ が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_019, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1221,7 +1270,7 @@ namespace sakura {
 		//関数名
 		while (true) {
 			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error("関数名が必要です。", parseContext.GetCurrent());
+				parseContext.Error(ERROR_AST_020, parseContext.GetCurrent());
 				return result;
 			}
 
@@ -1248,7 +1297,7 @@ namespace sakura {
 		if (parseContext.GetCurrent().type == ScriptTokenType::If) {
 			parseContext.FetchNext();
 			if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
-				parseContext.Error("( が必要です。", parseContext.GetCurrent());
+				parseContext.Error(ERROR_AST_021, parseContext.GetCurrent());
 				return result;
 			}
 			parseContext.FetchNext();
@@ -1257,7 +1306,7 @@ namespace sakura {
 		
 		//中括弧開
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			parseContext.Error("{ が必要です。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_022, parseContext.GetCurrent());
 			return result;
 		}
 		parseContext.FetchNext();
@@ -1280,7 +1329,7 @@ namespace sakura {
 
 		//target側がゲット系のノードになっているはずなのでセット系のノードに変換する
 		if (!target->CanConvertToSetter()) {
-			return parseContext.Error("代入できない対象です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_023, parseContext.GetCurrent());
 		}
 		return target->ConvertToSetter(value);
 	}
@@ -1288,7 +1337,7 @@ namespace sakura {
 	//new
 	ASTNodeRef ASTParser::ParseASTNew(ASTParseContext& parseContext, const ScriptToken& operatorToken, const ASTNodeRef& target) {
 		if (target->GetType() != ASTNodeType::FunctionCall) {
-			return parseContext.Error("オブジェクト初期化呼び出しが必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_024, parseContext.GetCurrent());
 		}
 
 		//FunctionCallとして呼出が解析されているのでコンバートする
@@ -1320,7 +1369,7 @@ namespace sakura {
 
 		//クラス名
 		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-			parseContext.Error("クラス名が必要です", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_025, parseContext.GetCurrent());
 			return;
 		}
 		std::string className = parseContext.GetCurrent().body;
@@ -1331,7 +1380,7 @@ namespace sakura {
 		if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 			parseContext.FetchNext();
 			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error("継承クラス名が必要です", parseContext.GetCurrent());
+				parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
 				return;
 			}
 			result->SetParentClassName(parseContext.GetCurrent().body);
@@ -1340,7 +1389,7 @@ namespace sakura {
 
 		//開カッコ
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			parseContext.Error("{ が必要です。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_027, parseContext.GetCurrent());
 			return;
 		}
 		parseContext.FetchNext();
@@ -1369,7 +1418,7 @@ namespace sakura {
 
 				//開き中括弧
 				if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-					parseContext.Error("{ が必要です。", parseContext.GetCurrent());
+					parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
 					return;
 				}
 
@@ -1418,7 +1467,7 @@ namespace sakura {
 		}
 
 		if (!parseContext.HasError()) {
-			parseContext.Error("クラス終了の } が必要です。", parseContext.GetCurrent());
+			parseContext.Error(ERROR_AST_029, parseContext.GetCurrent());
 		}
 	}
 
@@ -1457,7 +1506,7 @@ namespace sakura {
 
 			//シンボルでないなら構文エラー
 			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error(GENERAL_SYNTAX_ERROR, parseContext.GetCurrent());
+				parseContext.Error(ERROR_AST_030, parseContext.GetCurrent());
 				return false;
 			}
 
@@ -1502,7 +1551,7 @@ namespace sakura {
 
 		//まず開きカッコが必要
 		if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
-			return parseContext.Error("( が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_031, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1567,7 +1616,7 @@ namespace sakura {
 
 		//まず開きカッコが必要
 		if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
-			return parseContext.Error("( が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_032, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1601,7 +1650,7 @@ namespace sakura {
 
 		//まず開きカッコが必要
 		if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
-			return parseContext.Error("( が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_033, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1654,7 +1703,7 @@ namespace sakura {
 
 		//セミコロンが必要
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
-			return parseContext.Error("( が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_034, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1672,7 +1721,7 @@ namespace sakura {
 
 		//セミコロンが必要
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
-			return parseContext.Error("( が必要です。", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_035, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1712,7 +1761,7 @@ namespace sakura {
 		parseContext.FetchNext();
 
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			return parseContext.Error("( が必要です", parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_036, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -1744,7 +1793,7 @@ namespace sakura {
 
 			//開カッコ
 			if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-				return parseContext.Error("( が必要です", parseContext.GetCurrent());
+				return parseContext.Error(ERROR_AST_037, parseContext.GetCurrent());
 			}
 			parseContext.FetchNext();
 
@@ -1759,7 +1808,7 @@ namespace sakura {
 
 			//開カッコ
 			if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-				return parseContext.Error("( が必要です", parseContext.GetCurrent());
+				return parseContext.Error(ERROR_AST_038, parseContext.GetCurrent());
 			}
 			parseContext.FetchNext();
 

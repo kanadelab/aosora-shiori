@@ -35,6 +35,13 @@ namespace sakura{
 		}
 	}
 
+	//小文字にそろえる
+	inline void ToLower(std::string& str) {
+		for (size_t i = 0; i < str.size(); i++) {
+			str[i] = std::tolower(str[i]);
+		}
+	}
+
 	//数値を文字列化(Javascriptのように中身が整数っぽければ整数にする)
 	inline std::string ToString(double val) {
 		std::ostringstream ost;

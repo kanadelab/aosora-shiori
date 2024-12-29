@@ -9,10 +9,15 @@ namespace sakura {
 	class ScriptToken;
 	class ScriptVariableDef;
 
+
 	//パースリザルト
 	struct ASTParseResult {
+		bool success;
 		ConstASTNodeRef root;
 		std::map<std::string, ScriptClassRef> classMap;
+
+		//パースエラー: 発生時、その場で解析を打ち切るのでエラーは必ず１個だけ
+		std::shared_ptr<ScriptParseError> error;
 	};
 
 	//ソースコードパーサ
@@ -22,8 +27,6 @@ namespace sakura {
 			Function,
 			Talk
 		};
-
-		
 
 		//変数定義
 		struct ScriptVariableDef {

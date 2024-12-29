@@ -167,6 +167,14 @@ namespace sakura {
 	const uint32_t BLOCK_END_FLAG_NEWLINE = 1u << 2;				// 改行
 	const uint32_t BLOCK_END_FLAG_DOUBLE_QUATATION = 1u << 3;		// "
 
+	//トークン解析エラー
+	const ScriptParseErrorData ERROR_TOKEN_001 = { "T001", "括弧 { } の対応関係が正しくありません。", "対応する開き括弧のない中括弧があったため、読み込みに失敗しました。" };
+	const ScriptParseErrorData ERROR_TOKEN_002 = { "T002", "トーク名として使用できない文字列です。", "変数名として使用できない文字をトーク名として使おうとしています。" };
+	const ScriptParseErrorData ERROR_TOKEN_003 = { "T003", "開き括弧 ( が必要です。", "ifの条件式の前に開き括弧 ( が必要です。" };
+	const ScriptParseErrorData ERROR_TOKEN_004 = { "T004", "開き括弧 { が必要です。", "トークブロック本文の開始前に中括弧 { が必要です。" };
+	const ScriptParseErrorData ERROR_TOKEN_005 = { "T005", "構文的に識できない文字です。", "スクリプトのどの構文にも当てはまらない文字です。書き方が間違ってないか確認してみてください。" };
+
+
 	//トークン解析用情報
 	class ScriptTokenParseContext {
 
@@ -174,11 +182,15 @@ namespace sakura {
 		TokensParseResult& result;
 		const std::string& document;
 		std::shared_ptr<const std::string> sourceFilePath;
+
+		bool hasError;
+		ScriptParseErrorData errorData;
+		SourceCodeRange errorPosition;
+
+		//NOTE: 個別に位置をもたずにcharindexからline&columnを決定できるような事前解析があったほうがいいのかも
 		size_t charIndex;
 		size_t lineIndex;
 		size_t columnIndex;
-
-		
 
 		//改行をスキップ
 		bool SkipNewLine(std::string_view current) {
@@ -235,6 +247,7 @@ namespace sakura {
 			result(parseResult),
 			document(doc),
 			sourceFilePath(new std::string(sourceFilePath)),
+			hasError(false),
 			charIndex(0),
 			lineIndex(0),
 			columnIndex(0)
@@ -333,9 +346,39 @@ namespace sakura {
 			return std::string_view(&document[charIndex], document.size() - charIndex);
 		}
 
+		//ソースコード位置を取得
+		const SourceCodeRange GetCurrentPosition() {
+			return SourceCodeRange(sourceFilePath, lineIndex, columnIndex, lineIndex, columnIndex);
+		}
+
 		//終了?
-		bool IsEOF() {
+		bool IsEOF() const {
 			return charIndex >= document.size();
+		}
+
+		//打ち切るべきか
+		bool IsEnd() const {
+			return IsEOF() || HasError();
+		}
+
+		//エラー情報指定
+		void Error(const ScriptParseErrorData& error, const SourceCodeRange& position) {
+#if 0
+			//デバッグのためエラーだったら即止め
+			assert(false);
+#endif
+
+			errorData = error;
+			errorPosition = position;
+			hasError = true;
+		}
+
+		bool HasError() const {
+			return hasError;
+		}
+
+		ScriptParseError GetError() const {
+			return ScriptParseError(errorData, errorPosition);
 		}
 
 		//デバッグダンプ
@@ -353,9 +396,15 @@ namespace sakura {
 
 		//パース
 		TokensParser::ParseFunctionBlock(parseContext, 0);
+		result->success = !parseContext.HasError();
+		if (!result->success) {
+			result->error.reset(new ScriptParseError(parseContext.GetError()));
+		}
 
+#if 0
 		printf("---tokens---\n");
 		parseContext.DebugDumpTokens();
+#endif
 		
 		return result;
 	}
@@ -367,14 +416,14 @@ namespace sakura {
 		int32_t blockDepth = 0;
 		int32_t bracketDepth = 0;
 
-		while (!parseContext.IsEOF())
+		while (!parseContext.IsEnd())
 		{
 			//スペースを飛ばして次のトークンを探す
 			if (parseContext.SkipSpaces(CheckFlags(blockEndFlags, BLOCK_END_FLAG_NEWLINE))) {
 				return;
 			}
 
-			if (parseContext.IsEOF()) {
+			if (parseContext.IsEnd()) {
 				break;
 			}
 
@@ -399,7 +448,8 @@ namespace sakura {
 								}
 								else {
 									//中括弧の対応条件がおかしい、ここで報告して終えてもいいかも？
-									assert(false);
+									parseContext.Error(ERROR_TOKEN_001, parseContext.GetCurrentPosition());
+									return;
 								}
 							}
 							blockDepth--;
@@ -445,6 +495,9 @@ namespace sakura {
 					//文字列解析に飛ばす
 					parseContext.PushToken(0, ScriptTokenType::StringBegin);
 					ParseStringLiteral(parseContext, BLOCK_END_FLAG_DOUBLE_QUATATION);
+					if (parseContext.IsEnd()) {
+						return;
+					}
 					parseContext.PushToken(0, ScriptTokenType::StringEnd);
 					continue;
 				}
@@ -469,7 +522,8 @@ namespace sakura {
 							parseContext.PushToken(match[1].str().size(), ScriptTokenType::Symbol);
 						}
 						else {
-							assert(false);
+							parseContext.Error(ERROR_TOKEN_002, parseContext.GetCurrentPosition());
+							return;
 						}
 
 						//スペース飛ばして
@@ -490,6 +544,9 @@ namespace sakura {
 					if (parseContext.GetCurrent().starts_with(TOKEN_COMMON_BRACKET_BEGIN)) {
 						//開始カッコがあれば引数リスト
 						ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BRACKET);
+						if (parseContext.IsEnd()) {
+							return;
+						}
 
 						//スペース飛ばして
 						parseContext.SkipSpaces(false);
@@ -502,16 +559,21 @@ namespace sakura {
 
 						//かっこで開始してないと構文エラー
 						if (!parseContext.GetCurrent().starts_with(TOKEN_COMMON_BRACKET_BEGIN)) {
-							assert(false);
+							parseContext.Error(ERROR_TOKEN_003, parseContext.GetCurrentPosition());
+							return;
 						}
 						parseContext.PushToken(TOKEN_COMMON_BRACKET_BEGIN.size(), ScriptTokenType::BracketBegin);
 						ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BRACKET);
+						if (parseContext.IsEnd()) {
+							return;
+						}
 						parseContext.SkipSpaces(false);
 					}
 
 					//中かっこで開始してないと構文エラー
 					if (!parseContext.GetCurrent().starts_with(TOKEN_BLOCK_BEGIN)) {
-						assert(false);
+						parseContext.Error(ERROR_TOKEN_004, parseContext.GetCurrentPosition());
+						return;
 					}
 
 					//中かっこ
@@ -519,6 +581,9 @@ namespace sakura {
 
 					//ここからトークの解析コンテキスト、終端カッコまで取り込み
 					ParseTalkBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
+					if (parseContext.IsEnd()) {
+						return;
+					}
 
 					//次の処理に戻れる
 					continue;
@@ -536,7 +601,8 @@ namespace sakura {
 
 
 			//最終的にどのトークンにもあてはまらない場合はエラー
-			assert(false);
+			parseContext.Error(ERROR_TOKEN_005, parseContext.GetCurrentPosition());
+			return;
 		}
 	}
 
@@ -551,7 +617,7 @@ namespace sakura {
 		bool isFirstLine = true;
 
 		//とりあえず全部文字列として扱ってみる
-		while (!parseContext.IsEOF()) {
+		while (!parseContext.IsEnd()) {
 
 			//スペースを飛ばして次のトークンを探す
 			if (isFirstLine) {
@@ -567,7 +633,7 @@ namespace sakura {
 				}
 			}
 
-			if (parseContext.IsEOF()) {
+			if (parseContext.IsEnd()) {
 				break;
 			}
 
@@ -578,6 +644,9 @@ namespace sakura {
 			if (parseContext.GetCurrent().starts_with(TOKEN_TALK_JUMP_LINE)) {
 				parseContext.PushToken(TOKEN_TALK_JUMP_LINE.size(), ScriptTokenType::TalkJump);
 				ParseFunctionBlock(parseContext, BLOCK_END_FLAG_NEWLINE);
+				if (parseContext.IsEnd()) {
+					return;
+				}
 				parseContext.PushToken(0, ScriptTokenType::TalkLineEnd);
 				continue;
 			}
@@ -597,6 +666,9 @@ namespace sakura {
 					//残りは行末までトーク本文扱い
 					parseContext.PushToken(0, ScriptTokenType::SpeakBegin);
 					ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE);
+					if (parseContext.IsEnd()) {
+						return;
+					}
 					parseContext.PushToken(0, ScriptTokenType::SpeakEnd);
 					parseContext.PushToken(0, ScriptTokenType::TalkLineEnd);
 					continue;
@@ -613,6 +685,9 @@ namespace sakura {
 				//それ以外は行末までトーク本文扱いする
 				parseContext.PushToken(0, ScriptTokenType::SpeakBegin);
 				ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE);
+				if (parseContext.IsEnd()) {
+					return;
+				}
 				parseContext.PushToken(0, ScriptTokenType::SpeakEnd);
 				parseContext.PushToken(0, ScriptTokenType::TalkLineEnd);
 			}
@@ -626,7 +701,7 @@ namespace sakura {
 		//トークン0サイズで開始
 		bool isNewToken = true;
 
-		while (!parseContext.IsEOF()) {
+		while (!parseContext.IsEnd()) {
 
 			if (isNewToken) {
 				parseContext.PushToken(0, ScriptTokenType::String);
@@ -669,6 +744,9 @@ namespace sakura {
 				// ${} のフォーマット処理。次の中括弧までを関数扱いで解析させる
 				parseContext.PushToken(TOKEN_FORMAT_BEGIN.size(), ScriptTokenType::ExpressionInString);
 				ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
+				if (parseContext.IsEnd()) {
+					return;
+				}
 
 				//あたらしい文字列トークンを作成
 				isNewToken = true;
@@ -677,6 +755,9 @@ namespace sakura {
 				// %{} の関数スコープ処理。次の中括弧まで関数扱いで解析
 				parseContext.PushToken(TOKEN_FUNCSCOPE_BEGIN.size(), ScriptTokenType::StatementInString);
 				ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
+				if (parseContext.IsEnd()) {
+					return;
+				}
 
 				//あたらしい文字列トークンを作成
 				isNewToken = true;

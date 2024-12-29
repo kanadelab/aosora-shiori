@@ -778,7 +778,7 @@ namespace sakura {
 			}
 
 			if (functionList != nullptr) {
-				//すでに関数リストオブジェクトがある場合はそこにデリゲートを追加するx
+				//すでに関数リストオブジェクトがある場合はそこにデリゲートを追加する
 				functionList->Add(node.GetFunction(), node.GetConditionNode(), executeContext.GetBlockScope());
 			}
 			else {
@@ -1133,7 +1133,9 @@ namespace sakura {
 		//ルートまで例外が出たらダンプしてみる
 		if (rootStack.IsThrew()) {
 			RuntimeError* err = InstanceAs<RuntimeError>(rootStack.GetThrewError());
+#if 0
 			printf("[Error] %s\n", err->ToString().c_str());
+#endif
 		}
 	}
 
@@ -1146,7 +1148,9 @@ namespace sakura {
 		//ルートまで例外が出たらダンプしてみる
 		if (rootStack.IsThrew()) {
 			RuntimeError* err = InstanceAs<RuntimeError>(rootStack.GetThrewError());
+#if 0 
 			printf("[Error] %s\n", err->ToString().c_str());
+#endif
 		}
 		else {
 			if (rootStack.GetReturnValue() != nullptr) {
@@ -1224,6 +1228,12 @@ namespace sakura {
 
 	void ScriptInterpreter::CallFunctionInternal(const ScriptValue& funcVariable, const std::vector<ScriptValueRef>& args, ScriptInterpreterStack& funcStack, FunctionResponse& response) {
 		assert(funcVariable.IsObject());
+
+		if (!funcVariable.IsObject()) {
+			//オブジェクトではないので呼出不可
+			return;
+		}
+
 		ObjectRef funcObj = funcVariable.GetObjectRef();
 
 		if (funcObj->CanCall()) {
