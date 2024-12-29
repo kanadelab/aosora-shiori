@@ -11,11 +11,15 @@
 	],
 	"repository": {
 		"talkblock":{
-			"begin": "\\b(talk)\\s+(\\w+)",
+			"begin": "\\b(talk)\\s+(\\w+)((?:\\s*,\\s*\\w+)*)",
 			"end": "(?<=})",
 			"beginCaptures": {
 				"1": {"patterns": [{"include": "#keywords"}]},
-				"2": {"patterns": [{"include": "#symbols"}]}
+				"2": {"patterns": [{"include": "#symbols"}]},
+				"3": {"patterns": [
+					{"match": "\\s*,\\s*"},
+					{"include": "#symbols"}
+				]}
 			},
 			"patterns": [
 				{
@@ -26,7 +30,7 @@
 				}
 			]
 		},
-		"talkif":{
+		"talkif": {
 			"begin": "\\b(if)\\b",
 			"end": "(?<=\\))",
 			"beginCaptures": {
