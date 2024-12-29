@@ -3,29 +3,49 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as childProcess from 'child_process';
 import * as iconv from 'iconv-lite';
+import { MessageOptions } from 'vscode';
+
+const ERROR_CODE_INVALID_ARGS = 1;
+const ERROR_CODE_GHOST_NOT_FOUND = 2;
+const ERROR_CODE_GHOST_SCRIPT_ERROR = 3;
+const ERROR_CODE_PREVIEW_SCRIPT_ERROR = 4;
 
 //スクリプトプレビューイング
 export async function SendPreviewFunction(functionBody:string, extensionPath:string){
 
-    //TODO: TypeScriptがわ: 一時的なスクリプトを保存し、引数をつけて実行ファイルを呼出、その後保存。リザルトはstdoutから読む。
-    //TODO: 実行ファイル側: コマンド引数で入力された一時スクリプトとゴーストパスを読み、FMOをみてターゲットのゴーストに送る
+	const outPath = extensionPath + "/" + '_aosora_send_script_.as';
+	const executablePath = extensionPath + "/" + "aosora-sstp.exe";
+	let command = `"${executablePath}" "${outPath}"`;
 
-    const outPath = extensionPath + "/" + '_aosora_send_script_.as';
-    const executablePath = extensionPath + "/" + "aosora-sstp.exe";
-    let command = `"${executablePath}" "${outPath}"`;
+	//ワークスペースがあればパスに足す
+	const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
+	if(projFiles.length > 0){
+		const workspace = path.dirname(projFiles[0].fsPath);
+		command += ` ${workspace}`;
+	}
 
-    //ワークスペースがあればパスに足す
-    const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
-    if(projFiles.length > 0){
-        const workspace = path.dirname(projFiles[0].fsPath);
-        command += ` ${workspace}`;
-    }
+	//一時ファイルを用意して呼び出す
+	fs.writeFileSync(outPath, functionBody, 'utf-8');
+	
+	childProcess.exec(command, (error, stdout, stderr) => {
+		fs.rmSync(outPath);
+		if(error){
+			vscode.window.showErrorMessage(ExitCodeToString(error.code) + stderr);
+		}
+	});
+	
+}
 
-    //一時ファイルを用意して呼び出す
-    fs.writeFileSync(outPath, functionBody, 'utf-8');
-    
-    childProcess.exec(command, () => {
-        fs.rmSync(outPath);
-    });
-    
+function ExitCodeToString(code?:number){
+	if(code == ERROR_CODE_GHOST_NOT_FOUND) {
+		return "スクリプト送信先のゴーストが見つかりませんでした。";
+	}
+	else if(code == ERROR_CODE_GHOST_SCRIPT_ERROR) {
+		return "スクリプト読み込みエラーです。ゴーストのスクリプトが正しい状態で保存されているか確認してみてください。";
+	}
+	else if(code == ERROR_CODE_PREVIEW_SCRIPT_ERROR) {
+		return "プレビュースクリプトで読み込みエラーが発生しました。";
+	}
+	
+	return "プレビュー送信でエラーが発生しました。";
 }
