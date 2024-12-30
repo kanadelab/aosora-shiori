@@ -215,6 +215,10 @@ namespace sakura {
 			errors.push_back(err);
 		}
 
+		const std::vector<ShioriError>& GetErrorCollection() const {
+			return errors;
+		}
+
 		const std::string& GetValue() const {
 			return value;
 		}

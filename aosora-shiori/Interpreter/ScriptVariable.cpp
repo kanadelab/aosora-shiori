@@ -100,6 +100,7 @@ namespace sakura {
 	}
 
 	std::string ScriptValue::ToStringWithFunctionCall(ScriptExecuteContext& executeContext) {
+
 		if (IsObject()) {
 			//もしオブジェクトなら呼び出し可能かどうかを評価、可能なら引数なしで呼んだ結果を返す
 			auto objRef = GetObjectRef();
@@ -107,6 +108,13 @@ namespace sakura {
 				std::vector<ScriptValueRef> args;
 				FunctionResponse res;
 				executeContext.GetInterpreter().CallFunction(*this, res, args, executeContext, nullptr);
+
+				if (res.IsThrew()) {
+					//例外がスローされていればエラーで打ち切る
+					executeContext.GetStack().Throw(res.GetThrewError());
+					return "";
+				}
+
 				if (res.GetReturnValue() != nullptr) {
 					return res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
 				}
@@ -116,16 +124,28 @@ namespace sakura {
 			return "";
 		}
 		else {
+			//オブジェクト遺体なので関数呼び出しにかかわらずToStringを返す
 			return ToString();
 		}
 	}
 
 	//内部でコンテキストを作るヘルパ
-	std::string ScriptValue::ToStringWithFunctionCall(ScriptInterpreter& interpreter) {
-		//TODO: 例外処理とかも気にする必要あるかも･･･
+	ToStringFunctionCallResult ScriptValue::ToStringWithFunctionCall(ScriptInterpreter& interpreter) {
 		ScriptInterpreterStack rootStack;
 		Reference<BlockScope> rootBlock = interpreter.CreateNativeObject<BlockScope>(nullptr);
 		ScriptExecuteContext executeContext(interpreter, rootStack, rootBlock);
-		return ToStringWithFunctionCall(executeContext);
+
+		//例外が出ている場合も考慮する
+		std::string str = ToStringWithFunctionCall(executeContext);
+		ToStringFunctionCallResult result;
+		if (executeContext.GetStack().IsThrew()) {
+			result.error = executeContext.GetStack().GetThrewError();
+			result.success = false;
+		}
+		else {
+			result.result = str;
+			result.success = true;
+		}
+		return result;
 	}
 }

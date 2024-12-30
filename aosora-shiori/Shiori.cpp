@@ -7,7 +7,8 @@ namespace sakura {
 	
 
 	Shiori::Shiori():
-		isResponsedLoadError(false) {
+		isResponsedLoadError(false),
+		isBooted(false) {
 
 		//ランダムを準備
 		SRand();
@@ -72,13 +73,27 @@ namespace sakura {
 
 		//ルートスクリプト実行
 		for (auto item : parsedFileList) {
-			interpreter.Execute(item->root);
+			auto rootResult = interpreter.Execute(item->root, false);
+			if (!rootResult.success) {
+
+				//起動手順中のエラーとして記録
+				bootingExecuteErrorGuide = ToStringRuntimeErrorForSakuraScript(rootResult.error, true);
+				bootingExecuteErrorLog = ToStringRuntimeErrorForErrorLog(rootResult.error);
+				return;
+			}
 		}
 
 		//セーブデータロード前にデフォルトセーブデータを用意する機会をつくる
 		{
 			ShioriResponse response;
 			Request(ShioriRequest("OnDefaultSaveData"), response);
+
+			if (response.HasError()) {
+				//エラーを報告していたらエラーを引き上げる
+				bootingExecuteErrorGuide = response.GetValue();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				return;
+			}
 		}
 
 		//セーブデータロード
@@ -88,18 +103,23 @@ namespace sakura {
 		{
 			ShioriResponse response;
 			Request(ShioriRequest("OnAosoraLoad"), response);
+
+			if (response.HasError()) {
+				//エラーを報告していたらエラーを引き上げる
+				bootingExecuteErrorGuide = response.GetValue();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				return;
+			}
 		}
+
+		//起動完了としてマーク
+		isBooted = true;
 	}
 
 	void Shiori::LoadWithoutProject() {
 
 		//クラスのリレーションシップ構築
 		interpreter.CommitClasses();
-
-		//ルートスクリプト実行
-		for (auto item : parsedFileList) {
-			interpreter.Execute(item->root);
-		}
 	}
 
 	void Shiori::Unload() {
@@ -140,6 +160,13 @@ namespace sakura {
 	}
 
 	void Shiori::Request(const ShioriRequest& request, ShioriResponse& response) {
+		RequestInternal(request, response);
+
+		//不要なオブジェクトを開放
+		interpreter.CollectObjects();
+	}
+
+	void Shiori::RequestInternal(const ShioriRequest& request, ShioriResponse& response) {
 
 		//固定値を返すべきリクエストの場合はそこで終える
 		auto infoRecord = shioriInfo.find(request.GetEventId());
@@ -148,15 +175,26 @@ namespace sakura {
 			return;
 		}
 
+		//エラー時むけのリロードイベント処理
+		if (request.GetEventId() == "OnAosoraRequestReload") {
+			//リロード選択肢。リロードをかけたあと、リロード完了後の状態に対してリロード成否を表示させるためのイベントをraiseする
+			response.SetValue("\\![reload,shiori]\\![raise,OnAosoraReloaded]");
+			return;
+		}
+
 		//読み込みエラーが生じている場合はフォールバック
 		if (!scriptLoadErrors.empty()) {
-			RequestErrorFallback(request, response);
+			RequestScriptLoadErrorFallback(request, response);
+			return;
+		}
+		else if (!bootingExecuteErrorGuide.empty() || !bootingExecuteErrorLog.empty()) {
+			RequestScriptBootErrorFallback(request, response);
 			return;
 		}
 
 		//エラー処理から呼ばれてリロードに成功していた場合。完了の旨を表示して終了
 		if (request.GetEventId() == "OnAosoraReloaded") {
-			response.SetValue("\\0\\s[0]\\b[2]\\![quicksession,true]■蒼空 リロード完了\\n\\nリロードして、エラーはありませんでした。");
+			response.SetValue("\\0\\s[0]\\b[2]\\![quicksession,true]■蒼空 リロード完了\\n\\nリロードして、起動エラーはありませんでした。");
 			return;
 		}
 
@@ -192,7 +230,7 @@ namespace sakura {
 			//タイプによって挙動を換える
 			if (variable->IsString()) {
 				//文字列であればそのまま帰す
-				result = variable->ToString();
+				std::string result = variable->ToString();
 			}
 			else if (variable->IsObject() && variable->GetObjectRef()->CanCall()) {
 				//呼び出し可能なオブジェクト
@@ -206,16 +244,22 @@ namespace sakura {
 
 				//実行時エラー
 				if (funcResponse.IsThrew()) {
-					response.SetValue(HandleRuntimeError(funcResponse));
+					HandleRuntimeError(funcResponse.GetThrewError(), response);
 					return;
 				}
 
 				//結果を文字列化
 				if (funcResponse.GetReturnValue() != nullptr)
 				{
-					result = funcResponse.GetReturnValue()->ToStringWithFunctionCall(interpreter);
-					response.SetValue(result);
-					printf("%s\n", result.c_str());
+					auto toStringResult = funcResponse.GetReturnValue()->ToStringWithFunctionCall(interpreter);
+
+					//文字列化時の実行時エラー
+					if (!toStringResult.success) {
+						HandleRuntimeError(toStringResult.error, response);
+						return;
+					}
+
+					result = toStringResult.result;
 				}
 			}
 		}
@@ -223,16 +267,26 @@ namespace sakura {
 		//その他拡張のイベント処理
 		FunctionResponse eventRes;
 		if (TalkTimer::HandleEvent(interpreter, eventRes, request, !result.empty())) {
-			result = eventRes.GetReturnValue()->ToStringWithFunctionCall(interpreter);
+			if (eventRes.IsThrew()) {
+				HandleRuntimeError(eventRes.GetThrewError(), response);
+				return;
+			}
+
+			auto toStringResult = eventRes.GetReturnValue()->ToStringWithFunctionCall(interpreter);
+			if (!toStringResult.success) {
+				HandleRuntimeError(toStringResult.error, response);
+				return;
+			}
+
+			response.SetValue(toStringResult.result);
+		}
+		else {
 			response.SetValue(result);
 		}
-
-		//一連の対応が終わったらガベージコレクションを起動する
-		interpreter.CollectObjects();
 	}
 
 	//読み込みエラーになったときのガイダンスのためのリクエスト処理
-	void Shiori::RequestErrorFallback(const ShioriRequest& request, ShioriResponse& response) {
+	void Shiori::RequestScriptLoadErrorFallback(const ShioriRequest& request, ShioriResponse& response) {
 
 		//初回のGET時、SHIORIプロトコル上でもエラーを発生させる
 		if (request.IsGet() && !isResponsedLoadError) {
@@ -256,11 +310,6 @@ namespace sakura {
 			//「閉じる」ための選択肢イベント。204にならないように適当にスコープ指定だけいれて返す。
 			response.SetValue("\\0");
 		}
-		else if (request.GetEventId() == "OnAosoraErrorReload") {
-			//リロード選択肢。リロードをかけたあと、リロード完了後の状態に対してリロード成否を表示させるためのイベントをraiseする
-			response.SetValue("\\![reload,shiori]\\w1\\![raise,OnAosoraReloaded]");
-		}
-
 	}
 
 	std::string Shiori::ShowErrors() {
@@ -273,7 +322,7 @@ namespace sakura {
 		}
 
 		errorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
-		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraErrorReload]";
+		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
 		return errorGuide;
 	}
 
@@ -305,31 +354,56 @@ namespace sakura {
 		errorGuide += "\\n\\n\\_?[エラー位置]\\_?\\n\\_?" + err.GetPosition().ToString() + "\\_?\\n\\n\\_?[エラー]\\_?\\n\\_?" + err.GetData().errorCode + ": " + err.GetData().message + "\\_?\\n\\n\\_?[解決のヒント]\\_?\\n\\_?" + err.GetData().hint + "\\_?";
 		errorGuide += "\\n\\n\\![*]\\q[エラーリストに戻る,OnAosoraErrors]";
 		errorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
-		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraErrorReload]";
+		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
 		return errorGuide;
+	}
+
+	void Shiori::RequestScriptBootErrorFallback(const ShioriRequest& request, ShioriResponse& response) {
+		//初回のGET時、SHIORIプロトコル上でもエラーを発生させる
+		if (request.IsGet() && !isResponsedLoadError) {
+			response.AddError(ShioriError(ShioriError::ErrorLevel::Error, bootingExecuteErrorGuide));
+			isResponsedLoadError = true;
+		}
+
+		if (request.GetEventId() == "OnBoot" || request.GetEventId() == "OnMouseDoubleClick" || request.GetEventId() == "OnAosoraReloaded") {
+			response.SetValue(bootingExecuteErrorGuide);
+		}
+		else if (request.GetEventId() == "OnAosoraErrorClose") {
+			//「閉じる」ための選択肢イベント。204にならないように適当にスコープ指定だけいれて返す。
+			response.SetValue("\\0");
+		}
 	}
 
 	//コンソールエラーダンプ用の文字列を取得
 	std::string Shiori::GetErrorsString() {
 		std::string result;
+
+		//読み込みエラー
 		for (const auto& err : scriptLoadErrors) {
 			result += err.MakeConsoleErrorString() + "\r\n";
+		}
+
+		//起動エラー
+		if (!bootingExecuteErrorLog.empty()) {
+			result += bootingExecuteErrorLog;
 		}
 		return result;
 	}
 
 	//ランタイムエラーハンドラ
 	//エラーが呼び出し元まで戻ってきたときに表示するさくらスクリプト出力
-	std::string Shiori::HandleRuntimeError(const FunctionResponse& response) {
-		assert(response.IsThrew());
-
-		auto* err = interpreter.InstanceAs<RuntimeError>(response.GetThrewError());
+	void Shiori::HandleRuntimeError(const ObjectRef& errObj, ShioriResponse& response) {
+	
+#if 0
+		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
 		assert(err != nullptr);
 
-		std::string result = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
+		std::string ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
+		std::string scriptErrorLog = "蒼空 実行エラー ";
 
 		//スタックトレース
-		std::string trace;
+		std::string traceForScript;
+		std::string traceForErrorLog;
 		std::string firstTrace;
 		for (const auto& stackFrame : err->GetCallStackInfo()) {
 
@@ -338,23 +412,102 @@ namespace sakura {
 				if (!stackFrame.funcName.empty()) {
 
 					//関数名に () をつけておく
-					trace += stackFrame.funcName + "() ";
+					traceForScript += stackFrame.funcName + "() ";
+					traceForErrorLog += stackFrame.funcName + "() ";
 				}
 
-				trace += stackFrame.sourceRange.ToString() + "\\n";
+				traceForScript += stackFrame.sourceRange.ToString() + "\\n";
+				traceForErrorLog += stackFrame.sourceRange.ToString();
 
 				//スタックの最初を別枠で記録
-				if (firstTrace.empty() && !trace.empty())
+				if (firstTrace.empty() && !traceForScript.empty())
 				{
-					firstTrace = trace;
+					firstTrace = traceForErrorLog;
 				}
 			}
 		}
 
 		//エラー内容
-		result += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + trace;
-		result += "\\x";
+		ghostErrorGuide += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + traceForScript;
+		ghostErrorGuide += "\\x";
 
-		return result;
+		scriptErrorLog += "[エラー位置] " + firstTrace + " [エラー内容] " + err->GetMessage() + " [スタックトレース] " + traceForErrorLog;
+		response.AddError(ShioriError(ShioriError::ErrorLevel::Error, scriptErrorLog));
+
+		response.SetValue(ghostErrorGuide);
+#else
+		response.SetValue(ToStringRuntimeErrorForSakuraScript(errObj, !isBooted));
+		response.AddError(ShioriError(ShioriError::ErrorLevel::Error, ToStringRuntimeErrorForErrorLog(errObj)));
+#endif
+	}
+
+	//エラーをさくらスクリプトによるゴースト上での表示むけに整形
+	std::string Shiori::ToStringRuntimeErrorForSakuraScript(const ObjectRef& errObj, bool isBooting) {
+		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		assert(err != nullptr);
+
+		std::string ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
+
+		if (isBooting) {
+			//起動エラーの場合は区別する
+			ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 起動エラー / aosora boot error\\n(ゴーストをダブルクリックで再度開けます)\\n\\n";
+		}
+
+		std::string trace;
+		std::string firstTrace;
+		for (const auto& stackFrame : err->GetCallStackInfo()) {
+
+			//SourceRangeがないものは内部的な処理場で作られているものなのでスクリプトユーザー向けには表示しない
+			if (stackFrame.hasSourceRange) {
+				if (!stackFrame.funcName.empty()) {
+					//関数名に () をつけておく
+					trace += stackFrame.funcName + "() ";
+				}
+
+				trace += stackFrame.sourceRange.ToString() + "\\n";
+
+				//スタックの最小は別枠で記憶
+				if (firstTrace.empty() && !trace.empty()) {
+					firstTrace = trace;
+				}
+			}
+		}
+
+		ghostErrorGuide += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + trace;
+		ghostErrorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
+		ghostErrorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
+
+		return ghostErrorGuide;
+	}
+
+	//エラーをエラーログ等の表示用に平文で整形
+	std::string Shiori::ToStringRuntimeErrorForErrorLog(const ObjectRef& errObj) {
+		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		assert(err != nullptr);
+
+		std::string scriptErrorLog = "蒼空 実行エラー ";
+
+		std::string trace;
+		std::string firstTrace;
+		for (const auto& stackFrame : err->GetCallStackInfo()) {
+
+			//SourceRangeがないものは内部的な処理場で作られているものなのでスクリプトユーザー向けには表示しない
+			if (stackFrame.hasSourceRange) {
+				if (!stackFrame.funcName.empty()) {
+					//関数名に () をつけておく
+					trace += stackFrame.funcName + "() ";
+				}
+
+				trace += stackFrame.sourceRange.ToString();
+
+				//スタックの最小は別枠で記憶
+				if (firstTrace.empty() && !trace.empty()) {
+					firstTrace = trace;
+				}
+			}
+		}
+
+		scriptErrorLog += "[エラー位置] " + firstTrace + " [エラー内容] " + err->GetMessage() + " [スタックトレース] " + trace;
+		return scriptErrorLog;
 	}
 }

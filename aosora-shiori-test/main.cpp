@@ -16,7 +16,7 @@ namespace sakura {
 		sakura::ScriptInterpreter interpreter;
 		interpreter.ImportClasses(ast->classMap);
 		interpreter.CommitClasses();
-		interpreter.Execute(ast->root);
+		interpreter.Execute(ast->root, false);
 	}
 }
 

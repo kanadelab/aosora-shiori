@@ -201,10 +201,7 @@ namespace sakura {
 		uint32_t GetClassId(const std::string& name);
 
 		//ASTをインタプリタに渡して実行
-		void Execute(const ConstASTNodeRef& node);
-
-		//ASTをインタプリタ側に渡して実行し、リザルトを得る
-		void Execute(const ConstASTNodeRef& node, std::string& result);
+		ToStringFunctionCallResult Execute(const ConstASTNodeRef& node, bool toStringResult);
 
 		//関数実行
 		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName = "");

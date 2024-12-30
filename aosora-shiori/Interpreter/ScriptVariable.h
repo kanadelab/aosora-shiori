@@ -52,6 +52,13 @@ namespace sakura {
 
 	using ObjectRef = Reference<ObjectBase>;
 
+	//ToStringFunctionCallの結果オブジェクト
+	struct ToStringFunctionCallResult {
+		std::string result;
+		ObjectRef error;
+		bool success;
+	};
+
 	//スクリプトの値型
 	//ちょっとでかいけど、このままいく
 	class ScriptValue {
@@ -179,7 +186,7 @@ namespace sakura {
 
 		//文字列として評価する、デリゲートも呼び出して戻り値を評価する
 		std::string ToStringWithFunctionCall(ScriptExecuteContext& executeContext);
-		std::string ToStringWithFunctionCall(ScriptInterpreter& interpreter);
+		ToStringFunctionCallResult ToStringWithFunctionCall(ScriptInterpreter& interpreter);
 
 		//数値として評価する
 		number ToNumber() const {

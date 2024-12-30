@@ -15,11 +15,17 @@ namespace sakura {
 		std::string ghostMasterPath;
 		ScriptInterpreter interpreter;
 		std::map<std::string, std::string> shioriInfo;
-		std::vector<std::shared_ptr<const sakura::ASTParseResult>> parsedFileList;
+		bool isBooted;
+		//std::vector<std::shared_ptr<const sakura::ASTParseResult>> parsedFileList;
+
 		std::vector<ScriptParseError> scriptLoadErrors;
+		std::string bootingExecuteErrorLog;
+		std::string bootingExecuteErrorGuide;
 		bool isResponsedLoadError;
 
 	private:
+		void RequestInternal(const ShioriRequest& request, ShioriResponse& response);
+
 		//エラーガイダンス用のエラー情報取得
 		std::string ShowErrors();
 		std::string ShowErrorDetail(size_t index);
@@ -29,7 +35,7 @@ namespace sakura {
 		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const std::string& name);
 
 		//ランタイムエラー処理
-		std::string HandleRuntimeError(const FunctionResponse& response);
+		void HandleRuntimeError(const ObjectRef& err, ShioriResponse& response);
 
 	public:
 		Shiori();
@@ -37,16 +43,20 @@ namespace sakura {
 		void LoadWithoutProject();
 		void Unload();
 		void Request(const ShioriRequest& request, ShioriResponse& response);
-		void RequestErrorFallback(const ShioriRequest& request, ShioriResponse& response);
-		void ExecuteScript(const ConstASTNodeRef& node, std::string& response) {
-			interpreter.Execute(node, response);
+		void RequestScriptLoadErrorFallback(const ShioriRequest& request, ShioriResponse& response);
+		void RequestScriptBootErrorFallback(const ShioriRequest& request, ShioriResponse& response);
+
+		ToStringFunctionCallResult ExecuteScript(const ConstASTNodeRef& node) {
+			return interpreter.Execute(node, true);
 		}
 
 		//外部向けでフルパスのファイルロード
 		std::shared_ptr<const ASTParseResult> LoadExternalScriptFile(const std::string& fullPath, const std::string& label);
 		
 		//エラー表示系
-		bool HasError() const { return scriptLoadErrors.size(); }
+		bool HasError() const { return !scriptLoadErrors.empty() || !bootingExecuteErrorLog.empty(); }
+		std::string ToStringRuntimeErrorForSakuraScript(const ObjectRef& err, bool isBooting = false);
+		std::string ToStringRuntimeErrorForErrorLog(const ObjectRef& err);
 
 		//コンソール出力用のエラー情報取得
 		std::string GetErrorsString();

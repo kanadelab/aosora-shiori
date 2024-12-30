@@ -122,7 +122,11 @@ namespace sakura {
 
 			//フォーマット指定が有効なものだけくっつける
 			if (item.isFormatExpression) {
-				result += v->ToStringWithFunctionCall(executeContext);
+				auto str = v->ToStringWithFunctionCall(executeContext);
+				if (executeContext.RequireLeave()) {
+					return ScriptValue::Null;
+				}
+				result += str;
 			}
 		}
 
@@ -1081,7 +1085,11 @@ namespace sakura {
 			else {
 
 				//関数の出力に貼り付ける
-				executeContext.GetStack().AppendTalkBody(res.GetReturnValue()->ToStringWithFunctionCall(executeContext));
+				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
+				if (executeContext.RequireLeave()) {
+					return ScriptValue::Null;
+				}
+				executeContext.GetStack().AppendTalkBody(str);
 
 				//ここまでのトーク内容を関数の戻り値として返す
 				executeContext.GetStack().ReturnTalk();
@@ -1131,39 +1139,25 @@ namespace sakura {
 	}
 
 	//ルートステートメント実行
-	void ScriptInterpreter::Execute(const ConstASTNodeRef& node) {
+	ToStringFunctionCallResult ScriptInterpreter::Execute(const ConstASTNodeRef& node, bool toStringResult) {
 		ScriptInterpreterStack rootStack;
 		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
 		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
 		ScriptExecutor::ExecuteASTNode(*node, executeContext);
 
-		//ルートまで例外が出たらダンプしてみる
+		ToStringFunctionCallResult result;
 		if (rootStack.IsThrew()) {
-			RuntimeError* err = InstanceAs<RuntimeError>(rootStack.GetThrewError());
-#if 0
-			printf("[Error] %s\n", err->ToString().c_str());
-#endif
+			result.success = false;
+			result.error = rootStack.GetThrewError();
 		}
-	}
-
-	void ScriptInterpreter::Execute(const ConstASTNodeRef& node, std::string& result) {
-		ScriptInterpreterStack rootStack;
-		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
-		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
-		ScriptExecutor::ExecuteASTNode(*node, executeContext);
-
-		//ルートまで例外が出たらダンプしてみる
-		if (rootStack.IsThrew()) {
-			RuntimeError* err = InstanceAs<RuntimeError>(rootStack.GetThrewError());
-#if 0 
-			printf("[Error] %s\n", err->ToString().c_str());
-#endif
+		else if(toStringResult) {
+			return rootStack.GetReturnValue()->ToStringWithFunctionCall(*this);
 		}
 		else {
-			if (rootStack.GetReturnValue() != nullptr) {
-				result = rootStack.GetReturnValue()->ToStringWithFunctionCall(executeContext);
-			}
+			//成功だけ返す
+			result.success = true;
 		}
+		return result;
 	}
 
 	ScriptInterpreter::ScriptInterpreter() :

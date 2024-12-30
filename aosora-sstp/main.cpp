@@ -6,6 +6,7 @@ const int ERROR_CODE_INVALID_ARGS = 1;				//起動引数不正
 const int ERROR_CODE_GHOST_NOT_FOUND = 2;			//FMOにターゲットのゴーストが見つからない
 const int ERROR_CODE_GHOST_SCRIPT_ERROR = 3;		//ゴーストのスクリプト読み込みエラー
 const int ERROR_CODE_PREVIEW_SCRIPT_ERROR = 4;		//プレビュー側のスクリプト読み込みエラー
+const int ERROR_CODE_PREVIEW_EXECUTE_ERROR = 5;		//プレビュースクリプトのランタイムエラー
 
 //指定ファイルを単体+プロジェクトを読み込んで送信する想定
 int main(int argc, char* argv[]) {
@@ -84,11 +85,15 @@ int main(int argc, char* argv[]) {
 					auto func = std::static_pointer_cast<const sakura::ASTNodeFunctionStatement>(item);
 
 					std::string result;
-					shiori.ExecuteScript(func->GetFunction()->GetFunctionBody(), result);
+					auto executeResult = shiori.ExecuteScript(func->GetFunction()->GetFunctionBody());
+					if (!executeResult.success) {
+						//エラー
+						std::cerr << shiori.ToStringRuntimeErrorForErrorLog(executeResult.error) << std::endl;
+						return ERROR_CODE_PREVIEW_EXECUTE_ERROR;
+					}
 
 					//リザルトのスクリプトを実行
 					sakura::SendDirectSSTP(result, *targetGhost);
-
 					break;
 				}
 			}
