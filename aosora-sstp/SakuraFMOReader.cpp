@@ -60,7 +60,7 @@ namespace sakura {
 					const std::string id = std::string(record.substr(0, pIndex));
 					const std::string_view key = record.substr(pIndex + 1, sIndex - (pIndex + 1));
 					const std::string value = std::string(record.substr(sIndex + 1));
-					printf("%s : %s\n", std::string(key).c_str(), std::string(value).c_str());
+					//printf("%s : %s\n", std::string(key).c_str(), std::string(value).c_str());
 
 					//レコードなかったら作る
 					if (!fmoMap.contains(id)) {
