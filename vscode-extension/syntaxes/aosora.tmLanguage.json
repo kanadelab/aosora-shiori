@@ -11,12 +11,49 @@
 	],
 	"repository": {
 		"talkblock":{
-			"begin": "\\b(talk)\\s+((\\w|,)*)\\s*\\{",
-			"end": "\\}",
+			"begin": "\\b(talk)\\s+(\\w+)((?:\\s*,\\s*\\w+)*)",
+			"end": "(?<=})",
 			"beginCaptures": {
 				"1": {"patterns": [{"include": "#keywords"}]},
-				"2": {"patterns": [{"include": "#symbols"}]}
+				"2": {"patterns": [{"include": "#symbols"}]},
+				"3": {"patterns": [
+					{"match": "\\s*,\\s*"},
+					{"include": "#symbols"}
+				]}
 			},
+			"patterns": [
+				{
+					"include": "#talkif"
+				},
+				{
+					"include": "#talkbrace"
+				}
+			]
+		},
+		"talkif": {
+			"begin": "\\b(if)\\b",
+			"end": "(?<=\\))",
+			"beginCaptures": {
+				"1": {"patterns": [{"include": "#keywords"}]}
+			},
+			"patterns": [
+				{
+					"include": "#talkifbrace"
+				}
+			]
+		},
+		"talkifbrace":{
+			"begin": "\\(",
+			"end": "\\)",
+			"patterns": [
+				{
+					"include": "#rootblock"
+				}
+			]
+		},
+		"talkbrace": {
+			"begin": "\\{",
+			"end": "\\}",
 			"patterns": [
 				{
 					"match": "^\\s*(\\>)\\s*([^:]*)\\s*:?(.*)$",
