@@ -204,6 +204,12 @@ namespace sakura {
 				std::vector<ScriptValueRef> args;
 				interpreter.CallFunction(*variable, funcResponse, args);
 
+				//実行時エラー
+				if (funcResponse.IsThrew()) {
+					response.SetValue(HandleRuntimeError(funcResponse));
+					return;
+				}
+
 				//結果を文字列化
 				if (funcResponse.GetReturnValue() != nullptr)
 				{
@@ -309,6 +315,46 @@ namespace sakura {
 		for (const auto& err : scriptLoadErrors) {
 			result += err.MakeConsoleErrorString() + "\r\n";
 		}
+		return result;
+	}
+
+	//ランタイムエラーハンドラ
+	//エラーが呼び出し元まで戻ってきたときに表示するさくらスクリプト出力
+	std::string Shiori::HandleRuntimeError(const FunctionResponse& response) {
+		assert(response.IsThrew());
+
+		auto* err = interpreter.InstanceAs<RuntimeError>(response.GetThrewError());
+		assert(err != nullptr);
+
+		std::string result = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
+
+		//スタックトレース
+		std::string trace;
+		std::string firstTrace;
+		for (const auto& stackFrame : err->GetCallStackInfo()) {
+
+			//SourceRangeがないものは内部的な処理上作られているフレームなので表示しない
+			if (stackFrame.hasSourceRange) {
+				if (!stackFrame.funcName.empty()) {
+
+					//関数名に () をつけておく
+					trace += stackFrame.funcName + "() ";
+				}
+
+				trace += stackFrame.sourceRange.ToString() + "\\n";
+
+				//スタックの最初を別枠で記録
+				if (firstTrace.empty() && !trace.empty())
+				{
+					firstTrace = trace;
+				}
+			}
+		}
+
+		//エラー内容
+		result += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + trace;
+		result += "\\x";
+
 		return result;
 	}
 }

@@ -869,7 +869,7 @@ namespace sakura {
 				//オペランドが必要でカッコ開始であれば優先順位制御用のカッコ（オペレータが要求される場面では関数呼び出し）
 				if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
 					if (!isRequireOperand) {
-
+						auto rangeBegin = parseContext.GetCurrent();
 						parseContext.FetchNext();
 
 						//オペレータが必要な箇所で開カッコであれば関数呼び出し
@@ -881,7 +881,9 @@ namespace sakura {
 						ParseASTExpressionList(parseContext, args, SEQUENCE_END_FLAG_BLACKET);
 
 						ASTNodeRef func = parseStack.PopOperand();
-						parseStack.PushOperand(ASTNodeRef(new ASTNodeFunctionCall(func, args)));
+						std::shared_ptr<ASTNodeFunctionCall> call(new ASTNodeFunctionCall(func, args));
+						call->SetSourceRange(rangeBegin, parseContext.GetPrev());
+						parseStack.PushOperand(call);
 						continue;
 					}
 					else {

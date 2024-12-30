@@ -207,7 +207,7 @@ namespace sakura {
 		void Execute(const ConstASTNodeRef& node, std::string& result);
 
 		//関数実行
-		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext);
+		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName = "");
 		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args);
 
 		//オブジェクト生成
@@ -368,6 +368,9 @@ namespace sakura {
 		std::string talkBody;
 		bool isTalkLineEnd;
 
+		//このスタック位置の関数名
+		std::string funcName;
+
 	private:
 		ScriptInterpreterStack(ScriptInterpreterStack* parent) :
 			returnValue(nullptr),
@@ -512,11 +515,13 @@ namespace sakura {
 		}
 
 		//子スタックフレームの作成
-		ScriptInterpreterStack CreateChildStackFrame(const ASTNodeBase* callingNode) {
+		ScriptInterpreterStack CreateChildStackFrame(const ASTNodeBase* callingNode, const std::string& targetFunctionName) {
 
 			//スタックに入る前に今実行しているノードを記録しておく(throwされたときにエラー表示するために）
 			callingAstNode = callingNode;
-			return ScriptInterpreterStack(this);
+			ScriptInterpreterStack childStack(this);
+			childStack.SetFunctionName(targetFunctionName);
+			return childStack;
 		}
 
 		//トーク内容を追加
@@ -577,6 +582,13 @@ namespace sakura {
 			}
 		}
 
+		void SetFunctionName(const std::string& name) {
+			funcName = name;
+		}
+
+		const std::string& GetFunctionName() const {
+			return funcName;
+		}
 	};
 
 	//スクリプト実行コンテキスト
@@ -604,13 +616,13 @@ namespace sakura {
 		void SetSymbol(const std::string& name, const ScriptValueRef& value);
 
 		//エラーオブジェクトのスロー
-		void ThrowError(const ASTNodeBase& throwAstNode, const ObjectRef& err);
+		void ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err);
 
 		//エラーのスローヘルパ
 		template<typename T>
 		void ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message) {
 			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
-			ThrowError(throwAstNode, err);
+			ThrowError(throwAstNode, GetStack().GetFunctionName(), err);
 		}
 
 		//即時離脱が必要かどうか

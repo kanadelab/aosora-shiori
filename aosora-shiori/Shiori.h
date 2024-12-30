@@ -28,6 +28,9 @@ namespace sakura {
 		std::shared_ptr<const ASTParseResult> LoadScriptFile(const std::string& path);
 		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const std::string& name);
 
+		//ランタイムエラー処理
+		std::string HandleRuntimeError(const FunctionResponse& response);
+
 	public:
 		Shiori();
 		void Load(const std::string& path);

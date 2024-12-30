@@ -238,7 +238,7 @@ namespace sakura {
 		if (selectedItem->IsObject()) {
 			//関数呼び出しを実行、そのままレスポンスをもらって帰る
 			std::vector<ScriptValueRef> args = request.GetArgumentCollection();
-			request.GetContext().GetInterpreter().CallFunction(*selectedItem, response, args, request.GetContext());
+			request.GetContext().GetInterpreter().CallFunction(*selectedItem, response, args, request.GetContext(), nullptr, funcName);
 		}
 	}
 

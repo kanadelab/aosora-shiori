@@ -106,7 +106,7 @@ namespace sakura {
 			if (objRef->CanCall()) {
 				std::vector<ScriptValueRef> args;
 				FunctionResponse res;
-				executeContext.GetInterpreter().CallFunction(*this, res, args, executeContext);
+				executeContext.GetInterpreter().CallFunction(*this, res, args, executeContext, nullptr);
 				if (res.GetReturnValue() != nullptr) {
 					return res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
 				}

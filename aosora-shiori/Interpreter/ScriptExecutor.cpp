@@ -784,6 +784,7 @@ namespace sakura {
 			else {
 				//関数リストではない場合は新規に作成する
 				Reference<OverloadedFunctionList> funcList = executeContext.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
+				funcList->SetName(funcName);
 				funcList->Add(node.GetFunction(), node.GetConditionNode(), executeContext.GetBlockScope());
 				executeContext.GetInterpreter().SetGlobalVariable(funcName, ScriptValue::Make(funcList));
 			}
@@ -827,8 +828,14 @@ namespace sakura {
 			}
 		}
 
+		//呼び出し不可時、エラーを生成する
+		if (!function->IsObject() || !function->GetObjectRef()->CanCall()) {
+			executeContext.ThrowRuntimeError<RuntimeError>(node, "関数またはトークではないため、関数呼び出しができません。");
+			return ScriptValue::Null;
+		}
+
 		FunctionResponse response;
-		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext);
+		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext, &node);
 		if (response.IsThrew()) {
 			executeContext.GetStack().Throw(response.GetThrewError());
 			return ScriptValue::Null;
@@ -987,7 +994,7 @@ namespace sakura {
 		}
 		
 		if (r->IsObject()) {
-			executeContext.ThrowError(node, r->GetObjectRef());
+			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), r->GetObjectRef());
 		}
 		else {
 			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。");
@@ -1065,7 +1072,7 @@ namespace sakura {
 
 			//呼び出し
 			FunctionResponse res;
-			executeContext.GetInterpreter().CallFunction(*jumpTarget, res, args, executeContext);
+			executeContext.GetInterpreter().CallFunction(*jumpTarget, res, args, executeContext, &node);
 
 			if (res.IsThrew()) {
 				executeContext.GetStack().Throw(res.GetThrewError());
@@ -1303,8 +1310,9 @@ namespace sakura {
 	}
 
 	//実行コンテキストから新しいスタックフレームで関数を実行
-	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext) {
-		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(nullptr);	//TODO: 呼出ASTが必要
+	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName) {
+		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, funcName);
+
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
 
@@ -1342,7 +1350,7 @@ namespace sakura {
 			ScriptFunctionRef initFunc = scriptClassData.GetInitFunc();
 
 			//コンストラクタ用のスタックフレームとブロックスコープを作成して引数を登録
-			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode);
+			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, "init");
 			Reference<BlockScope> initScope = context.GetInterpreter().CreateNativeObject<BlockScope>(context.GetBlockScope());
 
 			ScriptExecuteContext funcContext(*this, initStack, initScope);
@@ -1423,7 +1431,7 @@ namespace sakura {
 				nativeClass.GetInitFunc()(request, response);
 				
 				if (response.IsThrew()) {
-					context.ThrowError(callingNode, response.GetThrewError());
+					context.ThrowError(callingNode, "init", response.GetThrewError());
 					return nullptr;
 				}
 				else {
@@ -1550,24 +1558,40 @@ namespace sakura {
 		interpreter.SetGlobalVariable(name, value);
 	}
 
-	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const ObjectRef& err) {
+	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err) {
 
 		//エラーオブジェクトしかスローできないのでチェック
 		RuntimeError* e = interpreter.InstanceAs<RuntimeError>(err);
 		if (e == nullptr) {
-			ThrowError(throwAstNode, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
+			ThrowError(throwAstNode, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
 			return;
 		}
 
 		//現在実行中のスタックフレームは引数から位置を取得
 		std::vector<RuntimeError::CallStackInfo> stackInfo;
-		stackInfo.push_back({ throwAstNode.GetSourceRange() });
+		{
+			RuntimeError::CallStackInfo stackFrame;
+			stackFrame.hasSourceRange = true;
+			stackFrame.sourceRange = throwAstNode.GetSourceRange();
+			stackFrame.funcName = funcName;
+			stackInfo.push_back(stackFrame);
+		}
 
 		//親以降は呼び出し時に格納されてる値を使う
 		const ScriptInterpreterStack* st = stack.GetParentStackFrame();
 		while (st != nullptr)
 		{
-			stackInfo.push_back({ st->GetCallingASTNode()->GetSourceRange() });
+			RuntimeError::CallStackInfo stackFrame;
+			if (st->GetCallingASTNode() != nullptr) {
+				stackFrame.hasSourceRange = true;
+				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+			}
+			else {
+				stackFrame.hasSourceRange = false;
+			}
+			stackFrame.funcName = st->GetFunctionName();
+
+			stackInfo.push_back(stackFrame);
 			st = st->GetParentStackFrame();
 		}
 

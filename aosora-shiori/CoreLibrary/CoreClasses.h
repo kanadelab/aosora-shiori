@@ -215,6 +215,8 @@ namespace sakura {
 		//表示用のスタック情報
 		struct CallStackInfo {
 			SourceCodeRange sourceRange;
+			std::string funcName;
+			bool hasSourceRange;
 		};
 
 	private:
@@ -228,6 +230,10 @@ namespace sakura {
 		
 		void SetCallstackInfo(const std::vector<CallStackInfo>& info) {
 			callStackInfo = info;
+		}
+
+		const std::vector<CallStackInfo>& GetCallStackInfo() const {
+			return callStackInfo;
 		}
 
 		//メッセージ取得
@@ -263,6 +269,7 @@ namespace sakura {
 	private:
 		std::vector<FunctionItem> functions;
 		std::vector<size_t> callOrder;
+		std::string funcName;
 
 	private:
 		const FunctionItem* SelectItemInternal(const FunctionRequest& request, FunctionResponse& response);
@@ -285,6 +292,15 @@ namespace sakura {
 			item.nativeFunc = func;
 			item.blockScope = scope;
 			functions.push_back(item);
+		}
+
+		//定義時の関数名。別変数に代入できてしまうので、デバッグ用に登録時の名前をとっておく。
+		void SetName(const std::string& name) {
+			funcName = name;
+		}
+
+		const std::string& GetName() const {
+			return funcName;
 		}
 
 		ScriptValueRef SelectItem(ScriptExecuteContext& executeContext, const ScriptValueRef& thisValue);

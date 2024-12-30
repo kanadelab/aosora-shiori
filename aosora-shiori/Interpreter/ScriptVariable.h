@@ -415,6 +415,7 @@ namespace sakura {
 		//例外
 		void SetThrewError(const ObjectRef& err) {
 			threwError = err;
+			isThrew = true;
 		}
 
 		const ObjectRef& GetThrewError() const {
