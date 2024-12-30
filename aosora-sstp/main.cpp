@@ -84,7 +84,6 @@ int main(int argc, char* argv[]) {
 				if (item->GetType() == sakura::ASTNodeType::FunctionStatement) {
 					auto func = std::static_pointer_cast<const sakura::ASTNodeFunctionStatement>(item);
 
-					std::string result;
 					auto executeResult = shiori.ExecuteScript(func->GetFunction()->GetFunctionBody());
 					if (!executeResult.success) {
 						//エラー
@@ -93,7 +92,7 @@ int main(int argc, char* argv[]) {
 					}
 
 					//リザルトのスクリプトを実行
-					sakura::SendDirectSSTP(result, *targetGhost);
+					sakura::SendDirectSSTP(executeResult.result, *targetGhost);
 					break;
 				}
 			}
