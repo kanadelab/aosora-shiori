@@ -157,6 +157,7 @@ namespace sakura {
 		//エラー処理から呼ばれてリロードに成功していた場合。完了の旨を表示して終了
 		if (request.GetEventId() == "OnAosoraReloaded") {
 			response.SetValue("\\0\\s[0]\\b[2]\\![quicksession,true]■蒼空 リロード完了\\n\\nリロードして、エラーはありませんでした。");
+			return;
 		}
 
 		std::string result;
