@@ -735,7 +735,7 @@ namespace sakura {
 
 	//配列生成
 	ScriptValueRef ScriptExecutor::ExecuteArrayInitializer(const ASTNodeArrayInitializer& node, ScriptExecuteContext& executeContext) {
-		Reference<ScriptObject> obj = executeContext.GetInterpreter().CreateObject();
+		Reference<ScriptArray> obj = executeContext.GetInterpreter().CreateNativeObject<ScriptArray>();
 
 		for (size_t i = 0; i < node.GetValues().size(); i++) {
 			ScriptValueRef value = ExecuteInternal(*node.GetValues()[i], executeContext);
@@ -743,8 +743,9 @@ namespace sakura {
 				return ScriptValue::Null;
 			}
 
-			obj->RawSet(std::to_string(i), value);
+			obj->Add(value);
 		}
+
 		return ScriptValue::Make(obj);
 	}
 
@@ -867,7 +868,7 @@ namespace sakura {
 
 		//Objectの場合は内部参照、それ以外の場合は組み込みメソッドの呼出等となる
 		if (r->GetValueType() == ScriptValueType::Object) {
-			auto result = r->GetObjectRef()->Get(key, executeContext);
+			auto result = r->GetObjectRef()->Get(r->GetObjectRef(), key, executeContext);
 			if (result != nullptr) {
 				return result;
 			}
@@ -912,7 +913,7 @@ namespace sakura {
 				return ScriptValue::Null;
 			}
 
-			r->GetObjectRef()->Set(k->ToString(), v, executeContext);
+			r->GetObjectRef()->Set(r->GetObjectRef(), k->ToString(), v, executeContext);
 		}
 		return ScriptValue::Null;
 	}
@@ -1167,6 +1168,7 @@ namespace sakura {
 		RegisterNativeFunction("print", &ScriptInterpreter::Print);
 
 		//TODO: 無名の登録が必要かも、グローバル空間をあまり汚染したくないものもあったり
+		ImportClass(NativeClass::Make<ScriptArray>("ScriptArray"));
 		ImportClass(NativeClass::Make<ClassData>("ClassData"));
 		ImportClass(NativeClass::Make<Reflection>("Reflection"));
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));
@@ -1500,7 +1502,7 @@ namespace sakura {
 		if (thisValue != nullptr) {
 			if (thisValue->IsObject()) {
 				ObjectRef thisObj = thisValue->GetObjectRef();
-				result = thisObj->Get(name, *this);
+				result = thisObj->Get(thisObj, name, *this);
 				if (result != nullptr) {
 					return result;
 				}

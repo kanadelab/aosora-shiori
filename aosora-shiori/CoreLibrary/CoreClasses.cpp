@@ -71,7 +71,7 @@ namespace sakura {
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
 			assert(instance.GetNativeBaseInstance() != nullptr);
-			instance.GetNativeBaseInstance()->Set(key, value, executeContext);
+			instance.GetNativeBaseInstance()->Set(instance.GetNativeBaseInstance(), key, value, executeContext);
 			return;
 		}
 
@@ -99,7 +99,7 @@ namespace sakura {
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
 			assert(instance.GetNativeBaseInstance() != nullptr);
-			return instance.GetNativeBaseInstance()->Get(key, executeContext);
+			return instance.GetNativeBaseInstance()->Get(instance.GetNativeBaseInstance(), key, executeContext);
 		}
 
 		//見つからない場合さらに親を見る
@@ -123,7 +123,7 @@ namespace sakura {
 		}
 	}
 
-	void ClassData::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void ClassData::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		if (metadata->IsScriptClass()) {
 			//いまのところスクリプトクラスにstaticがない
 		}
@@ -136,7 +136,7 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ClassData::Get(const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ClassData::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 		if (metadata->IsScriptClass()) {
 			//いまのところない
 		}
@@ -309,5 +309,13 @@ namespace sakura {
 		return nullptr;
 	}
 
+
+	void ScriptArray::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		for (auto& item : members) {
+			if (item->IsObject()) {
+				result.push_back(item->GetObjectRef().Get());
+			}
+		}
+	}
 
 }

@@ -116,6 +116,14 @@ namespace sakura {
 			assert(func != nullptr);
 		}
 
+		Delegate(ScriptNativeFunction func, const ObjectRef& thisVal, const Reference<BlockScope>& scope = nullptr) :
+			scriptFunc(nullptr),
+			nativeFunc(func),
+			thisValue(ScriptValue::Make(thisVal)),
+			blockScope(scope) {
+			assert(func != nullptr);
+		}
+
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 
 		//呼び出し可能だが直接Callを呼ぶのは禁止。インタプリタの呼び出し手続きで特殊な対応が入る。
@@ -205,8 +213,8 @@ namespace sakura {
 		ScriptValueRef GetFromInstance(const std::string& key, ScriptObject& instance, ScriptExecuteContext& executeContext);
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
-		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 	};
 
 	//エラーオブジェクト
@@ -338,6 +346,114 @@ namespace sakura {
 		static void ScopeSet(const FunctionRequest& request, FunctionResponse& response);
 
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
+
+	//スクリプト配列
+	//配列イニシャライザ記法ではこちらのオブジェクトを生成する形
+	class ScriptArray : public Object<ScriptArray> {
+	private:
+		//線形配列の実体
+		std::vector<ScriptValueRef> members;
+
+	public:
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+
+		void Add(const ScriptValueRef& item) {
+			//インデックスリムーブ
+			//members.erase(members.begin() + 10);
+			members.push_back(item);
+		}
+
+		size_t Count() const {
+			return members.size();
+		}
+
+
+		void Remove(size_t index) {
+			assert(index < Count());
+			members.erase(members.begin() + 10);
+		}
+
+		ScriptValueRef At(size_t index) const {
+			assert(index < Count());
+			return members.at(index);
+		}
+
+		void Clear() {
+			members.clear();
+		}
+
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override {
+			
+			//通常の対応にあわせてnumberに変換してからsize_t にする
+			number indexNumber = std::stod(key);
+			if (std::isnan(indexNumber)) {
+				return;
+			}
+
+			size_t index = static_cast<size_t>(indexNumber);
+			if (index < Count()) {
+				members[index] = value;
+			}
+		}
+
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override {
+
+			if (key == "Add") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAdd, self));
+			}
+			else if (key == "Remove") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptRemove, self));
+			}
+			else if (key == "Clear") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptClear, self));
+			}
+			else if (key == "length") {
+				return ScriptValue::Make(static_cast<number>(members.size()));
+			}
+			else {
+				//index
+
+				//通常の対応にあわせてnumberに変換してからsize_t にする
+				number indexNumber = std::stod(key);
+				if (std::isnan(indexNumber)) {
+					return ScriptValue::Null;
+				}
+
+				size_t index = static_cast<size_t>(indexNumber);
+				if (index < Count()) {
+					return members[index];
+				}
+				else {
+					return ScriptValue::Null;
+				}
+			}
+		}
+
+		//スクリプト向け実装
+		static void ScriptAdd(const FunctionRequest& request, FunctionResponse& response) {
+			if (request.GetArgumentCount() >= 1) {
+				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+				obj->Add(request.GetArgument(0));
+			}
+		}
+
+		static void ScriptRemove(const FunctionRequest& request, FunctionResponse& response) {
+			if (request.GetArgumentCount() >= 1) {
+				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+				size_t n = static_cast<size_t>(request.GetArgument(0)->ToNumber());
+				if (n < obj->Count()) {
+					obj->Remove(n);
+				}
+			}
+		}
+
+		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response) {
+			ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+			obj->Clear();
+		}
+
 	};
 
 }

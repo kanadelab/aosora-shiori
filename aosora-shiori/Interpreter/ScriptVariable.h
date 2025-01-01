@@ -3,6 +3,8 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <set>
+#include <deque>
 
 #include "AST/ASTNodeBase.h"
 #include "Interpreter/ObjectSystem.h"
@@ -42,8 +44,8 @@ namespace sakura {
 		uint32_t GetInstanceTypeId() const { return typeId; }
 
 		//ゲッタとセッタ
-		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext);
-		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
+		virtual ScriptValueRef Get(const Reference<ObjectBase>& self, const std::string& key, ScriptExecuteContext& executeContext);
+		virtual void Set(const Reference<ObjectBase>& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
 
 		//関数呼び出しスタイルの使用が可能かどうか
 		virtual bool CanCall() const { return false; }
@@ -309,7 +311,7 @@ namespace sakura {
 	//スクリプト連想配列
 	class ScriptObject : public Object<ScriptObject> {
 	private:
-		//連想配列の実態
+		//連想配列の実体
 		std::map<std::string, ScriptValueRef> members;
 
 		//スクリプトクラス型
@@ -324,6 +326,9 @@ namespace sakura {
 		}
 
 		static void ScriptPush(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptKeys(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptRemove(const FunctionRequest& request, FunctionResponse& response);
 
 		//内部オブジェクトの調節操作
 		void RawSet(const std::string& key, const ScriptValueRef& value);
@@ -333,11 +338,16 @@ namespace sakura {
 		void Clear() {
 			members.clear();
 		}
+
+		void Remove(const std::string& key) {
+			members.erase(key);
+		}
+
 		const std::map<std::string, ScriptValueRef>& GetInternalCollection() const { return members; }
 
 		//操作
-		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 

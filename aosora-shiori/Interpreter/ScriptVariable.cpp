@@ -10,11 +10,11 @@ namespace sakura {
 	const ScriptValueRef ScriptValue::True(new ScriptValue(true));
 	const ScriptValueRef ScriptValue::False(new ScriptValue(false));
 
-	ScriptValueRef ObjectBase::Get(const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ObjectBase::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 		return nullptr;
 	}
 
-	void ObjectBase::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void ObjectBase::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 	}
 
 
@@ -22,6 +22,29 @@ namespace sakura {
 		if (request.GetArgumentCount() > 0) {
 			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
 			obj->Push(request.GetArgument(0));
+		}
+	}
+
+	void ScriptObject::ScriptClear(const FunctionRequest& request, FunctionResponse& response) {
+		ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+		obj->Clear();
+	}
+
+	void ScriptObject::ScriptKeys(const FunctionRequest& request, FunctionResponse& response) {
+		ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+		auto result = request.GetContext().GetInterpreter().CreateNativeObject<ScriptArray>();
+
+		for (auto item : obj->members) {
+			result->Add(ScriptValue::Make(item.first));
+		}
+		response.SetReturnValue(ScriptValue::Make(result));
+	}
+
+	void ScriptObject::ScriptRemove(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() > 0) {
+			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+			std::string k = request.GetArgument(0)->ToString();
+			obj->Remove(k);
 		}
 	}
 
@@ -45,7 +68,7 @@ namespace sakura {
 		members[ToString(members.size())] = val;
 	}
 
-	void ScriptObject::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
+	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
 
 		//クラスデータが設定されている場合そちらに設定する
 		if (scriptClass != nullptr) {
@@ -56,7 +79,7 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ScriptObject::Get(const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ScriptObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 
 		//クラスデータが設定されている場合そちら経由で取得する
 		if (scriptClass != nullptr) {
@@ -73,8 +96,19 @@ namespace sakura {
 				return ScriptValue::Make(static_cast<number>(members.size()));
 			}
 			else if (key == "Push") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptPush, executeContext.GetBlockScope()->GetThisValue()));
+				//非推奨かも
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptPush, self));
 			}
+			else if (key == "Clear") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
+			}
+			else if (key == "Remove") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
+			}
+			else if (key == "Keys") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
+			}
+
 			return nullptr;
 		}
 	}

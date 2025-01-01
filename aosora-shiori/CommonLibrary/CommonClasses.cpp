@@ -15,12 +15,12 @@ namespace sakura {
 		//json->objref
 		static ScriptValueRef Deserialize(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
 		static Reference<ScriptObject> DeserializeObject(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
-		static Reference<ScriptObject> DeserializeArray(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
+		static Reference<ScriptArray> DeserializeArray(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
 		static ScriptValueRef Deserialize(const std::string& json, ScriptInterpreter& interpreter);
 
 		//obj->json
 		static std::shared_ptr<JsonTokenBase> Serialize(const ScriptValueRef& value);
-		//std::shared_ptr<JsonArray> SetializeArray(const std::shared_ptr<ScriptObject>& obj)
+		static std::shared_ptr<JsonArray> SerializeArray(const Reference<ScriptArray>& obj);
 		static std::shared_ptr<JsonObject> SerializeObject(const ObjectRef& obj);
 		static std::string Serialize(const ObjectRef& obj);
 	};
@@ -70,13 +70,13 @@ namespace sakura {
 		return result;
 	}
 
-	Reference<ScriptObject> ObjectSerializer::DeserializeArray(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter) {
+	Reference<ScriptArray> ObjectSerializer::DeserializeArray(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter) {
 		
-		Reference<ScriptObject> result = interpreter.CreateObject();
+		Reference<ScriptArray> result = interpreter.CreateNativeObject<ScriptArray>();
 
 		auto obj = std::static_pointer_cast<JsonArray>(token);
 		for (const auto& item : obj->GetCollection()) {
-			result->Push(Deserialize(item, interpreter));
+			result->Add(Deserialize(item, interpreter));
 		}
 
 		return result;
@@ -100,10 +100,25 @@ namespace sakura {
 			case ScriptValueType::String:
 				return std::shared_ptr<JsonTokenBase>(new JsonString(value->ToString()));
 			case ScriptValueType::Object:
-				return SerializeObject(value->GetObjectRef());
+				if (value->GetObjectInstanceTypeId() == ScriptArray::TypeId()) {
+					return SerializeArray(value->GetObjectRef().Cast<ScriptArray>());
+				}
+				else {
+					return SerializeObject(value->GetObjectRef());
+				}
 		}
 		assert(false);
 		return nullptr;
+	}
+
+	std::shared_ptr<JsonArray> ObjectSerializer::SerializeArray(const Reference<ScriptArray>& obj) {
+		std::shared_ptr<JsonArray> result(new JsonArray());
+
+		//ScriptArrayをjsonシリアライズ
+		for (size_t i = 0; i < obj->Count(); i++) {
+			result->Add(Serialize(obj->At(i)));
+		}
+		return result;
 	}
 
 	std::shared_ptr<JsonObject> ObjectSerializer::SerializeObject(const ObjectRef& obj) {
@@ -421,17 +436,17 @@ namespace sakura {
 		//配列かどうかを確認
 		ObjectRef obj = target->GetObjectRef();
 
-		if (obj->GetInstanceTypeId() != ScriptObject::TypeId()) {
+		if (obj->GetInstanceTypeId() != ScriptArray::TypeId()) {
 			response.SetReturnValue(ScriptValue::Null);
 			return;
 		}
 		
 		//9オリジンでアイテムが入っている前提で、ランダムに１つ選択する
-		Reference<ScriptObject> sobj = obj.Cast<ScriptObject>();
-		const size_t size = sobj->GetInternalCollection().size();
+		Reference<ScriptArray> sobj = obj.Cast<ScriptArray>();
+		const size_t size = sobj->Count();
 		const int32_t result = Rand(0, static_cast<int32_t>(size));
 
-		ScriptValueRef item = sobj->RawGet(ScriptValue::Make(static_cast<number>(result))->ToString());
+		ScriptValueRef item = sobj->At(result);
 		response.SetReturnValue(item != nullptr ? item : ScriptValue::Null);
 	}
 }
