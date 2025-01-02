@@ -190,6 +190,19 @@ namespace sakura {
 		std::string ToStringWithFunctionCall(ScriptExecuteContext& executeContext);
 		ToStringFunctionCallResult ToStringWithFunctionCall(ScriptInterpreter& interpreter);
 
+		//インデックス数値として評価する（主に内部向け）
+		bool ToIndex(size_t& result) const {
+			number m = ToNumber();
+			if (isnan(m)) {
+				return false;
+			}
+			if (m < 0.0) {
+				return false;
+			}
+			result = static_cast<size_t>(m);
+			return true;
+		}
+
 		//数値として評価する
 		number ToNumber() const {
 			switch (valueType) {
@@ -403,6 +416,9 @@ namespace sakura {
 		const std::vector<ScriptValueRef> GetArgumentCollection() const {
 			return args;
 		}
+
+		//this取得ヘルパ
+		ScriptValueRef GetThisValue() const;
 	};
 
 	//関数実行結果

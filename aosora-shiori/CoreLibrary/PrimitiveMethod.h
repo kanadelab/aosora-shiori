@@ -11,10 +11,27 @@ namespace sakura {
 		static void Number_Round(const FunctionRequest& request, FunctionResponse& response);
 		static void Number_Ceil(const FunctionRequest& request, FunctionResponse& response);
 
+		static void String_StartWith(const FunctionRequest& request, FunctionResponse& response);
+		static void String_EndsWith(const FunctionRequest& request, FunctionResponse& response);
+		static void String_Split(const FunctionRequest& request, FunctionResponse& response);
+		static void String_Substring(const FunctionRequest& request, FunctionResponse& response);
+		static void String_IndexOf(const FunctionRequest& request, FunctionResponse& response);
+
+		static void General_ToString(const FunctionRequest& request, FunctionResponse& response);
+		static void General_ToNumber(const FunctionRequest& request, FunctionResponse& response);
+		static void General_ToBoolean(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsString(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsNumber(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsBoolean(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsObject(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsNan(const FunctionRequest& request, FunctionResponse& response);
+		static void General_IsNull(const FunctionRequest& request, FunctionResponse& response);
+			
 	public:
 		static ScriptValueRef GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context);
 		static ScriptValueRef GetBooleanMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext & context);
 		static ScriptValueRef GetStringMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context);
+		static ScriptValueRef GetGeneralMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context);
 	};
 
 }

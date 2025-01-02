@@ -65,12 +65,37 @@ namespace sakura{
 		return std::to_string(val);
 	}
 
-	//カンマ区切りの分離
+	//区切り文字を使用した分割
 	inline void SplitString(const std::string& input, std::vector<std::string>& result, char delimiter) {
 		std::istringstream ist(input);
 		std::string item;
 		while (std::getline(ist, item, delimiter)) {
 			result.push_back(item);
+		}
+	}
+
+	//区切り文字列を使用した分割
+	inline void SplitString(const std::string& input, std::vector<std::string>& result, const std::string& delimiter, size_t maxItems) {
+		size_t offset = 0;
+		while (true) {
+			auto pos = input.find(delimiter, offset);
+			if (pos == std::string::npos) {
+				//終了
+				result.push_back(input.substr(offset));
+				return;
+			}
+
+			//切り出し格納
+			result.push_back(input.substr(offset, pos - offset));
+			offset = pos + delimiter.size();
+
+			//最大アイテム数規制
+			if (maxItems > 0) {
+				if (result.size() + 1 >= maxItems) {
+					result.push_back(input.substr(offset));
+					return;
+				}
+			}
 		}
 	}
 

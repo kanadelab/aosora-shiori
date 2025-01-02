@@ -15,6 +15,127 @@ namespace sakura {
 		response.SetReturnValue(ScriptValue::Make(std::ceil(request.GetContext().GetBlockScope()->GetThisValue()->ToNumber())));
 	}
 
+	void PrimitiveMethod::General_ToString(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->ToString()));
+	}
+
+	void PrimitiveMethod::General_ToNumber(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->ToNumber()));
+	}
+
+	void PrimitiveMethod::General_ToBoolean(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->ToBoolean()));
+	}
+
+	void PrimitiveMethod::General_IsString(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsString()));
+	}
+
+	void PrimitiveMethod::General_IsNumber(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsNumber()));
+	}
+
+	void PrimitiveMethod::General_IsBoolean(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsBoolean()));
+	}
+
+	void PrimitiveMethod::General_IsObject(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsObject()));
+	}
+
+	void PrimitiveMethod::General_IsNull(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsNull()));
+	}
+
+	void PrimitiveMethod::General_IsNan(const FunctionRequest& request, FunctionResponse& response) {
+		auto self = request.GetThisValue();
+		if (self->IsNumber() && std::isnan(self->ToNumber())) {
+			response.SetReturnValue(ScriptValue::True);
+		}
+		else {
+			response.SetReturnValue(ScriptValue::False);
+		}
+	}
+
+	void PrimitiveMethod::String_StartWith(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			std::string target = request.GetThisValue()->ToString();
+			std::string search = request.GetArgument(0)->ToString();
+			response.SetReturnValue(ScriptValue::Make(target.starts_with(search)));
+		}
+	}
+
+	void PrimitiveMethod::String_EndsWith(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			std::string target = request.GetThisValue()->ToString();
+			std::string search = request.GetArgument(0)->ToString();
+			response.SetReturnValue(ScriptValue::Make(target.ends_with(search)));
+		}
+	}
+
+	void PrimitiveMethod::String_Split(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			size_t maxCount = 0;
+			if (request.GetArgumentCount() >= 2) {
+				request.GetArgument(1)->ToIndex(maxCount);
+			}
+			
+			std::string target = request.GetThisValue()->ToString();
+			std::string delimiter = request.GetArgument(0)->ToString();
+
+			if (target.empty() || delimiter.empty()) {
+				return;
+			}
+			
+			std::vector<std::string> result;
+			SplitString(target, result, delimiter, maxCount);
+
+			//リザルトの作成
+			auto items = request.GetContext().GetInterpreter().CreateNativeObject<ScriptArray>();
+			for (const std::string& item : result) {
+				items->Add(ScriptValue::Make(item));
+			}
+
+			response.SetReturnValue(ScriptValue::Make(items));
+		}
+	}
+
+	void PrimitiveMethod::String_Substring(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			size_t offset = 0;
+			request.GetArgument(0)->ToIndex(offset);
+
+			if (request.GetArgumentCount() >= 2) {
+				size_t count = 0;
+				if (request.GetArgument(1)->ToIndex(count)) {
+					std::string result = request.GetThisValue()->ToString().substr(offset, count);
+					response.SetReturnValue(ScriptValue::Make(result));
+					return;
+				}
+			}
+			
+			std::string result = request.GetThisValue()->ToString().substr(offset);
+			response.SetReturnValue(ScriptValue::Make(result));
+		}
+	}
+
+	void PrimitiveMethod::String_IndexOf(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			size_t offset = 0;
+			if (request.GetArgumentCount() >= 2) {
+				request.GetArgument(1)->ToIndex(offset);
+			}
+			auto pos = request.GetThisValue()->ToString().find(request.GetArgument(0)->ToString(), offset);
+			if (pos == std::string::npos) {
+				//見つからない場合はnullにしておく
+				response.SetReturnValue(ScriptValue::Null);
+			}
+			else {
+				response.SetReturnValue(ScriptValue::Make(static_cast<number>(pos)));
+			}
+		}
+	}
+
 	ScriptValueRef PrimitiveMethod::GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
 		if (member == "Round") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_Round, value));
@@ -35,8 +156,56 @@ namespace sakura {
 	}
 
 	ScriptValueRef PrimitiveMethod::GetStringMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
-		//いまのところなし
+		
+		if (member == "StartsWith") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_StartWith, value));
+		}
+		else if (member == "EndsWith") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_EndsWith, value));
+		}
+		else if (member == "Split") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Split, value));
+		}
+		else if (member == "IndexOf") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_IndexOf, value));
+		}
+		else if (member == "Substring") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Substring, value));
+		}
+		else if (member == "length") {
+			return ScriptValue::Make(static_cast<number>(value->ToString().size()));
+		}
 		return nullptr;
 	}
 
+	ScriptValueRef PrimitiveMethod::GetGeneralMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
+		if (member == "ToString") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_ToString, value));
+		}
+		else if (member == "ToNumber") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_ToNumber, value));
+		}
+		else if (member == "ToBoolean") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_ToBoolean, value));
+		}
+		else if (member == "IsString") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsString, value));
+		}
+		else if (member == "IsNumber") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsNumber, value));
+		}
+		else if (member == "IsBoolean") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsBoolean, value));
+		}
+		else if (member == "IsNan") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsNan, value));
+		}
+		else if (member == "IsObject") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsObject, value));
+		}
+		else if (member == "IsNull") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsNull, value));
+		}
+		return nullptr;
+	}
 }
