@@ -1,11 +1,15 @@
 ﻿#include <stdio.h>
+#ifdef WIN32
 #include <Windows.h>
+#endif // WIN32
 #include <fstream>
 #include "Misc/Utility.h"
 
 namespace sakura {
 
+#if WIN32
 	constexpr UINT SHIFT_JIS = 932;
+#endif // WIN32
 
 	//ファイル読み込み
 	bool File::ReadAllText(const char* filename, std::string& result) {
@@ -28,6 +32,7 @@ namespace sakura {
 		return true;
 	}
 
+#if WIN32
 	//Sjift_JISからUTF8へ変換
 	std::string ConvertEncoding(const std::string& input, UINT inputEncode, UINT outputEncode) {
 		
@@ -64,5 +69,20 @@ namespace sakura {
 	std::string Utf8ToSjis(const std::string& input) {
 		return ConvertEncoding(input, CP_UTF8, SHIFT_JIS);
 	}
+#else
+	std::string ConvertEncoding(const std::string& input, const char *inputEncode, const char *outputEncode) {
+        // TODO stub
+		return input;
+	}
 
+	std::string SjisToUtf8(const std::string& input) {
+        // TODO stub
+        return input;
+	}
+
+	std::string Utf8ToSjis(const std::string& input) {
+        // TODO stub
+        return input;
+	}
+#endif // WIN32
 }
