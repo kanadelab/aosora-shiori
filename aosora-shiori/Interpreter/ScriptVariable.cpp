@@ -182,4 +182,8 @@ namespace sakura {
 		}
 		return result;
 	}
+
+	ScriptValueRef FunctionRequest::GetThisValue() const {
+		return GetContext().GetBlockScope()->GetThisValue();
+	}
 }
