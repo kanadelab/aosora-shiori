@@ -1,6 +1,6 @@
 ﻿#include <stdio.h>
 #if defined(WIN32) || defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #endif // WIN32 or _WIN32
 #include <fstream>
 #include "Misc/Utility.h"
