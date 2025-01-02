@@ -394,51 +394,8 @@ namespace sakura {
 	//エラーが呼び出し元まで戻ってきたときに表示するさくらスクリプト出力
 	void Shiori::HandleRuntimeError(const ObjectRef& errObj, ShioriResponse& response) {
 	
-#if 0
-		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
-		assert(err != nullptr);
-
-		std::string ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
-		std::string scriptErrorLog = "蒼空 実行エラー ";
-
-		//スタックトレース
-		std::string traceForScript;
-		std::string traceForErrorLog;
-		std::string firstTrace;
-		for (const auto& stackFrame : err->GetCallStackInfo()) {
-
-			//SourceRangeがないものは内部的な処理上作られているフレームなので表示しない
-			if (stackFrame.hasSourceRange) {
-				if (!stackFrame.funcName.empty()) {
-
-					//関数名に () をつけておく
-					traceForScript += stackFrame.funcName + "() ";
-					traceForErrorLog += stackFrame.funcName + "() ";
-				}
-
-				traceForScript += stackFrame.sourceRange.ToString() + "\\n";
-				traceForErrorLog += stackFrame.sourceRange.ToString();
-
-				//スタックの最初を別枠で記録
-				if (firstTrace.empty() && !traceForScript.empty())
-				{
-					firstTrace = traceForErrorLog;
-				}
-			}
-		}
-
-		//エラー内容
-		ghostErrorGuide += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + traceForScript;
-		ghostErrorGuide += "\\x";
-
-		scriptErrorLog += "[エラー位置] " + firstTrace + " [エラー内容] " + err->GetMessage() + " [スタックトレース] " + traceForErrorLog;
-		response.AddError(ShioriError(ShioriError::ErrorLevel::Error, scriptErrorLog));
-
-		response.SetValue(ghostErrorGuide);
-#else
 		response.SetValue(ToStringRuntimeErrorForSakuraScript(errObj, !isBooted));
 		response.AddError(ShioriError(ShioriError::ErrorLevel::Error, ToStringRuntimeErrorForErrorLog(errObj)));
-#endif
 	}
 
 	//エラーをさくらスクリプトによるゴースト上での表示むけに整形
