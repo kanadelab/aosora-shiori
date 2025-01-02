@@ -10,6 +10,7 @@ namespace sakura {
 		static void Number_Floor(const FunctionRequest& request, FunctionResponse& response);
 		static void Number_Round(const FunctionRequest& request, FunctionResponse& response);
 		static void Number_Ceil(const FunctionRequest& request, FunctionResponse& response);
+		static void Number_ToAscii(const FunctionRequest& request, FunctionResponse& response);
 
 		static void String_StartWith(const FunctionRequest& request, FunctionResponse& response);
 		static void String_EndsWith(const FunctionRequest& request, FunctionResponse& response);

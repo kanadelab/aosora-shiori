@@ -19,6 +19,14 @@ namespace sakura {
 		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->ToString()));
 	}
 
+	void PrimitiveMethod::Number_ToAscii(const FunctionRequest& request, FunctionResponse& response) {
+		size_t n;
+		if (request.GetThisValue()->ToIndex(n) && n > 0 && n < 128) {
+			std::string v(1, static_cast<char>(n));
+			response.SetReturnValue(ScriptValue::Make(v));
+		}
+	}
+
 	void PrimitiveMethod::General_ToNumber(const FunctionRequest& request, FunctionResponse& response) {
 		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->ToNumber()));
 	}
@@ -145,6 +153,9 @@ namespace sakura {
 		}
 		else if (member == "Ceil") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_Ceil, value));
+		}
+		else if (member == "ToAscii") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_ToAscii, value));
 		}
 
 		return nullptr;

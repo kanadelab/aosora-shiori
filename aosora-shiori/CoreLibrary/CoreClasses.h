@@ -360,19 +360,20 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 
 		void Add(const ScriptValueRef& item) {
-			//インデックスリムーブ
-			//members.erase(members.begin() + 10);
 			members.push_back(item);
+		}
+
+		void Insert(const ScriptValueRef& item, size_t index) {
+			members.insert(members.begin() + index, item);
 		}
 
 		size_t Count() const {
 			return members.size();
 		}
 
-
 		void Remove(size_t index) {
 			assert(index < Count());
-			members.erase(members.begin() + 10);
+			members.erase(members.begin() + index);
 		}
 
 		ScriptValueRef At(size_t index) const {
@@ -387,7 +388,14 @@ namespace sakura {
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override {
 			
 			//通常の対応にあわせてnumberに変換してからsize_t にする
-			number indexNumber = std::stod(key);
+			number indexNumber = NAN;
+			try {
+				indexNumber = std::stod(key);
+			}
+			catch (const std::exception&) {
+				indexNumber = NAN;
+			}
+
 			if (std::isnan(indexNumber)) {
 				return;
 			}
@@ -403,6 +411,9 @@ namespace sakura {
 			if (key == "Add") {
 				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAdd, self));
 			}
+			else if (key == "Insert") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptInsert, self));
+			}
 			else if (key == "Remove") {
 				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptRemove, self));
 			}
@@ -412,11 +423,18 @@ namespace sakura {
 			else if (key == "length") {
 				return ScriptValue::Make(static_cast<number>(members.size()));
 			}
-			else {
+			else{
 				//index
 
 				//通常の対応にあわせてnumberに変換してからsize_t にする
-				number indexNumber = std::stod(key);
+				number indexNumber = NAN;
+				try {
+					indexNumber = std::stod(key);
+				}
+				catch(const std::exception&) {
+					indexNumber = NAN;
+				}
+
 				if (std::isnan(indexNumber)) {
 					return ScriptValue::Null;
 				}
@@ -452,6 +470,16 @@ namespace sakura {
 		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response) {
 			ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
 			obj->Clear();
+		}
+
+		static void ScriptInsert(const FunctionRequest& request, FunctionResponse& response) {
+			if (request.GetArgumentCount() >= 2) {
+				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+				size_t index;
+				if (request.GetArgument(1)->ToIndex(index) && index <= obj->Count()) {
+					obj->Insert(request.GetArgument(0), index);
+				}
+			}
 		}
 
 	};
