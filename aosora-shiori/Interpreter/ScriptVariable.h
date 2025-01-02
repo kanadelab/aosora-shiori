@@ -211,7 +211,12 @@ namespace sakura {
 			case ScriptValueType::Null:
 				return 0.0;
 			case ScriptValueType::String:
-				return std::stod(stringValue);
+				try {
+					return std::stod(stringValue);
+				}
+				catch (const std::exception&) {
+					return NAN;
+				}
 			case ScriptValueType::Boolean:
 				return boolValue ? 1.0 : 0.0;
 			default:
