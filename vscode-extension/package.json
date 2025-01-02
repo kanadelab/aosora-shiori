@@ -2,7 +2,7 @@
   "name": "aosora-shiori",
   "displayName": "aosora-shiori",
   "description": "",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "engines": {
     "vscode": "^1.95.0"
   },
