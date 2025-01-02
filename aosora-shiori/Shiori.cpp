@@ -182,6 +182,13 @@ namespace sakura {
 			return;
 		}
 
+
+		//イベント名にピリオドがある場合、シンボルとして使用できないため置換する
+		std::string eventName = request.GetEventId();
+		if (eventName.find(".") != std::string::npos) {
+			Replace(eventName, ".", "@");
+		}
+
 		//読み込みエラーが生じている場合はフォールバック
 		if (!scriptLoadErrors.empty()) {
 			RequestScriptLoadErrorFallback(request, response);
@@ -224,7 +231,7 @@ namespace sakura {
 		}
 
 		//グローバル空間からイベントを探す
-		auto variable = interpreter.GetGlobalVariable(request.GetEventId());
+		auto variable = interpreter.GetGlobalVariable(eventName);
 
 		if (variable != nullptr) {
 			//タイプによって挙動を換える
