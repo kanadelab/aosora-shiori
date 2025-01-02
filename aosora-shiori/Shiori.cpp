@@ -216,9 +216,9 @@ namespace sakura {
 		}
 
 		//ReferenceListの作成
-		auto referenceList = interpreter.CreateObject();
+		auto referenceList = interpreter.CreateNativeObject<ScriptArray>();
 		for (size_t i = 0; i < request.GetReferenceCount(); i++) {
-			referenceList->Push(ScriptValue::Make(request.GetReference(i)));
+			referenceList->Add(ScriptValue::Make(request.GetReference(i)));
 		}
 
 		auto shioriMap = shioriObj->GetObjectRef().Cast<ScriptObject>();

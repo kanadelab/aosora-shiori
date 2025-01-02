@@ -1206,7 +1206,8 @@ namespace sakura {
 		RegisterNativeFunction("print", &ScriptInterpreter::Print);
 
 		//TODO: 無名の登録が必要かも、グローバル空間をあまり汚染したくないものもあったり
-		ImportClass(NativeClass::Make<ScriptArray>("ScriptArray"));
+		ImportClass(NativeClass::Make<ScriptArray>("Array"));
+		ImportClass(NativeClass::Make<ScriptObject>("Object"));
 		ImportClass(NativeClass::Make<ClassData>("ClassData"));
 		ImportClass(NativeClass::Make<Reflection>("Reflection"));
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));

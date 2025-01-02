@@ -18,10 +18,19 @@ namespace sakura {
 	}
 
 
-	void ScriptObject::ScriptPush(const FunctionRequest& request, FunctionResponse& response) {
-		if (request.GetArgumentCount() > 0) {
+	void ScriptObject::ScriptAdd(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			std::string key = request.GetArgument(0)->ToString();
 			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
-			obj->Push(request.GetArgument(0));
+			obj->Add(key, request.GetArgument(1));
+		}
+	}
+
+	void ScriptObject::ScriptContains(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 1) {
+			std::string key = request.GetArgument(0)->ToString();
+			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+			response.SetReturnValue(ScriptValue::Make(obj->Contains(key)));
 		}
 	}
 
@@ -63,9 +72,14 @@ namespace sakura {
 		}
 	}
 
-	void ScriptObject::Push(const ScriptValueRef& val) {
-		//順当に配列ならば最後の要素に設定する形になるはず
-		members[ToString(members.size())] = val;
+	void ScriptObject::Add(const std::string& key, const ScriptValueRef& value) {
+		if (!Contains(key)) {
+			RawSet(key, value);
+		}
+	}
+
+	bool ScriptObject::Contains(const std::string& key) {
+		return members.contains(key);
 	}
 
 	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
@@ -95,9 +109,11 @@ namespace sakura {
 			if (key == "length") {
 				return ScriptValue::Make(static_cast<number>(members.size()));
 			}
-			else if (key == "Push") {
-				//非推奨かも
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptPush, self));
+			else if (key == "Add") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
+			}
+			else if (key == "Contains") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
 			}
 			else if (key == "Clear") {
 				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));

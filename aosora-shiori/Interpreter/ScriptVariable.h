@@ -362,7 +362,8 @@ namespace sakura {
 		ScriptObject() {
 		}
 
-		static void ScriptPush(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptAdd(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptContains(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptKeys(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptRemove(const FunctionRequest& request, FunctionResponse& response);
@@ -370,7 +371,9 @@ namespace sakura {
 		//内部オブジェクトの調節操作
 		void RawSet(const std::string& key, const ScriptValueRef& value);
 		ScriptValueRef RawGet(const std::string& key);
-		void Push(const ScriptValueRef& val);
+		
+		void Add(const std::string& key, const ScriptValueRef& value);
+		bool Contains(const std::string& key);
 
 		void Clear() {
 			members.clear();
