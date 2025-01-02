@@ -101,7 +101,7 @@ namespace sakura {
 				return std::shared_ptr<JsonTokenBase>(new JsonString(value->ToString()));
 			case ScriptValueType::Object:
 				if (value->GetObjectInstanceTypeId() == ScriptArray::TypeId()) {
-					return SerializeArray(value->GetObjectRef().Cast<ScriptArray>());
+					return SerializeArray(value->GetObjectRef().template Cast<ScriptArray>());
 				}
 				else {
 					return SerializeObject(value->GetObjectRef());
@@ -442,7 +442,7 @@ namespace sakura {
 		}
 		
 		//9オリジンでアイテムが入っている前提で、ランダムに１つ選択する
-		Reference<ScriptArray> sobj = obj.Cast<ScriptArray>();
+		Reference<ScriptArray> sobj = obj.template Cast<ScriptArray>();
 		const size_t size = sobj->Count();
 		const int32_t result = Rand(0, static_cast<int32_t>(size));
 
