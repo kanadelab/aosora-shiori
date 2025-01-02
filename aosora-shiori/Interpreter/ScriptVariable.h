@@ -194,7 +194,7 @@ namespace sakura {
 		//インデックス数値として評価する（主に内部向け）
 		bool ToIndex(size_t& result) const {
 			number m = ToNumber();
-			if (isnan(m)) {
+			if (std::isnan(m)) {
 				return false;
 			}
 			if (m < 0.0) {

@@ -547,7 +547,7 @@ namespace sakura {
 		const number rightNumber = right->ToNumber();
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
-		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+		if (!std::isnan(leftNumber) && !std::isnan(rightNumber)) {
 			if (rightNumber > rightNumber) {
 				return ScriptValue::True;
 			}
@@ -583,7 +583,7 @@ namespace sakura {
 		const number rightNumber = right->ToNumber();
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
-		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+		if (!std::isnan(leftNumber) && !std::isnan(rightNumber)) {
 			if (leftNumber < rightNumber) {
 				return ScriptValue::True;
 			}
@@ -619,7 +619,7 @@ namespace sakura {
 		const number rightNumber = right->ToNumber();
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
-		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+		if (!std::isnan(leftNumber) && !std::isnan(rightNumber)) {
 			if (rightNumber > rightNumber) {
 				return ScriptValue::True;
 			}
@@ -655,7 +655,7 @@ namespace sakura {
 		const number rightNumber = right->ToNumber();
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
-		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+		if (!std::isnan(leftNumber) && !std::isnan(rightNumber)) {
 			if (rightNumber <= rightNumber) {
 				return ScriptValue::True;
 			}
