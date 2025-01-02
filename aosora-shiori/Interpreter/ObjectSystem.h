@@ -82,7 +82,7 @@ namespace sakura {
 	private:
 		CollectableBase* itemFirst;
 		CollectableBase* itemLast;
-		size_t itemCount;
+		std::size_t itemCount;
 
 	private:
 
