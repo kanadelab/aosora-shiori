@@ -708,7 +708,7 @@ namespace sakura {
 		}
 
 		//javascriptにならって左がtureなら右をかえす
-		if (left->IsBoolean()) {
+		if (left->ToBoolean()) {
 			return right;
 		}
 		else {
