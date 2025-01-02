@@ -542,19 +542,27 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		//数値比較を基本にする、それ以外は別途検討(文字列比較とかも使う？）
-		if (left->IsNumber() && right->IsNumber()) {
+		//比較
+		const number leftNumber = left->ToNumber();
+		const number rightNumber = right->ToNumber();
 
-			if (left->ToNumber() > right->ToNumber()) {
+		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
+		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+			if (rightNumber > rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
 				return ScriptValue::False;
 			}
-
 		}
 		else {
-			return ScriptValue::False;
+			//数値として評価できない場合は文字列的な大小比較をする
+			if (left->ToString() > right->ToString()) {
+				return ScriptValue::True;
+			}
+			else {
+				return ScriptValue::False;
+			}
 		}
 	}
 
@@ -570,19 +578,27 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		//数値比較を基本にする、それ以外は別途検討(文字列比較とかも使う？）
-		if (left->IsNumber() && right->IsNumber()) {
+		//比較
+		const number leftNumber = left->ToNumber();
+		const number rightNumber = right->ToNumber();
 
-			if (left->ToNumber() < right->ToNumber()) {
+		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
+		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+			if (leftNumber < rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
 				return ScriptValue::False;
 			}
-
 		}
 		else {
-			return ScriptValue::False;
+			//数値として評価できない場合は文字列的な大小比較をする
+			if (left->ToString() < right->ToString()) {
+				return ScriptValue::True;
+			}
+			else {
+				return ScriptValue::False;
+			}
 		}
 	}
 
@@ -598,19 +614,27 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		//数値比較を基本にする、それ以外は別途検討(文字列比較とかも使う？）
-		if (left->IsNumber() && right->IsNumber()) {
+		//比較
+		const number leftNumber = left->ToNumber();
+		const number rightNumber = right->ToNumber();
 
-			if (left->ToNumber() >= right->ToNumber()) {
+		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
+		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+			if (rightNumber > rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
 				return ScriptValue::False;
 			}
-
 		}
 		else {
-			return ScriptValue::False;
+			//数値として評価できない場合は文字列的な大小比較をする
+			if (left->ToString() >= right->ToString()) {
+				return ScriptValue::True;
+			}
+			else {
+				return ScriptValue::False;
+			}
 		}
 	}
 
@@ -626,19 +650,27 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		//数値比較を基本にする、それ以外は別途検討(文字列比較とかも使う？）
-		if (left->IsNumber() && right->IsNumber()) {
+		//比較
+		const number leftNumber = left->ToNumber();
+		const number rightNumber = right->ToNumber();
 
-			if (left->ToNumber() <= right->ToNumber()) {
+		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
+		if (!isnan(leftNumber) && !isnan(rightNumber)) {
+			if (rightNumber <= rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
 				return ScriptValue::False;
 			}
-
 		}
 		else {
-			return ScriptValue::False;
+			//数値として評価できない場合は文字列的な大小比較をする
+			if (left->ToString() <= right->ToString()) {
+				return ScriptValue::True;
+			}
+			else {
+				return ScriptValue::False;
+			}
 		}
 	}
 
@@ -874,22 +906,28 @@ namespace sakura {
 			}
 		}
 		else if (r->GetValueType() == ScriptValueType::Number) {
-			auto result = sakura::PrimitiveMethod::GetNumberMember(r, key, executeContext);
+			auto result = PrimitiveMethod::GetNumberMember(r, key, executeContext);
 			if (result != nullptr) {
 				return result;
 			}
 		}
 		else if (r->GetValueType() == ScriptValueType::Boolean) {
-			auto result = sakura::PrimitiveMethod::GetBooleanMember(r, key, executeContext);
+			auto result = PrimitiveMethod::GetBooleanMember(r, key, executeContext);
 			if (result != nullptr) {
 				return result;
 			}
 		}
 		else if (r->GetValueType() == ScriptValueType::String) {
-			auto result = sakura::PrimitiveMethod::GetStringMember(r, key, executeContext);
+			auto result = PrimitiveMethod::GetStringMember(r, key, executeContext);
 			if (result != nullptr) {
 				return result;
 			}
+		}
+
+		//汎用メソッド類
+		auto generalResult = PrimitiveMethod::GetGeneralMember(r, key, executeContext);
+		if (generalResult != nullptr) {
+			return generalResult;
 		}
 
 		return ScriptValue::Null;
