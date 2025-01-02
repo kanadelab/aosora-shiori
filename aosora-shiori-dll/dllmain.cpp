@@ -1,6 +1,7 @@
 ﻿// dllmain.cpp : DLL アプリケーションのエントリ ポイントを定義します。
 #include "pch.h"
 #include <cstdlib>
+#include <cstring>
 #include <sstream>
 #include "Misc/Utility.h"
 
