@@ -9,25 +9,22 @@ namespace sakura {
 
 	//ファイル読み込み
 	bool File::ReadAllText(const char* filename, std::string& result) {
-
-		FILE* fp = fopen(filename, "r");
-		if (fp == nullptr) {
+		std::ifstream loadStream(filename, std::ios_base::in);
+		if (!loadStream) {
 			return false;
 		}
-		std::ifstream loadStream(fp);
 		result = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		fclose(fp);
 		return true;
 	}
 
 	//ファイル書き込み
 	bool File::WriteAllText(const char* filename, const std::string& content) {
-		FILE* fp = fopen(filename, "w");
-		if (fp == nullptr) {
+		std::ofstream saveStream(filename, std::ios_base::out);
+		if (!saveStream) {
 			return false;
 		}
+		saveStream << content;
 
-		fprintf(fp, "%s", content.c_str());
 		return true;
 	}
 

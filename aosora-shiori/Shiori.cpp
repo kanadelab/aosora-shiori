@@ -30,8 +30,7 @@ namespace sakura {
 		scriptProjPath.append("\\ghost.asproj");
 
 		//設定ファイルをロードする
-		std::FILE* settingsFile = std::fopen(scriptProjPath.c_str(), "r");
-		std::ifstream settingsStream(settingsFile);
+		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
 		
 		std::vector<std::string> files;
 		std::string line;
@@ -46,7 +45,6 @@ namespace sakura {
 			std::string filename = line;
 			files.push_back(filename);
 		}
-		fclose(settingsFile);
 
 		std::vector<std::shared_ptr<const sakura::ASTParseResult>> parsedFileList;
 
@@ -128,19 +126,15 @@ namespace sakura {
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadExternalScriptFile(const std::string& fullPath, const std::string& label) {
-		std::FILE* fp = fopen(fullPath.c_str(), "r");
-		std::ifstream loadStream(fp);
+		std::ifstream loadStream(fullPath, std::ios_base::in);
 		std::string fileBody = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		fclose(fp);
 		return LoadScriptString(fileBody, label);
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptFile(const std::string& path) {
 		std::string fullPath = ghostMasterPath + "\\" + path;
-		std::FILE* fp = fopen(fullPath.c_str(), "r");
-		std::ifstream loadStream(fp);
+		std::ifstream loadStream(fullPath, std::ios_base::in);
 		std::string fileBody = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		fclose(fp);
 		return LoadScriptString(fileBody, path);
 	}
 
