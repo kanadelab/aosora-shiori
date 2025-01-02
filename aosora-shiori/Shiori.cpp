@@ -215,7 +215,7 @@ namespace sakura {
 			referenceList->Add(ScriptValue::Make(request.GetReference(i)));
 		}
 
-		auto shioriMap = shioriObj->GetObjectRef().Cast<ScriptObject>();
+		auto shioriMap = shioriObj->GetObjectRef().template Cast<ScriptObject>();
 		shioriMap->Clear();
 		shioriMap->RawSet("Reference", ScriptValue::Make(referenceList));
 

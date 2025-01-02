@@ -128,7 +128,7 @@ namespace sakura {
 		//ScriptObjectのみシリアライズ可能とする
 		//クラス自体の復元が困難なので、単純なキーバリューストアとしてのみやりとりする目的
 		if (obj->GetInstanceTypeId() == ScriptObject::TypeId()) {
-			Reference<ScriptObject> sobj = obj.Cast<ScriptObject>();
+			Reference<ScriptObject> sobj = obj.template Cast<ScriptObject>();
 			for (const auto& item : sobj->GetInternalCollection()) {
 				result->Add(item.first, Serialize(item.second));
 			}
@@ -145,7 +145,7 @@ namespace sakura {
 		if (key == "Data") {
 			//セーブデータオブジェクトを上書き
 			if (value->GetObjectInstanceTypeId() == ScriptObject::TypeId()) {
-				executeContext.GetInterpreter().SetStaticStore<SaveData>(value->GetObjectRef().Cast<ScriptObject>());
+				executeContext.GetInterpreter().SetStaticStore<SaveData>(value->GetObjectRef().template Cast<ScriptObject>());
 			}
 		}
 	}
@@ -170,7 +170,7 @@ namespace sakura {
 
 		//ScriptObjectであればそれを使う
 		if (deserialized != nullptr && deserialized->GetObjectInstanceTypeId() == ScriptObject::TypeId()) {
-			Reference<ScriptObject> saveData = deserialized->GetObjectRef().Cast<ScriptObject>();
+			Reference<ScriptObject> saveData = deserialized->GetObjectRef().template Cast<ScriptObject>();
 			for (auto item : saveData->GetInternalCollection()) {
 				saveObject->RawSet(item.first, item.second);
 			}
