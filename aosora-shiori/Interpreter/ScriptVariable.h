@@ -252,8 +252,27 @@ namespace sakura {
 					return false;
 				}
 
-				//それ以外は文字列でチェックしてみる
-				return ToString() == target->ToString();
+				//それ以外は数値比較できるなら数値で、不可能なら文字列で比較
+				const number leftNumber = ToNumber();
+				const number rightNumber = target->ToNumber();
+
+				//数値比較できそうなら数値比較して、だめなら文字列的に比較する
+				if (!isnan(leftNumber) && !isnan(rightNumber)) {
+					if (leftNumber == rightNumber) {
+						return true;
+					}
+					else {
+						return false;
+					}
+				}
+				else {
+					if (ToString() == target->ToString()) {
+						return true;
+					}
+					else {
+						return false;
+					}
+				}
 			}
 
 			//不一致の場合も対応がありそうだけどおいとく

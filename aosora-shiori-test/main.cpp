@@ -25,12 +25,8 @@ int main() {
 
 	std::string sourceCode2 = R"(
 		
-		talk 頭つつかれ {
-			やあん。
-		}
-
-		talk Test {
-			>Reflection.Get("頭つつかれ"):true
+		function Test() {
+			return "2.0" == 2;
 		}
 
 		print(Test());
