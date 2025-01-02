@@ -1,15 +1,15 @@
 ﻿#include <stdio.h>
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
 #include <Windows.h>
-#endif // WIN32
+#endif // WIN32 or _WIN32
 #include <fstream>
 #include "Misc/Utility.h"
 
 namespace sakura {
 
-#if WIN32
+#if defined(WIN32) || defined(_WIN32)
 	constexpr UINT SHIFT_JIS = 932;
-#endif // WIN32
+#endif // WIN32 or _WIN32
 
 	//ファイル読み込み
 	bool File::ReadAllText(const char* filename, std::string& result) {
@@ -32,7 +32,7 @@ namespace sakura {
 		return true;
 	}
 
-#if WIN32
+#if defined(WIN32) || defined(_WIN32)
 	//Sjift_JISからUTF8へ変換
 	std::string ConvertEncoding(const std::string& input, UINT inputEncode, UINT outputEncode) {
 		
@@ -84,5 +84,5 @@ namespace sakura {
         // TODO stub
         return input;
 	}
-#endif // WIN32
+#endif // WIN32 or _WIN32
 }
