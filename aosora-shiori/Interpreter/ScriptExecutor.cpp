@@ -548,7 +548,7 @@ namespace sakura {
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
 		if (!isnan(leftNumber) && !isnan(rightNumber)) {
-			if (rightNumber > rightNumber) {
+			if (leftNumber > rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
@@ -620,7 +620,7 @@ namespace sakura {
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
 		if (!isnan(leftNumber) && !isnan(rightNumber)) {
-			if (rightNumber > rightNumber) {
+			if (leftNumber > rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
@@ -656,7 +656,7 @@ namespace sakura {
 
 		//数値比較できそうなら数値比較して、だめなら文字列的に比較する
 		if (!isnan(leftNumber) && !isnan(rightNumber)) {
-			if (rightNumber <= rightNumber) {
+			if (leftNumber <= rightNumber) {
 				return ScriptValue::True;
 			}
 			else {
