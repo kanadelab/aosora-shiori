@@ -435,18 +435,15 @@ namespace sakura {
 					indexNumber = NAN;
 				}
 
-				if (std::isnan(indexNumber)) {
-					return ScriptValue::Null;
-				}
-
-				size_t index = static_cast<size_t>(indexNumber);
-				if (index < Count()) {
-					return members[index];
-				}
-				else {
-					return ScriptValue::Null;
+				if (!std::isnan(indexNumber)) {
+					size_t index = static_cast<size_t>(indexNumber);
+					if (index < Count()) {
+						return members[index];
+					}
 				}
 			}
+
+			return nullptr;
 		}
 
 		//スクリプト向け実装

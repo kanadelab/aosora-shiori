@@ -403,6 +403,9 @@ namespace sakura {
 		else if (key == "GetNowDate") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowDate));
 		}
+		else if (key == "GetDayOfWeek") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetDayOfWeek));
+		}
 
 		return nullptr;
 	}

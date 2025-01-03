@@ -46,6 +46,13 @@ namespace sakura {
 			response.SetReturnValue(ScriptValue::Make(static_cast<number>(lt->tm_mday)));
 		}
 
+		//現在曜日
+		static void GetDayOfWeek(const FunctionRequest& request, FunctionResponse& response) {
+			std::time_t now = std::time(nullptr);
+			std::tm* lt = std::localtime(&now);
+			response.SetReturnValue(ScriptValue::Make(static_cast<number>(lt->tm_wday)));
+		}
+
 	};
 
 	//ランダム
