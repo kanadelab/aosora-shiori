@@ -174,6 +174,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -188,6 +189,9 @@
     <ProjectReference Include="..\aosora-shiori\aosora-shiori.vcxproj">
       <Project>{86167e4c-6a06-4e93-b3d1-faf6ad3d3ac0}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="aosora-shiori-dll.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
