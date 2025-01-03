@@ -1190,7 +1190,13 @@ namespace sakura {
 		//開カッコがあれば引数リスト
 		if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
 			parseContext.FetchNext();
-			ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_BLACKET);
+			if (parseContext.GetCurrent().type != ScriptTokenType::BracketEnd) {
+				ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_BLACKET);
+				parseContext.FetchNext();
+			}
+			else {
+				parseContext.FetchNext();
+			}
 		}
 
 		//中括弧開
