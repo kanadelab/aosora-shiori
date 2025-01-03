@@ -259,7 +259,7 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ObjectRef& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj.Cast<T>().Get();
+				return obj.template Cast<T>().Get();
 			}
 			else {
 				return nullptr;
@@ -269,7 +269,7 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ScriptValueRef& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj->GetObjectRef().Cast<T>().Get();
+				return obj->GetObjectRef().template Cast<T>().Get();
 			}
 			else {
 				return nullptr;
@@ -279,7 +279,7 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ScriptValue& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj.GetObjectRef().Cast<T>().Get();
+				return obj.GetObjectRef().template Cast<T>().Get();
 			}
 			else {
 				return nullptr;
@@ -291,7 +291,7 @@ namespace sakura {
 		Reference<typename T::StaticStoreType> StaticStore() {
 			auto item = nativeStaticStore.find(T::TypeId());
 			if (item != nativeStaticStore.end()) {
-				return item->second.Cast<typename T::StaticStoreType>();
+				return item->second.template Cast<typename T::StaticStoreType>();
 			}
 			else {
 				auto newObj = CreateNativeObject<typename T::StaticStoreType>();

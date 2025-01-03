@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cmath>
 #include <string>
 #include <map>
 #include <memory>
@@ -193,7 +194,7 @@ namespace sakura {
 		//インデックス数値として評価する（主に内部向け）
 		bool ToIndex(size_t& result) const {
 			number m = ToNumber();
-			if (isnan(m)) {
+			if (std::isnan(m)) {
 				return false;
 			}
 			if (m < 0.0) {
@@ -257,7 +258,7 @@ namespace sakura {
 				const number rightNumber = target->ToNumber();
 
 				//数値比較できそうなら数値比較して、だめなら文字列的に比較する
-				if (!isnan(leftNumber) && !isnan(rightNumber)) {
+				if (!std::isnan(leftNumber) && !std::isnan(rightNumber)) {
 					if (leftNumber == rightNumber) {
 						return true;
 					}

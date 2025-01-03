@@ -101,7 +101,7 @@ namespace sakura {
 				return std::shared_ptr<JsonTokenBase>(new JsonString(value->ToString()));
 			case ScriptValueType::Object:
 				if (value->GetObjectInstanceTypeId() == ScriptArray::TypeId()) {
-					return SerializeArray(value->GetObjectRef().Cast<ScriptArray>());
+					return SerializeArray(value->GetObjectRef().template Cast<ScriptArray>());
 				}
 				else {
 					return SerializeObject(value->GetObjectRef());
@@ -128,7 +128,7 @@ namespace sakura {
 		//ScriptObjectのみシリアライズ可能とする
 		//クラス自体の復元が困難なので、単純なキーバリューストアとしてのみやりとりする目的
 		if (obj->GetInstanceTypeId() == ScriptObject::TypeId()) {
-			Reference<ScriptObject> sobj = obj.Cast<ScriptObject>();
+			Reference<ScriptObject> sobj = obj.template Cast<ScriptObject>();
 			for (const auto& item : sobj->GetInternalCollection()) {
 				result->Add(item.first, Serialize(item.second));
 			}
@@ -145,7 +145,7 @@ namespace sakura {
 		if (key == "Data") {
 			//セーブデータオブジェクトを上書き
 			if (value->GetObjectInstanceTypeId() == ScriptObject::TypeId()) {
-				executeContext.GetInterpreter().SetStaticStore<SaveData>(value->GetObjectRef().Cast<ScriptObject>());
+				executeContext.GetInterpreter().SetStaticStore<SaveData>(value->GetObjectRef().template Cast<ScriptObject>());
 			}
 		}
 	}
@@ -170,7 +170,7 @@ namespace sakura {
 
 		//ScriptObjectであればそれを使う
 		if (deserialized != nullptr && deserialized->GetObjectInstanceTypeId() == ScriptObject::TypeId()) {
-			Reference<ScriptObject> saveData = deserialized->GetObjectRef().Cast<ScriptObject>();
+			Reference<ScriptObject> saveData = deserialized->GetObjectRef().template Cast<ScriptObject>();
 			for (auto item : saveData->GetInternalCollection()) {
 				saveObject->RawSet(item.first, item.second);
 			}
@@ -445,7 +445,7 @@ namespace sakura {
 		}
 		
 		//9オリジンでアイテムが入っている前提で、ランダムに１つ選択する
-		Reference<ScriptArray> sobj = obj.Cast<ScriptArray>();
+		Reference<ScriptArray> sobj = obj.template Cast<ScriptArray>();
 		const size_t size = sobj->Count();
 		const int32_t result = Rand(0, static_cast<int32_t>(size));
 

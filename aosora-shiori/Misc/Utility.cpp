@@ -1,36 +1,38 @@
 ﻿#include <stdio.h>
-#include <Windows.h>
+#if defined(WIN32) || defined(_WIN32)
+#include <windows.h>
+#endif // WIN32 or _WIN32
 #include <fstream>
 #include "Misc/Utility.h"
 
 namespace sakura {
 
+#if defined(WIN32) || defined(_WIN32)
 	constexpr UINT SHIFT_JIS = 932;
+#endif // WIN32 or _WIN32
 
 	//ファイル読み込み
 	bool File::ReadAllText(const char* filename, std::string& result) {
-
-		FILE* fp = fopen(filename, "r");
-		if (fp == nullptr) {
+		std::ifstream loadStream(filename, std::ios_base::in);
+		if (!loadStream) {
 			return false;
 		}
-		std::ifstream loadStream(fp);
 		result = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		fclose(fp);
 		return true;
 	}
 
 	//ファイル書き込み
 	bool File::WriteAllText(const char* filename, const std::string& content) {
-		FILE* fp = fopen(filename, "w");
-		if (fp == nullptr) {
+		std::ofstream saveStream(filename, std::ios_base::out);
+		if (!saveStream) {
 			return false;
 		}
+		saveStream << content;
 
-		fprintf(fp, "%s", content.c_str());
 		return true;
 	}
 
+#if defined(WIN32) || defined(_WIN32)
 	//Sjift_JISからUTF8へ変換
 	std::string ConvertEncoding(const std::string& input, UINT inputEncode, UINT outputEncode) {
 		
@@ -67,5 +69,20 @@ namespace sakura {
 	std::string Utf8ToSjis(const std::string& input) {
 		return ConvertEncoding(input, CP_UTF8, SHIFT_JIS);
 	}
+#else
+	std::string ConvertEncoding(const std::string& input, const char *inputEncode, const char *outputEncode) {
+        // TODO stub
+		return input;
+	}
 
+	std::string SjisToUtf8(const std::string& input) {
+        // TODO stub
+        return input;
+	}
+
+	std::string Utf8ToSjis(const std::string& input) {
+        // TODO stub
+        return input;
+	}
+#endif // WIN32 or _WIN32
 }

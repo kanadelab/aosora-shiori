@@ -7,10 +7,19 @@
 #ifndef PCH_H
 #define PCH_H
 
+#if defined(WIN32) || defined(_WIN32)
 //#define WIN32_LEAN_AND_MEAN             // Windows ヘッダーからほとんど使用されていない部分を除外する
 
 // Windows ヘッダー ファイル
 #include <windows.h>
+
+#else
+
+#include <cstring>
+#include <memory>
+#include <unordered_map>
+
+#endif // WIN32 or _WIN32
 
 // プリコンパイルするヘッダーをここに追加します
 #include "Shiori.h"
