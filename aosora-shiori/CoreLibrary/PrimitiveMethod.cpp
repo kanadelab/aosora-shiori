@@ -55,6 +55,20 @@ namespace sakura {
 		response.SetReturnValue(ScriptValue::Make(request.GetThisValue()->IsNull()));
 	}
 
+	void PrimitiveMethod::General_InstanceOf(const FunctionRequest& request, FunctionResponse& response) {
+		//インスタンスの確認
+		if (request.GetArgumentCount() >= 1) {
+			if (request.GetArgument(0)->GetObjectInstanceTypeId() == ClassData::TypeId()) {
+				auto cls = request.GetArgument(0)->GetObjectRef().Cast<ClassData>();
+				if (request.GetContext().GetInterpreter().InstanceIs(request.GetThisValue(), cls->GetClassTypeId())) {
+					response.SetReturnValue(ScriptValue::True);
+					return;
+				}
+			}
+		}
+		response.SetReturnValue(ScriptValue::False);
+	}
+
 	void PrimitiveMethod::General_IsNan(const FunctionRequest& request, FunctionResponse& response) {
 		auto self = request.GetThisValue();
 		if (self->IsNumber() && std::isnan(self->ToNumber())) {
@@ -216,6 +230,9 @@ namespace sakura {
 		}
 		else if (member == "IsNull") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_IsNull, value));
+		}
+		else if (member == "InstanceOf") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::General_InstanceOf, value));
 		}
 		return nullptr;
 	}

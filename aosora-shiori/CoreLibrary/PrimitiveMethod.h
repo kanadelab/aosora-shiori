@@ -27,6 +27,7 @@ namespace sakura {
 		static void General_IsObject(const FunctionRequest& request, FunctionResponse& response);
 		static void General_IsNan(const FunctionRequest& request, FunctionResponse& response);
 		static void General_IsNull(const FunctionRequest& request, FunctionResponse& response);
+		static void General_InstanceOf(const FunctionRequest& request, FunctionResponse& response);
 			
 	public:
 		static ScriptValueRef GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context);
