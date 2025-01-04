@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
 		shiori.Load(workspacePath);
 
 		//プロジェクトロード時、エラーが発生したらその時点で打ち切り
-		if (shiori.HasError()) {
+		if (shiori.HasBootError()) {
 			std::string errors = shiori.GetErrorsString();
 			std::cerr << errors << std::endl;
 			return ERROR_CODE_GHOST_SCRIPT_ERROR;
