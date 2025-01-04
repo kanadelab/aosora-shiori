@@ -176,11 +176,29 @@ namespace sakura {
 			return;
 		}
 
+		//起動エラーがあるかを取得する(主に as SAORI向け）
+		if (request.GetEventId() == "HasLoadError") {
+			response.SetValue(HasBootError() ? "1" : "0");
+			return;
+		}
+
+		//最後の呼出で発生したエラーを取得(主に ss SAORI向け）
+		if (request.GetEventId() == "GetLastError") {
+			MakeSaoriErrorResponse(response);
+			return;
+		}
 
 		//イベント名にピリオドがある場合、シンボルとして使用できないため置換する
 		std::string eventName = request.GetEventId();
 		if (eventName.find(".") != std::string::npos) {
 			Replace(eventName, ".", "@");
+		}
+
+		//起動エラー時SAORIは続行しない
+		if (HasBootError()) {
+			response.SetValue("");
+			response.SetInternalServerError();
+			return;
 		}
 
 		//読み込みエラーが生じている場合はフォールバック
@@ -192,6 +210,9 @@ namespace sakura {
 			RequestScriptBootErrorFallback(request, response);
 			return;
 		}
+
+		//ここまで来ると実行可能なので最後に発生したエラーの情報をリセットする
+		lastExecuteErrorLog.clear();
 
 		//エラー処理から呼ばれてリロードに成功していた場合。完了の旨を表示して終了
 		if (request.GetEventId() == "OnAosoraReloaded") {
@@ -219,6 +240,10 @@ namespace sakura {
 		shioriMap->Clear();
 		shioriMap->RawSet("Reference", ScriptValue::Make(referenceList));
 
+		//SaoriむけにCValue領域を作成(Shiori時でも同一のコードを動かせるよう配列だけは用意しておく)
+		auto saoriValues = interpreter.CreateNativeObject<ScriptArray>();
+		shioriMap->RawSet("SaoriValues", ScriptValue::Make(saoriValues));
+
 		//stautsの該当するレコードにtrueを書き込み(該当なければnullになるため判別に使用できる)
 		for (const std::string& st : request.GetStatusCollection()) {
 			shioriMap->RawSet(st, ScriptValue::True);
@@ -245,7 +270,7 @@ namespace sakura {
 
 				//実行時エラー
 				if (funcResponse.IsThrew()) {
-					HandleRuntimeError(funcResponse.GetThrewError(), response);
+					HandleRuntimeError(funcResponse.GetThrewError(), response, request.IsSaori());
 					return;
 				}
 
@@ -256,7 +281,7 @@ namespace sakura {
 
 					//文字列化時の実行時エラー
 					if (!toStringResult.success) {
-						HandleRuntimeError(toStringResult.error, response);
+						HandleRuntimeError(toStringResult.error, response, request.IsSaori());
 						return;
 					}
 
@@ -269,13 +294,13 @@ namespace sakura {
 		FunctionResponse eventRes;
 		if (TalkTimer::HandleEvent(interpreter, eventRes, request, !result.empty())) {
 			if (eventRes.IsThrew()) {
-				HandleRuntimeError(eventRes.GetThrewError(), response);
+				HandleRuntimeError(eventRes.GetThrewError(), response, request.IsSaori());
 				return;
 			}
 
 			auto toStringResult = eventRes.GetReturnValue()->ToStringWithFunctionCall(interpreter);
 			if (!toStringResult.success) {
-				HandleRuntimeError(toStringResult.error, response);
+				HandleRuntimeError(toStringResult.error, response, request.IsSaori());
 				return;
 			}
 
@@ -283,6 +308,23 @@ namespace sakura {
 		}
 		else {
 			response.SetValue(result);
+		}
+
+		//SAORIの値を返す
+		if (request.IsSaori()) {
+
+			//オブジェクトをたどり直す(配列イニシャライザでも指定できるように)
+			auto responseSaoriValues = shioriMap->RawGet("SaoriValues");
+			if (responseSaoriValues != nullptr) {
+				ScriptArray* scriptItems = interpreter.InstanceAs<ScriptArray>(responseSaoriValues);
+				if (scriptItems != nullptr) {
+					std::vector<std::string> items;
+					for (size_t i = 0; i < scriptItems->Count(); i++) {
+						items.push_back(scriptItems->At(i)->ToString());
+					}
+					response.SetSaoriValues(items);
+				}
+			}
 		}
 	}
 
@@ -393,10 +435,46 @@ namespace sakura {
 
 	//ランタイムエラーハンドラ
 	//エラーが呼び出し元まで戻ってきたときに表示するさくらスクリプト出力
-	void Shiori::HandleRuntimeError(const ObjectRef& errObj, ShioriResponse& response) {
+	void Shiori::HandleRuntimeError(const ObjectRef& errObj, ShioriResponse& response, bool isSaori) {
 	
-		response.SetValue(ToStringRuntimeErrorForSakuraScript(errObj, !isBooted));
-		response.AddError(ShioriError(ShioriError::ErrorLevel::Error, ToStringRuntimeErrorForErrorLog(errObj)));
+		lastExecuteErrorLog = ToStringRuntimeErrorForErrorLog(errObj);
+
+		if (!isSaori) {
+			response.SetValue(ToStringRuntimeErrorForSakuraScript(errObj, !isBooted));
+			response.AddError(ShioriError(ShioriError::ErrorLevel::Error, lastExecuteErrorLog));
+		}
+		else {
+			//SAORIの場合、エラーは表示せずにGetLastErrorでエラーにさせる
+			response.SetValue("");
+			response.SetInternalServerError();
+		}
+	}
+
+	//SAORIむけ：エラーレスポンスを作成
+	void Shiori::MakeSaoriErrorResponse(ShioriResponse& response) {
+		if (HasBootError()) {
+			//起動エラー
+			std::vector<std::string> errorList;
+			for (const auto& err : scriptLoadErrors) {
+				errorList.push_back(err.GetPosition().ToString() + " [" + err.GetData().errorCode + "] " + err.GetData().message);
+			}
+			if (!bootingExecuteErrorLog.empty()) {
+				errorList.push_back(bootingExecuteErrorLog);
+			}
+			response.SetSaoriValues(errorList);
+			response.SetValue(std::to_string(errorList.size()));
+		}
+		else if (!lastExecuteErrorLog.empty()) {
+			//実行エラー
+			std::vector<std::string> errorList;
+			errorList.push_back(lastExecuteErrorLog);
+			response.SetSaoriValues(errorList);
+			response.SetValue("1");
+		}
+		else {
+			//エラーなし
+			response.SetValue("0");
+		}
 	}
 
 	//エラーをさくらスクリプトによるゴースト上での表示むけに整形

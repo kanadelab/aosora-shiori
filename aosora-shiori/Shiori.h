@@ -21,6 +21,7 @@ namespace sakura {
 		std::vector<ScriptParseError> scriptLoadErrors;
 		std::string bootingExecuteErrorLog;
 		std::string bootingExecuteErrorGuide;
+		std::string lastExecuteErrorLog;
 		bool isResponsedLoadError;
 
 	private:
@@ -35,7 +36,10 @@ namespace sakura {
 		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const std::string& name);
 
 		//ランタイムエラー処理
-		void HandleRuntimeError(const ObjectRef& err, ShioriResponse& response);
+		void HandleRuntimeError(const ObjectRef& err, ShioriResponse& response, bool isSaori);
+
+		//SAORI向けエラーレスポンス作成
+		void MakeSaoriErrorResponse(ShioriResponse& response);
 
 	public:
 		Shiori();
@@ -54,14 +58,12 @@ namespace sakura {
 		std::shared_ptr<const ASTParseResult> LoadExternalScriptFile(const std::string& fullPath, const std::string& label);
 		
 		//エラー表示系
-		bool HasError() const { return !scriptLoadErrors.empty() || !bootingExecuteErrorLog.empty(); }
+		bool HasBootError() const { return !scriptLoadErrors.empty() || !bootingExecuteErrorLog.empty(); }
 		std::string ToStringRuntimeErrorForSakuraScript(const ObjectRef& err, bool isBooting = false);
 		std::string ToStringRuntimeErrorForErrorLog(const ObjectRef& err);
 
 		//コンソール出力用のエラー情報取得
 		std::string GetErrorsString();
 		const std::string& GetGhostMasterPath() const { return ghostMasterPath; }
-
-		
 	};
 }

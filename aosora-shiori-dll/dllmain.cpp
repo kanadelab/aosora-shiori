@@ -31,7 +31,6 @@ namespace {
 	void ParseRequest(sakura::ShioriRequest& shioriRequest, std::istringstream& readStream) {
 		std::string line;
 		std::string charset;
-		std::string eventId;
 		bool isEmptyLine = false;
 
 		//必要なものを取り出して処理
@@ -66,7 +65,6 @@ namespace {
 
 				//内容を確認
 				if (key == "ID") {
-					eventId = value;
 					shioriRequest.SetEventId(value);
 				}
 				else if (key == "Charset") {
@@ -75,6 +73,16 @@ namespace {
 				else if (key.starts_with("Reference")) {
 					size_t index = std::stol(key.substr(9));
 					shioriRequest.SetReference(static_cast<uint32_t>(index), value);
+				}
+				else if (key.starts_with("Argument")) {
+					//as SAORIとしての場合、１つずらしてReferenceにし、インデックス0はEventにする
+					size_t index = std::stol(key.substr(8));
+					if (index == 0) {
+						shioriRequest.SetEventId(value);
+					}
+					else {
+						shioriRequest.SetReference(static_cast<uint32_t>(index-1), value);
+					}
 				}
 				else if (key == "Status") {
 					std::vector<std::string> statusList;
@@ -87,12 +95,13 @@ namespace {
 		}
 	}
 
-	std::string CreateResponse(sakura::ShioriResponse& shioriResponse) {
+	std::string CreateResponse(sakura::ShioriResponse& shioriResponse, bool isRequestClose, bool isSaori, const std::string& charsetHeader) {
 		//レスポンスの作成
-		std::string response = "SHIORI/3.0 ";
+		std::string response = isSaori ? "SAORI/1.0 " : "SHIORI/3.0 ";
 		response.append(shioriResponse.GetStatus());
 		response.append("\r\n");
-		response.append("Charset: UTF-8\r\n");
+		response.append(charsetHeader);
+		response.append("\r\n");
 		response.append("Sender: Aosora\r\n");
 
 		//本文
@@ -101,10 +110,22 @@ namespace {
 			std::string value = shioriResponse.GetValue();
 			sakura::Replace(value, "\r", "");
 			sakura::Replace(value, "\n", "");
-			response.append("Value: ");
+			response.append(isSaori ? "Result: " : "Value: ");
 			response.append(value);
-			response.append("\\e");	//念の為えんいー
+			if (!isSaori) {
+				response.append(isRequestClose ? "\\-" : "\\e");
+			}
 			response.append("\r\n");
+		}
+
+		//SAORIのValue
+		if (isSaori) {
+			for (size_t i = 0; i < shioriResponse.GetSaoriValues().size(); i++) {
+				std::string value = shioriResponse.GetSaoriValues().at(i);
+				sakura::Replace(value, "\r", "");
+				sakura::Replace(value, "\n", "");
+				response.append("Value" + std::to_string(i) + ": " + value + "\r\n");
+			}
 		}
 
 		//エラー
@@ -166,9 +187,25 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 
 	std::string requestStr(ptr);
 
+	//文字コードコンバート
+	bool isShiftJis = false;
+	std::string charsetHeader = "Charset: UTF-8";
+	if (requestStr.find("Charset: Shift_JIS") != std::string::npos) {
+		isShiftJis = true;
+		charsetHeader = "Charset: Shift_JIS";
+
+		//コンバート
+		requestStr = sakura::SjisToUtf8(requestStr);
+	}
+
 	if (requestStr.starts_with("GET Version SHIORI")) {
 		//GET Versionが来たら固定の返答をする
-		std::string response = "SHIORI/3.0 200 OK\r\nCharset: UTF-8\r\n\r\n";
+		std::string response = "SHIORI/3.0 200 OK\r\n" + charsetHeader + "\r\n\r\n";
+		return CreateResponseMemory(response, len);
+	}
+	else if (requestStr.starts_with("GET Version SAORI")) {
+		//SAORIとして返す
+		std::string response = "SAORI/1.0 200 OK\r\n" + charsetHeader + "\r\n\r\n";
 		return CreateResponseMemory(response, len);
 	}
 
@@ -182,11 +219,16 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	}
 
 	bool isGet = false;
+	bool isSaori = false;
 	if (line.starts_with("GET SHIORI")) {
 		isGet = true;
 	}
+	else if (line.starts_with("EXECUTE SAORI")) {
+		isGet = true;
+		isSaori = true;
+	}
 	else if (line.starts_with("NOTIFY SHIORI")) {
-
+		//nop
 	}
 	else {
 		return CreateResponseMemory(BAD_REQUEST, len);
@@ -196,12 +238,24 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	shioriRequest.SetIsGet(isGet);
 
 	ParseRequest(shioriRequest, readStream);
+	shioriRequest.SetIsSaori(isSaori);
+
+	//OnCloseであればゴーストを閉じるようにスクリプトを添付する
+	bool isClose = false;
+	if (shioriRequest.GetEventId() == "OnClose") {
+		isClose = true;
+	}
 
 	//Shiori側に送る
 	sakura::ShioriResponse shioriResponse;
 	shioriInstance->Request(shioriRequest, shioriResponse);
 
-	std::string response = CreateResponse(shioriResponse);
+	std::string response = CreateResponse(shioriResponse, isClose, isSaori, charsetHeader);
+
+	//文字コードコンバート
+	if (isShiftJis) {
+		response = sakura::Utf8ToSjis(response);
+	}
 
 	return CreateResponseMemory(response, len);
 }

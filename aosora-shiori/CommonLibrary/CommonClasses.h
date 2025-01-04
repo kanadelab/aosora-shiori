@@ -84,6 +84,7 @@ namespace sakura {
 		std::set<std::string> statuses;
 		std::map<std::string, std::string> rawMap;
 		bool isGet;
+		bool isSaori;
 
 	public:
 		ShioriRequest(const std::string& id) :
@@ -110,6 +111,15 @@ namespace sakura {
 
 		bool IsGet() const {
 			return isGet;
+		}
+
+		//as SAORIリクエストかどうか
+		void SetIsSaori(bool saori) {
+			isSaori = saori;
+		}
+
+		bool IsSaori() const {
+			return isSaori;
 		}
 
 		void SetReference(uint32_t index, const std::string& value) {
@@ -204,6 +214,7 @@ namespace sakura {
 		std::string status;
 		std::string value;
 		std::vector<ShioriError> errors;
+		std::vector<std::string> saoriValues;
 
 	public:
 		void SetBadRequest() {
@@ -272,6 +283,15 @@ namespace sakura {
 				result += errors[i].GetLevelString();
 			}
 			return result;
+		}
+
+		//SAORIのValue*返却オブジェクトを渡す
+		void SetSaoriValues(const std::vector<std::string>& values) {
+			saoriValues = values;
+		}
+
+		const std::vector<std::string>& GetSaoriValues() const {
+			return saoriValues;
 		}
 	};
 
