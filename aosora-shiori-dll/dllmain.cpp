@@ -210,7 +210,7 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	}
 
 	//解析
-	std::istringstream readStream(ptr);
+	std::istringstream readStream(requestStr);
 	std::string line;
 
 	//１行目
