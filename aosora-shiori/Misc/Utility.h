@@ -103,6 +103,94 @@ namespace sakura{
 	std::string SjisToUtf8(const std::string& input);
 	std::string Utf8ToSjis(const std::string& input);
 
+	//先頭バイトからUTF-8で何バイトか取得
+	inline size_t GetUnicodeByteCount(uint8_t firstByte) {
+		if (firstByte <= 0x7f) {
+			return 1;
+		}
+		else if (firstByte >= 0xc2 && firstByte < 0xdf) {
+			return 2;
+		}
+		else if (firstByte >= 0xe0 && firstByte < 0xef) {
+			return 3;
+		}
+		else if (firstByte >= 0xf0 && firstByte < 0xf7) {
+			return 4;
+		}
+
+		//無効
+		return 1;
+	}
+
+	//文字数からバイトインデックスに変換
+	inline size_t UnicodeCharIndexToMultiByteIndex(const std::string& str, size_t charIndex) {
+
+		if (str.empty()) {
+			return 0;
+		}
+
+		size_t index = 0;
+		size_t cIndex = 0;
+		while (index < str.size()) {
+			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
+
+			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
+			if (index + count >= str.size()) {
+				return index;
+			}
+
+			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
+			cIndex++;
+			index += count;
+
+			//必要インデックスに到達したら終了
+			if (cIndex >= charIndex) {
+				break;
+			}
+		}
+
+		return index;
+	}
+
+	//バイトインデックスから文字数に変換
+	inline size_t ByteIndexToUncodeCharIndex(const std::string& str, size_t byteIndex) {
+		if (str.empty()) {
+			return 0;
+		}
+
+		size_t index = 0;
+		size_t cIndex = 0;
+		while (index < str.size()) {
+			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
+
+			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
+			if (index + count > str.size()) {
+				break;
+			}
+
+			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
+			cIndex++;
+			index += count;
+
+			//必要インデックスに到達したら終了
+			if (index >= byteIndex) {
+				break;
+			}
+		}
+
+		return cIndex;
+	}
+
+	//Unicode文字数をカウント
+	inline size_t CountUnicodeCharacters(const std::string& str) {
+		if (str.empty()) {
+			return 0;
+		}
+		//0でない限り最後のインデックスに1を足せば文字数にできる
+		return ByteIndexToUncodeCharIndex(str, ~(size_t)0) + 1;
+	}
+
+
 	class File {
 	public:
 		static bool ReadAllText(const char* filename, std::string& result);

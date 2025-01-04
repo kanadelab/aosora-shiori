@@ -1,6 +1,9 @@
 ﻿#include "CoreLibrary/PrimitiveMethod.h"
 #include "CoreLibrary/CoreClasses.h"
 
+//Unicode文字数を文字インデックスとして使う
+#define AOSORA_USE_UNICODE_CHAR_INDEX
+
 namespace sakura {
 
 	void PrimitiveMethod::Number_Floor(const FunctionRequest& request, FunctionResponse& response) {
@@ -130,13 +133,26 @@ namespace sakura {
 			if (request.GetArgumentCount() >= 2) {
 				size_t count = 0;
 				if (request.GetArgument(1)->ToIndex(count)) {
-					std::string result = request.GetThisValue()->ToString().substr(offset, count);
+					std::string target = request.GetThisValue()->ToString();
+#if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
+					size_t mbOffset = UnicodeCharIndexToMultiByteIndex(target, offset);
+					size_t mbCount = UnicodeCharIndexToMultiByteIndex(target, offset + count) - mbOffset;
+					std::string result = target.substr(mbOffset, mbCount);
+#else
+					std::string result = target.substr(offset, count);
+#endif
 					response.SetReturnValue(ScriptValue::Make(result));
 					return;
 				}
 			}
 			
-			std::string result = request.GetThisValue()->ToString().substr(offset);
+			std::string target = request.GetThisValue()->ToString();
+#if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
+			size_t mbOffset = UnicodeCharIndexToMultiByteIndex(target, offset);
+			std::string result = target.substr(mbOffset);
+#else
+			std::string result = target.substr(offset);
+#endif
 			response.SetReturnValue(ScriptValue::Make(result));
 		}
 	}
@@ -147,13 +163,19 @@ namespace sakura {
 			if (request.GetArgumentCount() >= 2) {
 				request.GetArgument(1)->ToIndex(offset);
 			}
-			auto pos = request.GetThisValue()->ToString().find(request.GetArgument(0)->ToString(), offset);
+			std::string target = request.GetThisValue()->ToString();
+			auto pos = target.find(request.GetArgument(0)->ToString(), offset);
 			if (pos == std::string::npos) {
 				//見つからない場合はnullにしておく
 				response.SetReturnValue(ScriptValue::Null);
 			}
 			else {
+#if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
+				size_t charPos = ByteIndexToUncodeCharIndex(target, pos);
+				response.SetReturnValue(ScriptValue::Make(static_cast<number>(charPos)));
+#else
 				response.SetReturnValue(ScriptValue::Make(static_cast<number>(pos)));
+#endif
 			}
 		}
 	}
@@ -198,7 +220,11 @@ namespace sakura {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Substring, value));
 		}
 		else if (member == "length") {
+#if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
+			return ScriptValue::Make(static_cast<number>(CountUnicodeCharacters(value->ToString())));
+#else
 			return ScriptValue::Make(static_cast<number>(value->ToString().size()));
+#endif
 		}
 		return nullptr;
 	}
