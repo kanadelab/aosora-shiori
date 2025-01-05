@@ -135,8 +135,8 @@ namespace sakura{
 			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
 
 			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
-			if (index + count >= str.size()) {
-				return index;
+			if (index + count > str.size()) {
+				break;
 			}
 
 			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
@@ -177,7 +177,7 @@ namespace sakura{
 			return 0;
 		}
 		//0でない限り最後のインデックスに1を足せば文字数にできる
-		return ByteIndexToUncodeCharIndex(str, ~(size_t)0) + 1;
+		return ByteIndexToUncodeCharIndex(str, str.size()-1) + 1;
 	}
 
 

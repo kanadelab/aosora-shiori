@@ -1,5 +1,6 @@
 ﻿
 #include "Shiori.h"
+#include "Misc/Utility.h"
 #include "Misc/Json.h"
 
 //とりあえず試しに動かしてみる用
@@ -21,15 +22,19 @@ namespace sakura {
 }
 
 
+
 int main() {
 
 	std::string sourceCode2 = R"(
-		
-		function Test() {
-			return "2.0" == 2;
-		}
+	
+		print("2".length);
+		local a = "あ";
+		print(a.Substring(0, 1)); // => ""!
+		local b = "abc";
+		print(b.Substring(1, 2)); // => "b"!
 
-		print(Test());
+		print("あい".Substring(0,1));
+		print("あいうえ".Substring(1,2));
 
 )";
 
