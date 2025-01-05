@@ -176,8 +176,22 @@ namespace sakura{
 		if (str.empty()) {
 			return 0;
 		}
-		//0でない限り最後のインデックスに1を足せば文字数にできる
-		return ByteIndexToUncodeCharIndex(str, str.size()-1) + 1;
+
+		size_t index = 0;
+		size_t cIndex = 0;
+		while (index < str.size()) {
+			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
+
+			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
+			if (index + count > str.size()) {
+				break;
+			}
+
+			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
+			cIndex++;
+			index += count;
+		}
+		return cIndex;
 	}
 
 

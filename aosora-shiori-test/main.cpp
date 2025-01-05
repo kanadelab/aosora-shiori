@@ -27,11 +27,12 @@ int main() {
 
 	std::string sourceCode2 = R"(
 	
-		print("2".length);
-		local a = "あ";
-		print(a.Substring(0, 1)); // => ""!
+		print("あiうeお".length);
+		print("あ1うeお".IndexOf("う"));
+		local a = "あえいaaaうえおあお";
+		print(a.Substring(3, 3));
 		local b = "abc";
-		print(b.Substring(1, 2)); // => "b"!
+		print(b.Substring(1, 2));
 
 		print("あい".Substring(0,1));
 		print("あいうえ".Substring(1,2));
