@@ -131,7 +131,7 @@ namespace sakura{
 
 		size_t index = 0;
 		size_t cIndex = 0;
-		while (index < str.size()) {
+		while (index < str.size() && cIndex < charIndex) {
 			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
 
 			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
@@ -142,11 +142,6 @@ namespace sakura{
 			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
 			cIndex++;
 			index += count;
-
-			//必要インデックスに到達したら終了
-			if (cIndex >= charIndex) {
-				break;
-			}
 		}
 
 		return index;
@@ -160,7 +155,7 @@ namespace sakura{
 
 		size_t index = 0;
 		size_t cIndex = 0;
-		while (index < str.size()) {
+		while (index < str.size() && index < byteIndex) {
 			const size_t count = GetUnicodeByteCount(static_cast<uint8_t>(str.at(index)));
 
 			//文字数が足りてなくてutf-8バイト列としておかしいため打ち切り
@@ -171,11 +166,6 @@ namespace sakura{
 			//TODO: 異体字セレクタを考慮するなら、異体字セレクタの場合cIndexを足さない
 			cIndex++;
 			index += count;
-
-			//必要インデックスに到達したら終了
-			if (index >= byteIndex) {
-				break;
-			}
 		}
 
 		return cIndex;
