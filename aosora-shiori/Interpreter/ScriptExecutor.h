@@ -81,6 +81,8 @@ namespace sakura {
 	//スクリプト実行インタプリタ
 	class ScriptInterpreter {
 	private:
+		size_t scriptSteps;
+		size_t limitScriptSteps;
 		uint32_t scriptClassCount;
 
 		//システムレジストリ(書き込み禁止)
@@ -114,6 +116,24 @@ namespace sakura {
 		}
 
 		ScriptInterpreter();
+
+		//ステップ数を計測、無限ループの矯正脱出用
+		uint64_t IncrementScriptStep() {
+			scriptSteps++;
+			return scriptSteps;
+		}
+
+		void ResetScriptStep() {
+			scriptSteps = 0;
+		}
+
+		void SetLimitScriptSteps(size_t steps) {
+			limitScriptSteps = steps;
+		}
+
+		size_t GetLimitScriptSteps() const {
+			return limitScriptSteps;
+		}
 
 		//ワーキングディレクトリ
 		void SetWorkingDirectory(const std::string& dir) {
@@ -617,9 +637,10 @@ namespace sakura {
 
 		//エラーのスローヘルパ
 		template<typename T>
-		void ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message) {
+		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message) {
 			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
 			ThrowError(throwAstNode, GetStack().GetFunctionName(), err);
+			return err;
 		}
 
 		//即時離脱が必要かどうか

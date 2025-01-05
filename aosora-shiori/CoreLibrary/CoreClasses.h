@@ -228,11 +228,13 @@ namespace sakura {
 		};
 
 	private:
+		bool canCatch;
 		std::string message;
 		std::vector<CallStackInfo> callStackInfo;
 
 	public:
 		RuntimeError(const std::string& errorMessage):
+			canCatch(true),
 			message(errorMessage)
 		{}
 		
@@ -256,6 +258,15 @@ namespace sakura {
 			}
 			r += message;
 			return r;
+		}
+
+		//キャッチ可能フラグの設定（パニック相当のものを同じ仕組みをつかいつつキャッチさせない目的）
+		void SetCanCatch(bool can) {
+			canCatch = can;
+		}
+
+		bool CanCatch() const {
+			return canCatch;
 		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;

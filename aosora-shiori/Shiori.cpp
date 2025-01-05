@@ -5,10 +5,12 @@
 
 namespace sakura {
 	
+	ScriptParseErrorData ERROR_SHIORI_001 = { "S001", "設定ファイル ghost.asproj が開けませんでした。" };
+	ScriptParseErrorData ERROR_SHIORI_002 = { "S002", "スクリプトファイルが開けませんでした。" };
 
 	Shiori::Shiori():
 		isResponsedLoadError(false),
-		isBooted(false) {
+		isBooted(false){
 
 		//ランダムを準備
 		SRand();
@@ -31,14 +33,41 @@ namespace sakura {
 
 		//設定ファイルをロードする
 		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
+		if (settingsStream.fail()) {
+			scriptLoadErrors.push_back(ScriptParseError(ERROR_SHIORI_001, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
+			return;
+		}
 		
 		std::vector<std::string> files;
 		std::string line;
 		while (std::getline(settingsStream, line)) {
 
-			if (line.empty()) {
-				//空白行などもとばせるといいかも？
+			//空白行のスキップ
+			std::string emptyTest = line;
+			Replace(emptyTest, " ", "");
+			Replace(emptyTest, "\t", "");
+			if (emptyTest.empty()) {
 				continue;
+			}
+
+			if (line.find(',') != std::string::npos) {
+				//スペースを削除して、カンマで分離
+				std::string cmd = line;
+				Replace(cmd, " ", "");
+				std::vector<std::string> commands;
+				SplitString(cmd, commands, ",", 2);
+				
+				std::string settingsKey = commands[0];
+				std::string settingsValue = commands[1];
+
+				//実行ステップ制限
+				if (settingsKey == "limit_script_steps") {
+					try {
+						interpreter.SetLimitScriptSteps(std::stol(settingsValue));
+					}
+					catch(const std::exception&){}
+					continue;
+				}
 			}
 
 			//とりあえずロードすべきファイルの列挙があるということにしてみる
@@ -134,6 +163,15 @@ namespace sakura {
 	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptFile(const std::string& path) {
 		std::string fullPath = ghostMasterPath + "\\" + path;
 		std::ifstream loadStream(fullPath, std::ios_base::in);
+
+		if (loadStream.fail()) {
+			//ファイルがなければ打ち切る
+			auto* errorResult = new ASTParseResult();
+			errorResult->success = false;
+			errorResult->error.reset(new ScriptParseError(ERROR_SHIORI_002, SourceCodeRange(std::shared_ptr<std::string>(new std::string(path)), 0,0,0,0)));
+			return std::shared_ptr<const ASTParseResult>(errorResult);
+		}
+
 		std::string fileBody = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
 		return LoadScriptString(fileBody, path);
 	}
@@ -161,6 +199,9 @@ namespace sakura {
 	}
 
 	void Shiori::RequestInternal(const ShioriRequest& request, ShioriResponse& response) {
+
+		//ステップ数制限をリセット
+		interpreter.ResetScriptStep();
 
 		//固定値を返すべきリクエストの場合はそこで終える
 		auto infoRecord = shioriInfo.find(request.GetEventId());
@@ -194,23 +235,26 @@ namespace sakura {
 			Replace(eventName, ".", "@");
 		}
 
-		//起動エラー時SAORIは続行しない
-		if (HasBootError()) {
-			response.SetValue("");
-			response.SetInternalServerError();
-			return;
+		if (request.IsSaori()) {
+			//起動エラー時SAORIは続行しない
+			if (HasBootError()) {
+				response.SetValue("");
+				response.SetInternalServerError();
+				return;
+			}
 		}
-
-		//読み込みエラーが生じている場合はフォールバック
-		if (!scriptLoadErrors.empty()) {
-			RequestScriptLoadErrorFallback(request, response);
-			return;
+		else {
+			//SHIORIで読み込みエラーが生じている場合はフォールバックの表示
+			if (!scriptLoadErrors.empty()) {
+				RequestScriptLoadErrorFallback(request, response);
+				return;
+			}
+			else if (!bootingExecuteErrorGuide.empty() || !bootingExecuteErrorLog.empty()) {
+				RequestScriptBootErrorFallback(request, response);
+				return;
+			}
 		}
-		else if (!bootingExecuteErrorGuide.empty() || !bootingExecuteErrorLog.empty()) {
-			RequestScriptBootErrorFallback(request, response);
-			return;
-		}
-
+		
 		//ここまで来ると実行可能なので最後に発生したエラーの情報をリセットする
 		lastExecuteErrorLog.clear();
 

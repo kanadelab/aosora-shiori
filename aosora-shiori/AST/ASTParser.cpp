@@ -4,6 +4,9 @@
 #include "AST/ASTNodes.h"
 #include "AST/ASTParser.h"
 
+//パースエラー発生時にassertで止める
+//#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
+
 namespace sakura {
 
 	const ScriptParseErrorData ERROR_AST_001 = { "A001", "コードブロック終了の閉じ括弧 } が見つかりませんでした。", "コードブロックは { } で囲まれる一連の処理ですが、始まりに対して終わりが見つからないエラーです。コードブロックや、付近の { の閉じ括弧を忘れていないか確認してください。"};
@@ -44,6 +47,7 @@ namespace sakura {
 	const ScriptParseErrorData ERROR_AST_036 = { "A036", "開き括弧 { が必要です。", "tryブロック始端には開き括弧 { が必要です。"};
 	const ScriptParseErrorData ERROR_AST_037 = { "A037", "開き括弧 { が必要です。", "catchブロック始端には開き括弧 { が必要です。"};
 	const ScriptParseErrorData ERROR_AST_038 = { "A038", "開き括弧 { が必要です。", "finallyブロック始端には開き括弧 { が必要です。"};
+	const ScriptParseErrorData ERROR_AST_039 = { "A039", "セミコロン ; が必要です。", "変数宣言の終わりにはセミコロン ; が必要です。" };
 
 
 	//四則演算
@@ -149,14 +153,16 @@ namespace sakura {
 		//エラーのセット
 		ASTNodeRef Error(const ScriptParseErrorData& error, const ScriptToken& token) {
 
-#if 0
+#if defined(AOSORA_ENABLE_PARSE_ERROR_ASSERT)
 			//デバッグのためエラーだったら即止め
 			assert(false);
 #endif
-
-			errorData = error;
-			errorToken = &token;
-			hasError = true;
+			//最初に発生したエラーだけを記録(エラーでパースが崩れたのにあわせてまたエラーになるのを回避するため)
+			if (!hasError) {
+				errorData = error;
+				errorToken = &token;
+				hasError = true;
+			}
 
 			//エラー情報を返してそのまま脱出させる
 			return ASTNodeRef(new ASTError());
@@ -255,6 +261,7 @@ namespace sakura {
 			//閉じ括弧があれば終了
 			if (isBlacketEnd && parseContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
 				parseContext.FetchNext();
+				result->SetSourceRange(beginToken, parseContext.GetPrev());
 				return result;
 			}
 
@@ -1524,10 +1531,12 @@ namespace sakura {
 			parseContext.FetchNext();
 
 			//もしイコールがあれば初期化式として扱う
+			bool hasExpression = false;
 			ASTNodeRef initialValue(nullptr);
 			if (parseContext.GetCurrent().type == ScriptTokenType::Equal) {
 				parseContext.FetchNext();
-				initialValue = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
+				initialValue = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON | SEQUENCE_END_FLAG_COMMA);
+				hasExpression = true;
 			}
 
 			//ここまでで決定
@@ -1537,16 +1546,41 @@ namespace sakura {
 			def.range.SetRange(beginToken.sourceRange, parseContext.GetPrev().sourceRange);
 			defs.push_back(def);
 
-			//もしカンマがあれば連続宣言なのでループする
-			if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
-				parseContext.FetchNext();
-				continue;
+			if (hasExpression) {
+				if (parseContext.GetPrev().type == ScriptTokenType::Comma) {
+					//もしカンマがあれば連続宣言なのでループする
+					continue;
+				}
+				else if (parseContext.GetPrev().type == ScriptTokenType::Semicolon) {
+					//セミコロンなら終わり
+					break;
+				}
+				else {
+					//セミコロンでもカンマでもないとエラー。ここは来ないはず
+					assert(false);
+					return false;
+				}
 			}
-
-			//カンマ終了してなければ構文は終わり
-			break;
+			else {
+				if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
+					//もしカンマがあれば連続宣言なのでループする
+					parseContext.FetchNext();
+					continue;
+				}
+				else if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
+					//セミコロンなら終わり
+					parseContext.FetchNext();
+					break;
+				}
+				else {
+					//セミコロンでもカンマでもないとエラー。ここは来ないはず
+					parseContext.Error(ERROR_AST_039, parseContext.GetCurrent());
+					return false;
+				}
+			}
 		}
 
+		
 		return true;
 	}
 

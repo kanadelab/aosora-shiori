@@ -15,6 +15,14 @@ namespace sakura {
 	//ASTふりわけ
 	ScriptValueRef ScriptExecutor::ExecuteInternal(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 
+		//無限ループ対策の実行ステップ制限
+		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
+			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
+				executeContext.ThrowRuntimeError<RuntimeError>(node, "1リクエスト内の実行処理数が制限を超えました。無限ループになってませんか？")->SetCanCatch(false);
+				return ScriptValue::Null;
+			}
+		}
+
 		//ノードタイプごとに実行
 		switch (node.GetType()) {
 		case ASTNodeType::CodeBlock:
@@ -967,38 +975,46 @@ namespace sakura {
 		if (executeContext.GetStack().IsThrew()) {
 			
 			ObjectRef err = executeContext.GetStack().GetThrewError();
-			const ASTNodeBase* catchBlock = nullptr;
-
-			//catchブロックを選択する
-			for (size_t i = 0; i < node.GetCatchBlocks().size(); i++) {
-				bool isMatch = false;
-				const auto& cb = node.GetCatchBlocks()[i];
-				
-				if (cb.catchClasses.size() > 0) {
-					//catchブロックに一致するクラスがあるか調べる
-					for (const std::string& className : cb.catchClasses) {
-
-						//クラスが合うか
-						uint32_t classId = executeContext.GetInterpreter().GetClassId(className);
-						if (executeContext.GetInterpreter().InstanceIs(err, classId)) {
-							isMatch = true;
-							break;
-						}
-					}
-				}
-				else {
-					//クラス指定のないcatchブロックなので絶対ヒットする
-					isMatch = true;
-				}
-
-				if (isMatch) {
-					catchBlock = node.GetCatchBlocks()[i].catchBlock.get();
-					break;
-				}
+			RuntimeError* errObj = executeContext.GetInterpreter().InstanceAs<RuntimeError>(err);
+			bool canCatch = true;
+			if (errObj != nullptr) {
+				canCatch = errObj->CanCatch();
 			}
 
-			//エラーを退避
-			executeContext.GetStack().PendingLeaveMode();
+			const ASTNodeBase* catchBlock = nullptr;
+
+			if (canCatch) {
+				//catchブロックを選択する
+				for (size_t i = 0; i < node.GetCatchBlocks().size(); i++) {
+					bool isMatch = false;
+					const auto& cb = node.GetCatchBlocks()[i];
+
+					if (cb.catchClasses.size() > 0) {
+						//catchブロックに一致するクラスがあるか調べる
+						for (const std::string& className : cb.catchClasses) {
+
+							//クラスが合うか
+							uint32_t classId = executeContext.GetInterpreter().GetClassId(className);
+							if (executeContext.GetInterpreter().InstanceIs(err, classId)) {
+								isMatch = true;
+								break;
+							}
+						}
+					}
+					else {
+						//クラス指定のないcatchブロックなので絶対ヒットする
+						isMatch = true;
+					}
+
+					if (isMatch) {
+						catchBlock = node.GetCatchBlocks()[i].catchBlock.get();
+						break;
+					}
+				}
+
+				//エラーを退避
+				executeContext.GetStack().PendingLeaveMode();
+			}
 
 			//catchブロックが選択されていれば実行する
 			if (catchBlock != nullptr) {
@@ -1200,6 +1216,8 @@ namespace sakura {
 	}
 
 	ScriptInterpreter::ScriptInterpreter() :
+		scriptSteps(0),
+		limitScriptSteps(100 * 10000),	//100万ステップでエラーにしておく
 		scriptClassCount(0)
 	{
 		//組み込みのクラスを登録

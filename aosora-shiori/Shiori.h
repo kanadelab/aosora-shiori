@@ -16,7 +16,6 @@ namespace sakura {
 		ScriptInterpreter interpreter;
 		std::map<std::string, std::string> shioriInfo;
 		bool isBooted;
-		//std::vector<std::shared_ptr<const sakura::ASTParseResult>> parsedFileList;
 
 		std::vector<ScriptParseError> scriptLoadErrors;
 		std::string bootingExecuteErrorLog;
