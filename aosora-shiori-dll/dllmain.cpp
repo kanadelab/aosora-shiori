@@ -273,6 +273,7 @@ extern "C" long aosora_load(char *path, long len) {
 		if (shioriInstance.count(i) == 0) {
 			shioriInstance[i] = std::make_unique<sakura::Shiori>();
 			shioriInstance[i]->Load(path);
+			id = i;
 			break;
 		}
 	}
