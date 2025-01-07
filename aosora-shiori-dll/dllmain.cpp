@@ -329,12 +329,17 @@ extern "C" char *aosora_request(long id, char *path, long *len) {
 	shioriRequest.SetIsGet(isGet);
 
 	ParseRequest(shioriRequest, readStream);
+	// とりあえずSHIORIだけ対応
+	shioriRequest.SetIsSaori(false);
 
 	//Shiori側に送る
 	sakura::ShioriResponse shioriResponse;
 	shioriInstance[id]->Request(shioriRequest, shioriResponse);
 
-	std::string response = CreateResponse(shioriResponse);
+	// とりあえずSHIORIだけ対応
+	std::string response = CreateResponse(shioriResponse,
+			shioriRequest.GetEventId() == "OnClose",
+			false, "Charset: UTF-8");
 
 	*len = response.length();
 	return strdup(response.c_str());
