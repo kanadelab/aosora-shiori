@@ -121,7 +121,9 @@ namespace sakura {
 	public:
 		ASTParseContext(const std::list<ScriptToken>& tokenList, ASTParseResult& parseResult) :
 			result(parseResult),
-			tokens(tokenList)
+			tokens(tokenList),
+			hasError(false),
+			errorToken(nullptr)
 		{
 			//最初のアイテムをとる
 			current = tokens.cbegin();
