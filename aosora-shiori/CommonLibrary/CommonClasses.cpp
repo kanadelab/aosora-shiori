@@ -4,6 +4,7 @@
 #include "Interpreter/Interpreter.h"
 #include "Misc/Json.h"
 #include "Misc/Utility.h"
+#include "Misc/SaoriLoader.h"
 
 namespace sakura {
 
@@ -452,4 +453,85 @@ namespace sakura {
 		ScriptValueRef item = sobj->At(result);
 		response.SetReturnValue(item != nullptr ? item : ScriptValue::Null);
 	}
+
+
+	void SaoriManager::Load(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() > 0) {
+			//指定パスでSAORIをロードして、SAORIオブジェクトを返す
+			std::string saoriRelativePath = request.GetArgument(0)->ToString();
+
+			//ロード済みのSAORIをチェックする、ロード済みならそのまま返す
+			auto staticStore = request.GetContext().GetInterpreter().StaticStore<SaoriManager>();
+			auto loadedSaori = staticStore->RawGet(saoriRelativePath);
+			if (loadedSaori != nullptr) {
+				response.SetReturnValue(loadedSaori);
+				return;
+			}
+
+			std::string saoriPath = request.GetContext().GetInterpreter().GetWorkingDirectory() + saoriRelativePath;
+
+			//SAORIのロードを試みる
+			auto loadResult = LoadSaori(saoriPath);
+			if (loadResult.type == SaoriResultType::SUCCESS) {
+				//ロード成功
+				auto loadObj = ScriptValue::Make(request.GetContext().GetInterpreter().CreateNativeObject<SaoriModule>(loadResult.saori));
+				staticStore->RawSet(saoriRelativePath, loadObj);
+				response.SetReturnValue(loadObj);
+			}
+			else {
+				//ロード失敗
+				response.SetThrewError(request.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(
+					SaoriResultTypeToString(loadResult.type)
+				));
+			}
+		}
+	}
+
+	ScriptValueRef SaoriManager::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "Load") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&SaoriManager::Load));
+		}
+		return nullptr;
+	}
+
+	void SaoriModule::Request(const FunctionRequest& request, FunctionResponse& response) {
+		SaoriModule* self = request.GetContext().GetInterpreter().InstanceAs<SaoriModule>(request.GetThisValue());
+
+		//呼出引数を列挙
+		SaoriRequestResult saoriResponse;
+		std::vector<std::string> inputArgs;
+		for (const auto& a : request.GetArgumentCollection()) {
+			inputArgs.push_back(a->ToString());
+		}
+
+		//呼出
+		RequestSaori(self->loadedModule, inputArgs, saoriResponse);
+
+		//返答オブジェクトを作成
+		Reference<ScriptObject> responseObj = request.GetContext().GetInterpreter().CreateObject();
+		Reference<ScriptArray> responseValues = request.GetContext().GetInterpreter().CreateNativeObject<ScriptArray>();
+		responseObj->RawSet("Result", ScriptValue::Make(saoriResponse.result));
+
+		if (saoriResponse.type != SaoriResultType::SUCCESS) {
+			responseObj->RawSet("Error", ScriptValue::Make(SaoriResultTypeToString(saoriResponse.type)));
+		}
+
+		for (size_t i = 1; i < saoriResponse.values.size(); i++) {
+			responseValues->Add(ScriptValue::Make(saoriResponse.values[i]));
+		}
+		responseObj->RawSet("Values", ScriptValue::Make(responseValues));
+		response.SetReturnValue(ScriptValue::Make(responseObj));
+	}
+
+	ScriptValueRef SaoriModule::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "Request") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&SaoriModule::Request, self));
+		}
+		return nullptr;
+	}
+
+	SaoriModule::~SaoriModule() {
+		UnloadSaori(loadedModule);
+	}
+
 }

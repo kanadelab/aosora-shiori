@@ -174,6 +174,7 @@
     <ClInclude Include="Interpreter\ScriptExecutor.h" />
     <ClInclude Include="Interpreter\ScriptVariable.h" />
     <ClInclude Include="Misc\Json.h" />
+    <ClInclude Include="Misc\SaoriLoader.h" />
     <ClInclude Include="Misc\Utility.h" />
     <ClInclude Include="Shiori.h" />
     <ClInclude Include="Tokens\TokenParser.h" />
@@ -189,6 +190,7 @@
     <ClCompile Include="Interpreter\ScriptExecutor.cpp" />
     <ClCompile Include="Interpreter\ScriptVariable.cpp" />
     <ClCompile Include="Misc\Json.cpp" />
+    <ClCompile Include="Misc\SaoriLoader.cpp" />
     <ClCompile Include="Misc\Utility.cpp" />
     <ClCompile Include="Shiori.cpp" />
     <ClCompile Include="Tokens\TokenParser.cpp" />

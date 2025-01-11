@@ -35,6 +35,9 @@
     <ClCompile Include="CoreLibrary\PrimitiveMethod.cpp">
       <Filter>CoreLibrary</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\SaoriLoader.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -85,6 +88,9 @@
     </ClInclude>
     <ClInclude Include="CoreLibrary\PrimitiveMethod.h">
       <Filter>CoreLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\SaoriLoader.h">
+      <Filter>Misc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

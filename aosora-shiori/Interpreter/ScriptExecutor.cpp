@@ -1236,6 +1236,8 @@ namespace sakura {
 		ImportClass(NativeClass::Make<InstancedOverloadFunctionList>("InstancedOverloadFunctionList"));
 		ImportClass(NativeClass::Make<TalkTimer>("TalkTimer"));
 		ImportClass(NativeClass::Make<Random>("Random"));
+		ImportClass(NativeClass::Make<SaoriManager>("Saori"));
+		ImportClass(NativeClass::Make<SaoriModule>("SaoriModule"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {

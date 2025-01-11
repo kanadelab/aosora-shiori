@@ -5,6 +5,8 @@
 
 namespace sakura {
 
+	struct LoadedSaoriModule;
+
 	//日付と時刻
 	class Time : public Object<Time> {
 
@@ -318,5 +320,31 @@ namespace sakura {
 		static void StaticInit(ScriptInterpreter& interpreter);
 		static void StaticSet(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
+
+	//Saoriマネージャ
+	class SaoriManager : public Object<SaoriManager> {
+
+	public:
+		static void Load(const FunctionRequest& request, FunctionResponse& response);
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
+
+	//Saoriモジュール
+	class SaoriModule : public Object<SaoriModule> {
+	private:
+		LoadedSaoriModule* loadedModule;
+
+	public:
+		SaoriModule(LoadedSaoriModule* saoriModule) :
+			loadedModule(saoriModule)
+		{}
+
+		virtual ~SaoriModule();
+
+		static void Request(const FunctionRequest& request, FunctionResponse& response);
+
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 	};
 }
