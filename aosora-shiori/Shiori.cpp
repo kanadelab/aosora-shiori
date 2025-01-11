@@ -2,7 +2,6 @@
 #include <cstdio>
 #include "Shiori.h"
 
-
 namespace sakura {
 	
 	ScriptParseErrorData ERROR_SHIORI_001 = { "S001", "設定ファイル ghost.asproj が開けませんでした。" };
@@ -29,7 +28,11 @@ namespace sakura {
 		interpreter.SetWorkingDirectory(path);
 
 		std::string scriptProjPath = path;
+#if defined(WIN32) || defined(_WIN32)
 		scriptProjPath.append("\\ghost.asproj");
+#else
+		scriptProjPath.append("ghost.asproj");
+#endif // WIN32 or _WIN32
 
 		//設定ファイルをロードする
 		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
@@ -41,6 +44,10 @@ namespace sakura {
 		std::vector<std::string> files;
 		std::string line;
 		while (std::getline(settingsStream, line)) {
+#if !(defined(WIN32) || defined(_WIN32))
+            // CRLFのCRが残るので削除。
+			Replace(line, "\r", "");
+#endif // not(WIN32 or _WIN32)
 
 			//空白行のスキップ
 			std::string emptyTest = line;
@@ -161,7 +168,11 @@ namespace sakura {
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptFile(const std::string& path) {
+#if defined(WIN32) || defined(_WIN32)
 		std::string fullPath = ghostMasterPath + "\\" + path;
+#else
+		std::string fullPath = ghostMasterPath + path;
+#endif // WIN32 or _WIN32
 		std::ifstream loadStream(fullPath, std::ios_base::in);
 
 		if (loadStream.fail()) {
