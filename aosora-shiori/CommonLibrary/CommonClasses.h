@@ -85,11 +85,13 @@ namespace sakura {
 		std::vector<std::string> references;
 		std::set<std::string> statuses;
 		std::map<std::string, std::string> rawMap;
+		SecurityLevel securityLevel;
 		bool isGet;
 		bool isSaori;
 
 	public:
 		ShioriRequest(const std::string& id) :
+			securityLevel(SecurityLevel::LOCAL),
 			eventId(id),
 			isGet(true)
 		{}
@@ -105,6 +107,14 @@ namespace sakura {
 
 		const std::string GetEventId() const {
 			return eventId;
+		}
+
+		void SetSecurityLevel(SecurityLevel level) {
+			securityLevel = level;
+		}
+
+		SecurityLevel GetSecurityLevel() const {
+			return securityLevel;
 		}
 
 		void SetIsGet(bool get) {

@@ -30,7 +30,6 @@ namespace {
 
 	void ParseRequest(sakura::ShioriRequest& shioriRequest, std::istringstream& readStream) {
 		std::string line;
-		std::string charset;
 		bool isEmptyLine = false;
 
 		//必要なものを取り出して処理
@@ -60,15 +59,12 @@ namespace {
 				std::string key = line.substr(0, colonIndex);
 				std::string value = line.substr(colonIndex + 2);
 
-				//基本のマッピング二追加
+				//基本のマッピングに追加
 				shioriRequest.AddRawData(key, value);
 
 				//内容を確認
 				if (key == "ID") {
 					shioriRequest.SetEventId(value);
-				}
-				else if (key == "Charset") {
-					charset = value;
 				}
 				else if (key.starts_with("Reference")) {
 					size_t index;
@@ -91,6 +87,16 @@ namespace {
 					sakura::SplitString(value, statusList, ',');
 					for (std::string& item : statusList) {
 						shioriRequest.AddStatus(item);
+					}
+				}
+				else if (key == "SecurityLevel") {
+					std::string	lowerValue = value;
+					sakura::ToLower(lowerValue);
+					if (lowerValue == "local") {
+						shioriRequest.SetSecurityLevel(sakura::SecurityLevel::LOCAL);
+					}
+					else {
+						shioriRequest.SetSecurityLevel(sakura::SecurityLevel::OTHER);
 					}
 				}
 			}

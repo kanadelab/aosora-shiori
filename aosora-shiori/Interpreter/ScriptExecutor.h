@@ -84,6 +84,7 @@ namespace sakura {
 		size_t scriptSteps;
 		size_t limitScriptSteps;
 		uint32_t scriptClassCount;
+		SecurityLevel securityLevel;
 
 		//システムレジストリ(書き込み禁止)
 		std::map<std::string, ScriptValueRef> systemRegistry;
@@ -136,7 +137,16 @@ namespace sakura {
 			return limitScriptSteps;
 		}
 
-		//ワーキングディレクトリ
+		//セキュリティレベル
+		void SetSecurityLevel(SecurityLevel level) {
+			securityLevel = level;
+		}
+
+		SecurityLevel GetSecurityLevel() const {
+			return securityLevel;
+		}
+
+		//ワーキングディレクトリ(パス区切り文字終端)
 		void SetWorkingDirectory(const std::string& dir) {
 			workingDirectory = dir;
 		}

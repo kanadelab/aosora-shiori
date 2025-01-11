@@ -205,6 +205,12 @@ namespace sakura{
 		return cIndex;
 	}
 
+	//SecurityLevelヘッダ
+	enum class SecurityLevel {
+		OTHER,	//External
+		LOCAL
+	};
+
 	//charsetのパース
 	enum class Charset {
 		UNKNOWN,
@@ -237,13 +243,11 @@ namespace sakura{
 		std::string_view version;				//1.0
 		std::string_view statusDescription;		//OK
 		size_t statusCode;						//200
-		bool isResponse;						//レスポンスならステータスコードがつく
 	};
 
-	inline ProtocolStatus ProtocolParseStatus(const std::string_view& data, bool isResponse) {
+	inline ProtocolStatus ProtocolParseStatus(const std::string_view& data) {
 		ProtocolStatus result;
 		result.type = ProtocolType::UNKNOWN;
-		result.isResponse = isResponse;
 		result.statusCode = 0;
 
 		const size_t crlfPos = data.find("\r\n");
@@ -278,31 +282,24 @@ namespace sakura{
 		result.version = line.substr(slashPos + 1, spacePos - slashPos - 1);
 		std::string_view status = line.substr(spacePos + 1);
 
-		if (isResponse) {
-			//レスポンスならステータスコードと説明を分離
-			const size_t spacePos2 = status.find(' ');
-			if (spacePos2 == std::string::npos) {
-				//ステータスコードがないのでおかしい
-				return result;
-			}
-
-			std::string_view statusCodeStr = status.substr(0, spacePos2);
-			result.statusDescription = status.substr(spacePos2 + 1);
-
-			if (!StringToIndex(std::string(statusCodeStr), result.statusCode)) {
-				//ステータスコード位置が数値ではない
-				return result;
-			}
-
-			//ここまでくれば正常
-			result.type = protocolType;
+		//レスポンスならステータスコードと説明を分離
+		const size_t spacePos2 = status.find(' ');
+		if (spacePos2 == std::string::npos) {
+			//ステータスコードがないのでおかしい
 			return result;
 		}
-		else {
-			result.type = protocolType;
-			result.statusDescription = status;
+
+		std::string_view statusCodeStr = status.substr(0, spacePos2);
+		result.statusDescription = status.substr(spacePos2 + 1);
+
+		if (!StringToIndex(std::string(statusCodeStr), result.statusCode)) {
+			//ステータスコード位置が数値ではない
 			return result;
 		}
+
+		//ここまでくれば正常
+		result.type = protocolType;
+		return result;
 	}
 
 

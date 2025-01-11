@@ -49,7 +49,7 @@ namespace sakura {
 		
 		//get version
 		{
-			std::string request = "GET Version SAORI/1.0\r\nSender: Aosora\r\nCharset: UTF-8\r\n\r\n";
+			std::string request = "GET Version SAORI/1.0\r\nSecurityLevel: Local\r\nSender: Aosora\r\nCharset: UTF-8\r\n\r\n";
 			HGLOBAL requestData = GlobalAlloc(GMEM_FIXED, request.size());
 			memcpy(requestData, request.c_str(), request.size());
 			long requestSize = request.size();
@@ -59,7 +59,7 @@ namespace sakura {
 			std::string_view response_view(reinterpret_cast<const char*>(resultData), requestSize);
 
 			//ステータスを解析
-			auto status = ProtocolParseStatus(response_view, true);
+			auto status = ProtocolParseStatus(response_view);
 			if (status.type != ProtocolType::SAORI || status.version != "1.0") {
 				loadResult.type = SaoriResultType::PROTOCOL_ERROR;
 				GlobalFree(resultData);
@@ -100,7 +100,7 @@ namespace sakura {
 		delete saori;
 	}
 
-	void RequestSaori(const LoadedSaoriModule* saori, const std::vector<std::string>& inputArgs, SaoriRequestResult& result) {
+	void RequestSaori(const LoadedSaoriModule* saori, SecurityLevel securityLevel, const std::vector<std::string>& inputArgs, SaoriRequestResult& result) {
 		
 		//リクエストを生成
 		std::string request("EXECUTE SAORI/1.0\r\n");
@@ -131,8 +131,18 @@ namespace sakura {
 			break;
 		}
 
-		//TODO: セキュリティレベル対応
-		request.append("SecurityLevel: Local\r\n");
+		request.append("SecurityLevel: ");
+		switch (securityLevel) {
+
+		case SecurityLevel::LOCAL:
+			request.append("Local");
+			break;
+			
+		case SecurityLevel::OTHER:
+			request.append("External");
+			break;
+		}
+		request.append("\r\n");
 		request.append("Sender: Aosora\r\n\r\n");
 
 		if (saori->charset == Charset::SHIFT_JIS) {
@@ -147,7 +157,7 @@ namespace sakura {
 		std::string_view responseView(reinterpret_cast<const char*>(resultData), requestSize);
 
 		//レスポンスをチェック
-		auto status = ProtocolParseStatus(responseView, true);
+		auto status = ProtocolParseStatus(responseView);
 		if (status.type != ProtocolType::SAORI || status.version != "1.0") {
 			result.type = SaoriResultType::PROTOCOL_ERROR;
 			GlobalFree(resultData);

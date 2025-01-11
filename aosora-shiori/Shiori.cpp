@@ -206,6 +206,9 @@ namespace sakura {
 		//ステップ数制限をリセット
 		interpreter.ResetScriptStep();
 
+		//セキュリティレベルを設定
+		interpreter.SetSecurityLevel(request.GetSecurityLevel());
+
 		//固定値を返すべきリクエストの場合はそこで終える
 		auto infoRecord = shioriInfo.find(request.GetEventId());
 		if (infoRecord != shioriInfo.end()) {

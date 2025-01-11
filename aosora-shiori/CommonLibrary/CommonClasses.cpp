@@ -505,7 +505,7 @@ namespace sakura {
 		}
 
 		//呼出
-		RequestSaori(self->loadedModule, inputArgs, saoriResponse);
+		RequestSaori(self->loadedModule, request.GetContext().GetInterpreter().GetSecurityLevel(), inputArgs, saoriResponse);
 
 		//返答オブジェクトを作成
 		Reference<ScriptObject> responseObj = request.GetContext().GetInterpreter().CreateObject();

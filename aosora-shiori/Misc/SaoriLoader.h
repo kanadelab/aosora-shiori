@@ -49,7 +49,7 @@ namespace sakura {
 
 	//SAORI対応
 	SaoriModuleLoadResult LoadSaori(const std::string& saoriPath);
-	void RequestSaori(const LoadedSaoriModule* saori, const std::vector<std::string>& inputArgs, SaoriRequestResult& result);
+	void RequestSaori(const LoadedSaoriModule* saori, SecurityLevel securityLevel, const std::vector<std::string>& inputArgs, SaoriRequestResult& result);
 	void UnloadSaori(LoadedSaoriModule* saori);
 	const char* SaoriResultTypeToString(SaoriResultType type);
 }
