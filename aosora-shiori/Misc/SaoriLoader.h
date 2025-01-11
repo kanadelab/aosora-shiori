@@ -1,9 +1,12 @@
 ﻿#pragma once
+
 #include <windows.h>
 #include <string>
 #include <vector>
+#include "Base.h"
 #include "Misc/Utility.h"
 
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 namespace sakura {
 	using LoadFunc = BOOL(*)(HGLOBAL, long);
 	using UnloadFunc = BOOL(*)();
@@ -53,3 +56,10 @@ namespace sakura {
 	void UnloadSaori(LoadedSaoriModule* saori);
 	const char* SaoriResultTypeToString(SaoriResultType type);
 }
+#else
+namespace sakura {
+	//ダミー
+	struct LoadedSaoriModule {
+	};
+}
+#endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)

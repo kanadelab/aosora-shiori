@@ -456,6 +456,7 @@ namespace sakura {
 
 
 	void SaoriManager::Load(const FunctionRequest& request, FunctionResponse& response) {
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 		if (request.GetArgumentCount() > 0) {
 			//指定パスでSAORIをロードして、SAORIオブジェクトを返す
 			std::string saoriRelativePath = request.GetArgument(0)->ToString();
@@ -485,6 +486,11 @@ namespace sakura {
 				));
 			}
 		}
+#else
+		response.SetThrewError(request.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(
+			"SAORIに対応していない環境です"
+		));
+#endif	//#if defined(AOSORA_ENABLE_SAORI_LOADER)
 	}
 
 	ScriptValueRef SaoriManager::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
@@ -495,6 +501,7 @@ namespace sakura {
 	}
 
 	void SaoriModule::Request(const FunctionRequest& request, FunctionResponse& response) {
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 		SaoriModule* self = request.GetContext().GetInterpreter().InstanceAs<SaoriModule>(request.GetThisValue());
 
 		//呼出引数を列挙
@@ -521,6 +528,7 @@ namespace sakura {
 		}
 		responseObj->RawSet("Values", ScriptValue::Make(responseValues));
 		response.SetReturnValue(ScriptValue::Make(responseObj));
+#endif	// #if defined(AOSORA_ENABLE_SAORI_LOADER)
 	}
 
 	ScriptValueRef SaoriModule::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
@@ -531,7 +539,9 @@ namespace sakura {
 	}
 
 	SaoriModule::~SaoriModule() {
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 		UnloadSaori(loadedModule);
+#endif // #if defined(AOSORA_ENABLE_SAORI_LOADER)
 	}
 
 }

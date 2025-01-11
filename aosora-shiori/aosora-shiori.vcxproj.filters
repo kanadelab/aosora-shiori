@@ -92,6 +92,7 @@
     <ClInclude Include="Misc\SaoriLoader.h">
       <Filter>Misc</Filter>
     </ClInclude>
+    <ClInclude Include="Base.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">

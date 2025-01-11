@@ -3,9 +3,11 @@
 #include <sstream>
 #include <assert.h>
 
+#include "Base.h"
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
 
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 namespace sakura {
 
 	SaoriModuleLoadResult LoadSaori(const std::string& saoriPath) {
@@ -270,3 +272,4 @@ namespace sakura {
 		}
 	}
 }
+#endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)

@@ -165,6 +165,7 @@
     <ClInclude Include="AST\ASTNodeBase.h" />
     <ClInclude Include="AST\ASTNodes.h" />
     <ClInclude Include="AST\ASTParser.h" />
+    <ClInclude Include="Base.h" />
     <ClInclude Include="CommonLibrary\CommonClasses.h" />
     <ClInclude Include="CoreLibrary\CoreClasses.h" />
     <ClInclude Include="CoreLibrary\CoreLibrary.h" />
