@@ -7,6 +7,8 @@
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
 
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
+
 #if !defined(AOSORA_REQUIRED_WIN32)
 
 #include <cstring>
@@ -401,3 +403,5 @@ namespace sakura {
 		}
 	}
 }
+
+#endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)

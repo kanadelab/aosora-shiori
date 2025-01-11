@@ -10,6 +10,7 @@ using HMODULE = void *;
 #include "Base.h"
 #include "Misc/Utility.h"
 
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
 namespace sakura {
 #if defined(AOSORA_REQUIRED_WIN32)
 	using LoadFunc = BOOL(*)(HGLOBAL, long);
@@ -68,3 +69,10 @@ namespace sakura {
 	void UnloadSaori(LoadedSaoriModule* saori);
 	const char* SaoriResultTypeToString(SaoriResultType type);
 }
+#else
+namespace sakura {
+	//ダミー
+	struct LoadedSaoriModule {
+	};
+}
+#endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)
