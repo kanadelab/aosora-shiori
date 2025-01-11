@@ -9,6 +9,7 @@ namespace sakura {
 	const std::string TOKEN_SPACE = " ";
 	const std::string TOKEN_TAB = "\t";
 	const std::string TOKEN_STRING = "\"";
+	const std::string TOKEN_RAW_STRING = "'";
 
 	const std::string TOKEN_OPERATOR_PLUS = "+";
 	const std::string TOKEN_OPERATOR_MINUS = "-";
@@ -166,6 +167,7 @@ namespace sakura {
 	const uint32_t BLOCK_END_FLAG_BRACKET = 1u << 1;				// )
 	const uint32_t BLOCK_END_FLAG_NEWLINE = 1u << 2;				// 改行
 	const uint32_t BLOCK_END_FLAG_DOUBLE_QUATATION = 1u << 3;		// "
+	const uint32_t BLOCK_END_FLAG_SINGLE_QUATATION = 1u << 4;		// '
 
 	//トークン解析エラー
 	const ScriptParseErrorData ERROR_TOKEN_001 = { "T001", "括弧 { } の対応関係が正しくありません。", "対応する開き括弧のない中括弧があったため、読み込みに失敗しました。" };
@@ -494,7 +496,23 @@ namespace sakura {
 
 					//文字列解析に飛ばす
 					parseContext.PushToken(0, ScriptTokenType::StringBegin);
-					ParseStringLiteral(parseContext, BLOCK_END_FLAG_DOUBLE_QUATATION);
+					ParseStringLiteral(parseContext, BLOCK_END_FLAG_DOUBLE_QUATATION, false);
+					if (parseContext.IsEnd()) {
+						return;
+					}
+					parseContext.PushToken(0, ScriptTokenType::StringEnd);
+					continue;
+				}
+			}
+
+			//raw文字列
+			{
+				if (parseContext.GetCurrent().starts_with(TOKEN_RAW_STRING)) {
+					parseContext.SeekChar(TOKEN_RAW_STRING.size());
+
+					//文字列解析に飛ばす
+					parseContext.PushToken(0, ScriptTokenType::StringBegin);
+					ParseStringLiteral(parseContext, BLOCK_END_FLAG_SINGLE_QUATATION, true);
 					if (parseContext.IsEnd()) {
 						return;
 					}
@@ -666,7 +684,7 @@ namespace sakura {
 
 					//残りは行末までトーク本文扱い
 					parseContext.PushToken(0, ScriptTokenType::SpeakBegin);
-					ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE);
+					ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE, false);
 					if (parseContext.IsEnd()) {
 						return;
 					}
@@ -685,7 +703,7 @@ namespace sakura {
 			{
 				//それ以外は行末までトーク本文扱いする
 				parseContext.PushToken(0, ScriptTokenType::SpeakBegin);
-				ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE);
+				ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE, false);
 				if (parseContext.IsEnd()) {
 					return;
 				}
@@ -696,7 +714,7 @@ namespace sakura {
 	}
 
 	//文字列のパース
-	void TokensParser::ParseStringLiteral(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags) {
+	void TokensParser::ParseStringLiteral(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags, bool isRawString) {
 		//とりあえず改行とかも含めて次の " までを文字列という扱いにしてみる
 
 		//トークン0サイズで開始
@@ -720,6 +738,16 @@ namespace sakura {
 				//とりこみ
 				parseContext.AppendLastToken(TOKEN_STRING.size());
 			}
+			else if (parseContext.GetCurrent().starts_with(TOKEN_RAW_STRING)) {
+				if (CheckFlags(blockEndFlags, BLOCK_END_FLAG_SINGLE_QUATATION)) {
+					//終端
+					parseContext.SeekChar(TOKEN_RAW_STRING.size());
+					return;
+				}
+
+				//とりこみ
+				parseContext.AppendLastToken(TOKEN_RAW_STRING.size());
+			}
 			else if (parseContext.GetCurrent().starts_with(TOKEN_CRLF)) {
 
 				if (CheckFlags(blockEndFlags, BLOCK_END_FLAG_NEWLINE)) {
@@ -741,27 +769,35 @@ namespace sakura {
 				parseContext.AppendLastToken(parseContext.GetCurrent(), TOKEN_LF.size());
 				parseContext.IncrementLine(TOKEN_LF.size());
 			}
-			else if (parseContext.GetCurrent().starts_with(TOKEN_FORMAT_BEGIN)) {
-				// ${} のフォーマット処理。次の中括弧までを関数扱いで解析させる
-				parseContext.PushToken(TOKEN_FORMAT_BEGIN.size(), ScriptTokenType::ExpressionInString);
-				ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
-				if (parseContext.IsEnd()) {
-					return;
-				}
+			else if(!isRawString){
+				//raw文字列ではない場合、フォーマットが有効
 
-				//あたらしい文字列トークンを作成
-				isNewToken = true;
-			}
-			else if (parseContext.GetCurrent().starts_with(TOKEN_FUNCSCOPE_BEGIN)) {
-				// %{} の関数スコープ処理。次の中括弧まで関数扱いで解析
-				parseContext.PushToken(TOKEN_FUNCSCOPE_BEGIN.size(), ScriptTokenType::StatementInString);
-				ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
-				if (parseContext.IsEnd()) {
-					return;
-				}
+				if (parseContext.GetCurrent().starts_with(TOKEN_FORMAT_BEGIN)) {
+					// ${} のフォーマット処理。次の中括弧までを関数扱いで解析させる
+					parseContext.PushToken(TOKEN_FORMAT_BEGIN.size(), ScriptTokenType::ExpressionInString);
+					ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
+					if (parseContext.IsEnd()) {
+						return;
+					}
 
-				//あたらしい文字列トークンを作成
-				isNewToken = true;
+					//あたらしい文字列トークンを作成
+					isNewToken = true;
+				}
+				else if (parseContext.GetCurrent().starts_with(TOKEN_FUNCSCOPE_BEGIN)) {
+					// %{} の関数スコープ処理。次の中括弧まで関数扱いで解析
+					parseContext.PushToken(TOKEN_FUNCSCOPE_BEGIN.size(), ScriptTokenType::StatementInString);
+					ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BLOCK_BRACKET);
+					if (parseContext.IsEnd()) {
+						return;
+					}
+
+					//あたらしい文字列トークンを作成
+					isNewToken = true;
+				}
+				else {
+					//それ以外
+					parseContext.AppendLastToken(1);
+				}
 			}
 			else {
 				//それ以外

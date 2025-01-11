@@ -199,7 +199,7 @@ namespace sakura {
 	private:
 		static void ParseFunctionBlock(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags);
 		static void ParseTalkBlock(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags);
-		static void ParseStringLiteral(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags);
+		static void ParseStringLiteral(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags, bool isRawString);
 
 	public:
 		static std::shared_ptr<const TokensParseResult> Parse(const std::string& document, const std::string& filePath);
