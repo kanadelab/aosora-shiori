@@ -196,22 +196,25 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	std::string requestStr(ptr);
 
 	//文字コードコンバート
-	bool isShiftJis = false;
+	auto charset = sakura::ProtocolParseCharset(std::string_view(requestStr));
 	std::string charsetHeader = "Charset: UTF-8";
-	if (requestStr.find("Charset: Shift_JIS") != std::string::npos) {
-		isShiftJis = true;
-		charsetHeader = "Charset: Shift_JIS";
 
+	if (charset == sakura::Charset::UNKNOWN) {
+		return CreateResponseMemory(BAD_REQUEST, len);
+	}
+	else if (charset == sakura::Charset::SHIFT_JIS) {
 		//コンバート
 		requestStr = sakura::SjisToUtf8(requestStr);
+		charsetHeader = "Charset: Shift_JIS";
 	}
 
-	if (requestStr.starts_with("GET Version SHIORI")) {
+	//GET Versionへの対応
+	if (requestStr.starts_with("GET Version SHIORI/")) {
 		//GET Versionが来たら固定の返答をする
 		std::string response = "SHIORI/3.0 200 OK\r\n" + charsetHeader + "\r\n\r\n";
 		return CreateResponseMemory(response, len);
 	}
-	else if (requestStr.starts_with("GET Version SAORI")) {
+	else if (requestStr.starts_with("GET Version SAORI/")) {
 		//SAORIとして返す
 		std::string response = "SAORI/1.0 200 OK\r\n" + charsetHeader + "\r\n\r\n";
 		return CreateResponseMemory(response, len);
@@ -228,14 +231,14 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 
 	bool isGet = false;
 	bool isSaori = false;
-	if (line.starts_with("GET SHIORI")) {
+	if (line.starts_with("GET SHIORI/")) {
 		isGet = true;
 	}
-	else if (line.starts_with("EXECUTE SAORI")) {
+	else if (line.starts_with("EXECUTE SAORI/")) {
 		isGet = true;
 		isSaori = true;
 	}
-	else if (line.starts_with("NOTIFY SHIORI")) {
+	else if (line.starts_with("NOTIFY SHIORI/")) {
 		//nop
 	}
 	else {
@@ -261,7 +264,7 @@ extern "C" __declspec(dllexport) HGLOBAL __cdecl request(HGLOBAL h, long* len) {
 	std::string response = CreateResponse(shioriResponse, isClose, isSaori, charsetHeader);
 
 	//文字コードコンバート
-	if (isShiftJis) {
+	if (charset == sakura::Charset::SHIFT_JIS) {
 		response = sakura::Utf8ToSjis(response);
 	}
 
