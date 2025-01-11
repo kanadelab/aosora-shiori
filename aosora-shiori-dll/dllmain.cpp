@@ -76,10 +76,12 @@ namespace {
 					//as SAORIとしての場合、１つずらしてReferenceにし、インデックス0はEventにする
 					size_t index;
 					if (sakura::StringToIndex(key.substr(8), index)) {
-						shioriRequest.SetEventId(value);
-					}
-					else {
-						shioriRequest.SetReference(static_cast<uint32_t>(index-1), value);
+						if (index == 0) {
+							shioriRequest.SetEventId(value);
+						}
+						else {
+							shioriRequest.SetReference(static_cast<uint32_t>(index - 1), value);
+						}
 					}
 				}
 				else if (key == "Status") {
