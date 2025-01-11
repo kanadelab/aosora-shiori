@@ -46,12 +46,12 @@ namespace sakura {
 		loadResult.type = SaoriResultType::SUCCESS;
 
 		LoadedSaoriModule loadedModule;
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.hModule = LoadLibraryEx(saoriPath.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
-        // SAORI名。
-        // dlsymで呼び出す関数名はSAORIの名前に依存する。
-        std::string name;
+		// SAORI名。
+		// dlsymで呼び出す関数名はSAORIの名前に依存する。
+		std::string name;
 		if (getenv("SAORI_FALLBACK_ALWAYS")) {
 			loadedModule.hModule = nullptr;
 		}
@@ -107,7 +107,7 @@ namespace sakura {
 				}
 			}
 		}
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 		if (loadedModule.hModule == nullptr)
 		{
 			//DLLロード失敗
@@ -115,12 +115,12 @@ namespace sakura {
 			return loadResult;
 		}
 
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.fRequest = reinterpret_cast<RequestFunc>(GetProcAddress(loadedModule.hModule, "request"));
 #else
 		std::string requestName = name + "_saori_request";
 		loadedModule.fRequest = reinterpret_cast<RequestFunc>(GetProcAddress(loadedModule.hModule, requestName.c_str()));
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 		if (loadedModule.fRequest == nullptr)
 		{
 			//request()がない
@@ -129,7 +129,7 @@ namespace sakura {
 			return loadResult;
 		}
 
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.fLoad = reinterpret_cast<LoadFunc>(GetProcAddress(loadedModule.hModule, "load"));
 		loadedModule.fUnload = reinterpret_cast<UnloadFunc>(GetProcAddress(loadedModule.hModule, "unload"));
 #else
@@ -151,11 +151,11 @@ namespace sakura {
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
 			}
-#if !(defined(WIN32) || defined(_WIN32))
+#if !(defined(AOSORA_REQUIRED_WIN32))
 			else {
 				loadedModule.id = ret;
 			}
-#endif // not(WIN32 or _WIN32)
+#endif // not(AOSORA_REQUIRED_WIN32)
 		}
 		
 		//get version
@@ -166,11 +166,11 @@ namespace sakura {
 			long requestSize = request.size();
 
 			//リクエスト呼出
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 			HGLOBAL resultData = loadedModule.fRequest(requestData, &requestSize);
 #else
 			HGLOBAL resultData = loadedModule.fRequest(loadedModule.id, requestData, &requestSize);
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 			std::string_view response_view(reinterpret_cast<const char*>(resultData), requestSize);
 
 			//ステータスを解析
@@ -179,11 +179,11 @@ namespace sakura {
 				loadResult.type = SaoriResultType::PROTOCOL_ERROR;
 				GlobalFree(resultData);
 				if (loadedModule.fUnload != nullptr) {
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 					loadedModule.fUnload();
 #else
 					loadedModule.fUnload(loadedModule.id);
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 				}
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
@@ -195,11 +195,11 @@ namespace sakura {
 				loadResult.type = SaoriResultType::UNKNOWN_CHARSET;
 				GlobalFree(resultData);
 				if (loadedModule.fUnload != nullptr) {
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 					loadedModule.fUnload();
 #else
 					loadedModule.fUnload(loadedModule.id);
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 				}
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
@@ -217,11 +217,11 @@ namespace sakura {
 	void UnloadSaori(LoadedSaoriModule* saori) {
 		assert(saori != nullptr);
 		if (saori->fUnload != nullptr) {
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 			saori->fUnload();
 #else
 			saori->fUnload(saori->id);
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 		}
 		FreeLibrary(saori->hModule);
 		delete saori;
@@ -280,11 +280,11 @@ namespace sakura {
 		long requestSize = request.size();
 		HGLOBAL requestData = GlobalAlloc(GMEM_FIXED, requestSize);
 		memcpy(requestData, request.c_str(), requestSize);
-#if defined(WIN32) || defined(_WIN32)
+#if defined(AOSORA_REQUIRED_WIN32)
 		HGLOBAL resultData = saori->fRequest(requestData, &requestSize);
 #else
 		HGLOBAL resultData = saori->fRequest(saori->id, requestData, &requestSize);
-#endif // WIN32 or _WIN32
+#endif // AOSORA_REQUIRED_WIN32
 		std::string_view responseView(reinterpret_cast<const char*>(resultData), requestSize);
 
 		//レスポンスをチェック
