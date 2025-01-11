@@ -338,6 +338,10 @@ namespace sakura {
 
 		}
 
+		static void StaticDestruct(ScriptInterpreter& interpreter) {
+
+		}
+
 		static uint32_t TypeId() {
 			return ObjectTypeIdGenerator::Id<T>();
 		}

@@ -29,7 +29,7 @@ namespace sakura {
 	}
 
 	//クラス情報
-	ClassData::ClassData(const std::shared_ptr<const ClassBase>& meta, uint32_t classTypeId, ScriptInterpreter& interpreter) :
+	ClassData::ClassData(const std::shared_ptr<const ClassBase>& meta, uint32_t classTypeId, ScriptInterpreter* interpreter) :
 		metadata(meta),
 		classId(classTypeId)
 	{
@@ -44,7 +44,7 @@ namespace sakura {
 				const ScriptFunctionDef& d = scriptMetadata.GetFunction(i);
 				for (const std::string& name : d.names) {
 					if (!methods.contains(name)) {
-						methods[name] = interpreter.CreateNativeObject<OverloadedFunctionList>();
+						methods[name] = interpreter->CreateNativeObject<OverloadedFunctionList>();
 					}
 					methods[name]->Add(d.func, d.condition);
 				}

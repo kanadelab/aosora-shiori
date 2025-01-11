@@ -116,6 +116,7 @@ namespace sakura {
 		}
 
 		ScriptInterpreter();
+		~ScriptInterpreter();
 
 		//ステップ数を計測、無限ループの矯正脱出用
 		uint64_t IncrementScriptStep() {

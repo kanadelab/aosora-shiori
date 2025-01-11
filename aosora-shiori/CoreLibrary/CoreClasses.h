@@ -176,7 +176,7 @@ namespace sakura {
 		std::set<uint32_t> upcastTypes;
 
 	public:
-		ClassData(const std::shared_ptr<const ClassBase>& meta, uint32_t classTypeId, ScriptInterpreter& interpreter);
+		ClassData(const std::shared_ptr<const ClassBase>& meta, uint32_t classTypeId, ScriptInterpreter* interpreter);
 
 		//メタデータ取得
 		const ClassBase& GetMetadata() const {

@@ -1238,6 +1238,15 @@ namespace sakura {
 		ImportClass(NativeClass::Make<Random>("Random"));
 	}
 
+	ScriptInterpreter::~ScriptInterpreter() {
+		for (auto item : classMap) {
+			//ネイティブクラスのstatic情報解放
+			if (!item.second->GetMetadata().IsScriptClass()) {
+				static_cast<const NativeClass&>(item.second->GetMetadata()).GetStaticDestructFunc()(*this);
+			}
+		}
+	}
+
 	//クラスのインポート
 	void ScriptInterpreter::ImportClasses(const std::map<std::string, ScriptClassRef>& classMap) {
 		for (auto item : classMap) {
@@ -1254,7 +1263,7 @@ namespace sakura {
 		}
 
 		//登録
-		auto classData = CreateNativeObject<ClassData>(cls, classId, *this);
+		auto classData = CreateNativeObject<ClassData>(cls, classId, this);
 		classMap[cls->GetName()] = classData;
 		classIdMap[classId] = classData;
 	}

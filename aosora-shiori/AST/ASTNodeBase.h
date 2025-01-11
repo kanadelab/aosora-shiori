@@ -26,6 +26,7 @@ namespace sakura {
 	using ScriptNativeStaticSetFunction = void(*)(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
 	using ScriptNativeStaticGetFunction = ScriptValueRef(*)(const std::string& key, ScriptExecuteContext& executeContext);
 	using ScriptNativeStaticInitFunction = void(*)(ScriptInterpreter& interpreter);
+	using ScriptNativeStaticDestructFunction = void(*)(ScriptInterpreter& interpreter);
 
 	//ASTノードの種類
 	enum class ASTNodeType {
@@ -286,6 +287,7 @@ namespace sakura {
 		ScriptNativeStaticGetFunction staticGetFunc;
 		ScriptNativeStaticSetFunction staticSetFunc;
 		ScriptNativeStaticInitFunction staticInitFunc;
+		ScriptNativeStaticDestructFunction staticDestructFunc;
 
 	public:
 		template<typename T>
@@ -295,6 +297,7 @@ namespace sakura {
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
 			result->staticInitFunc = &T::StaticInit;
+			result->staticDestructFunc = &T::StaticDestruct;
 			return result;
 		}
 
@@ -306,6 +309,7 @@ namespace sakura {
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
 			result->staticInitFunc = &T::StaticInit;
+			result->staticDestructFunc = &T::StaticDestruct;
 			return result;
 		}
 		
@@ -327,6 +331,10 @@ namespace sakura {
 
 		ScriptNativeStaticInitFunction GetStaticInitFunc() const {
 			return staticInitFunc;
+		}
+
+		ScriptNativeStaticInitFunction GetStaticDestructFunc() const {
+			return staticDestructFunc;
 		}
 
 		virtual bool IsScriptClass() const override { return false; }

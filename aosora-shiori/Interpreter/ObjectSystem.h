@@ -99,6 +99,7 @@ namespace sakura {
 				//2つ目以降のアイテム
 				item->listPrev = itemLast;
 				item->listNext = nullptr;
+				itemLast->listNext = item;
 				itemLast = item;
 			}
 
@@ -125,6 +126,7 @@ namespace sakura {
 				itemFirst = item->listNext;
 			}
 
+			delete item;
 			itemCount--;
 		}
 
@@ -153,6 +155,15 @@ namespace sakura {
 			itemCount(0)
 		{}
 
+		~ObjectSystem() {
+			CollectableBase* item = itemFirst;
+			while (item != nullptr) {
+				CollectableBase* next = item->listNext;
+				delete item;
+				item = next;
+			}
+		}
+
 		//オブジェクト作成
 		template<typename CollectableType, typename... Args>
 		Reference<CollectableType> CreateObject(Args... args) {
@@ -174,6 +185,7 @@ namespace sakura {
 
 			//参照のマーキング
 			for (CollectableBase* item : rootObjects) {
+				item->isMarked = true;
 				MarkReferences(item);
 			}
 
