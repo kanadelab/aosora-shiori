@@ -229,21 +229,28 @@ namespace sakura {
 
 	private:
 		bool canCatch;
+		bool hasCallstackInfo;
 		std::string message;
 		std::vector<CallStackInfo> callStackInfo;
 
 	public:
 		RuntimeError(const std::string& errorMessage):
 			canCatch(true),
+			hasCallstackInfo(false),
 			message(errorMessage)
 		{}
 		
 		void SetCallstackInfo(const std::vector<CallStackInfo>& info) {
 			callStackInfo = info;
+			hasCallstackInfo = true;
 		}
 
 		const std::vector<CallStackInfo>& GetCallStackInfo() const {
 			return callStackInfo;
+		}
+
+		bool HasCallstackInfo() const {
+			return hasCallstackInfo;
 		}
 
 		//メッセージ取得

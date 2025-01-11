@@ -882,7 +882,7 @@ namespace sakura {
 		FunctionResponse response;
 		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext, &node);
 		if (response.IsThrew()) {
-			executeContext.GetStack().Throw(response.GetThrewError());
+			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), response.GetThrewError());
 			return ScriptValue::Null;
 		}
 		else {
@@ -1380,7 +1380,7 @@ namespace sakura {
 
 	//最上位のスタックフレームで関数を実行
 	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args) {
-		//TODO: 例外を考えないとかも？
+
 		ScriptInterpreterStack funcStack;
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
@@ -1629,35 +1629,39 @@ namespace sakura {
 			return;
 		}
 
-		//現在実行中のスタックフレームは引数から位置を取得
-		std::vector<RuntimeError::CallStackInfo> stackInfo;
-		{
-			RuntimeError::CallStackInfo stackFrame;
-			stackFrame.hasSourceRange = true;
-			stackFrame.sourceRange = throwAstNode.GetSourceRange();
-			stackFrame.funcName = funcName;
-			stackInfo.push_back(stackFrame);
-		}
+		//コールスタック情報が未設定の場合にのみ設定する
+		if (!e->HasCallstackInfo()) {
 
-		//親以降は呼び出し時に格納されてる値を使う
-		const ScriptInterpreterStack* st = stack.GetParentStackFrame();
-		while (st != nullptr)
-		{
-			RuntimeError::CallStackInfo stackFrame;
-			if (st->GetCallingASTNode() != nullptr) {
+			//現在実行中のスタックフレームは引数から位置を取得
+			std::vector<RuntimeError::CallStackInfo> stackInfo;
+			{
+				RuntimeError::CallStackInfo stackFrame;
 				stackFrame.hasSourceRange = true;
-				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+				stackFrame.sourceRange = throwAstNode.GetSourceRange();
+				stackFrame.funcName = funcName;
+				stackInfo.push_back(stackFrame);
 			}
-			else {
-				stackFrame.hasSourceRange = false;
-			}
-			stackFrame.funcName = st->GetFunctionName();
 
-			stackInfo.push_back(stackFrame);
-			st = st->GetParentStackFrame();
+			//親以降は呼び出し時に格納されてる値を使う
+			const ScriptInterpreterStack* st = stack.GetParentStackFrame();
+			while (st != nullptr)
+			{
+				RuntimeError::CallStackInfo stackFrame;
+				if (st->GetCallingASTNode() != nullptr) {
+					stackFrame.hasSourceRange = true;
+					stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+				}
+				else {
+					stackFrame.hasSourceRange = false;
+				}
+				stackFrame.funcName = st->GetFunctionName();
+
+				stackInfo.push_back(stackFrame);
+				st = st->GetParentStackFrame();
+			}
+
+			e->SetCallstackInfo(stackInfo);
 		}
-
-		e->SetCallstackInfo(stackInfo);
 		stack.Throw(e);
 	}
 
