@@ -105,6 +105,7 @@ namespace sakura {
 	const uint32_t SEQUENCE_END_FLAG_SEMICOLON = 1u << 5u;
 	const uint32_t SEQUENCE_END_FLAG_COLON = 1u << 6u;
 	const uint32_t SEQUENCE_END_FALG_TALK_NEWLINE = 1u << 7u;
+	const uint32_t SEQUENCE_END_FLAG_VERTICAL_BAR = 1u << 8u;
 
 	//ASTパース
 	class ASTParseContext {
@@ -776,6 +777,14 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
 				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
 			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::VerticalBar) {
+				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
+			}
+			// オペレータが要求されない場合は
+			// ||は引数無しの関数式として扱う
+			else if (parseContext.GetCurrent().type == ScriptTokenType::LogicalOr && isRequireOperand) {
+				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
+			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Talk) {
 				parseStack.PushOperand(ParseASTTalkInitializer(parseContext));
 			}
@@ -1031,6 +1040,8 @@ namespace sakura {
 			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_ARRAY_BLACKET);
 		case ScriptTokenType::BlockEnd:
 			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_BLOCK_BLACKET);
+		case ScriptTokenType::VerticalBar:
+			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_VERTICAL_BAR);
 		default:
 			return false;
 		}
@@ -1191,8 +1202,19 @@ namespace sakura {
 	//関数イニシャライザ function(val) {  }
 	ASTNodeRef ASTParser::ParseASTFunctionInitializer(ASTParseContext& parseContext) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
-		assert(parseContext.GetCurrent().type == ScriptTokenType::Function);
-		parseContext.FetchNext();
+		switch (parseContext.GetCurrent().type) {
+			case ScriptTokenType::Function:
+			case ScriptTokenType::VerticalBar:
+			// 引数無しの関数式とみなす。
+			case ScriptTokenType::LogicalOr:
+				break;
+			default:
+				assert(false);
+		}
+
+		if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
+			parseContext.FetchNext();
+		}
 
 		std::vector<std::string> argList;
 
@@ -1206,6 +1228,20 @@ namespace sakura {
 			else {
 				parseContext.FetchNext();
 			}
+		}
+		else if (parseContext.GetCurrent().type == ScriptTokenType::VerticalBar) {
+			parseContext.FetchNext();
+			if (parseContext.GetCurrent().type != ScriptTokenType::VerticalBar) {
+				ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_VERTICAL_BAR);
+				parseContext.FetchNext();
+			}
+			else {
+				parseContext.FetchNext();
+			}
+		}
+		// 引数無しの関数式とみなす。
+		else if (parseContext.GetCurrent().type == ScriptTokenType::LogicalOr) {
+			parseContext.FetchNext();
 		}
 
 		//中括弧開

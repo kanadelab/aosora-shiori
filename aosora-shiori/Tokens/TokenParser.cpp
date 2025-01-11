@@ -44,6 +44,7 @@ namespace sakura {
 	const std::string TOKEN_COMMON_COLON = ":";
 	const std::string TOKEN_COMMON_BRACKET_BEGIN = "(";
 	const std::string TOKEN_COMMON_BRACKET_END = ")";
+	const std::string TOKEN_COMMON_VERTICAL_BAR = "|";
 
 	const std::string TOKEN_KEYWORD_TALK = "talk";
 	const std::string TOKEN_KEYWORD_WORD = "word";
@@ -151,6 +152,7 @@ namespace sakura {
 		{TOKEN_COMMON_COLON, ScriptTokenType::Colon},
 		{TOKEN_COMMON_BRACKET_BEGIN, ScriptTokenType::BracketBegin},
 		{TOKEN_COMMON_BRACKET_END, ScriptTokenType::BracketEnd},
+		{TOKEN_COMMON_VERTICAL_BAR, ScriptTokenType::VerticalBar},
 
 		{TOKEN_BLOCK_BEGIN, ScriptTokenType::BlockBegin},
 		{TOKEN_BLOCK_END, ScriptTokenType::BlockEnd},
