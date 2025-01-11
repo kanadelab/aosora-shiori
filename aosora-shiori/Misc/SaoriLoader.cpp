@@ -38,7 +38,7 @@ inline void GlobalFree(HGLOBAL ptr) {
 	free(ptr);
 }
 
-#endif // AOSORA_REQUIRED_WIN32
+#endif // not(AOSORA_REQUIRED_WIN32)
 
 namespace sakura {
 
