@@ -1,6 +1,10 @@
 ﻿#pragma once
 
+#if defined(AOSORA_REQUIRED_WIN32)
 #include <windows.h>
+#else
+using HMODULE = void *;
+#endif // WIN32 or _WIN32
 #include <string>
 #include <vector>
 #include "Base.h"
@@ -8,9 +12,15 @@
 
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
 namespace sakura {
+#if defined(WIN32) || defined(_WIN32)
 	using LoadFunc = BOOL(*)(HGLOBAL, long);
 	using UnloadFunc = BOOL(*)();
 	using RequestFunc = HGLOBAL(*)(HGLOBAL, long*);
+#else
+	using LoadFunc = long(*)(char *, long);
+	using UnloadFunc = int(*)(long);
+	using RequestFunc = char *(*)(long, char *, long*);
+#endif // WIN32 or _WIN32
 
 	//リザルトの種類
 	enum SaoriResultType {
@@ -33,6 +43,9 @@ namespace sakura {
 		RequestFunc fRequest;
 		Charset charset;
 		bool isBasic;
+#if !(defined(WIN32) || defined(_WIN32))
+		long id;
+#endif // not(WIN32 or _WIN32)
 	};
 
 	//さおりの読み込み結果
@@ -56,10 +69,3 @@ namespace sakura {
 	void UnloadSaori(LoadedSaoriModule* saori);
 	const char* SaoriResultTypeToString(SaoriResultType type);
 }
-#else
-namespace sakura {
-	//ダミー
-	struct LoadedSaoriModule {
-	};
-}
-#endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)
