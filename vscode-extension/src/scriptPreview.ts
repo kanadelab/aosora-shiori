@@ -21,7 +21,7 @@ export async function SendPreviewFunction(functionBody:string, extensionPath:str
 	const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
 	if(projFiles.length > 0){
 		const workspace = path.dirname(projFiles[0].fsPath);
-		command += ` ${workspace}`;
+		command += ` ${workspace}\\\\`;
 	}
 
 	//一時ファイルを用意して呼び出す

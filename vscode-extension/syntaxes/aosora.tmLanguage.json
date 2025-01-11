@@ -128,6 +128,9 @@
 					"include": "#strings"
 				},
 				{
+					"include": "#rawstrings"
+				},
+				{
 					"include": "#keywords"
 				},
 				{
@@ -154,6 +157,78 @@
 			"patterns": [
 				{
 					"include": "#stringcontent"
+				}
+			]
+		},
+		"rawstrings": {
+			"begin": "'",
+			"end": "'",
+			"name": "string",
+			"patterns": [
+				{
+					"include": "#rawstringcontent"
+				}
+			]
+		},
+		"rawstringcontent": {
+			"patterns": [
+				{
+					"match": "\\\\s\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\s[0-9]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\!\\[(raise|embed|get,property|timerraise|notify),.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\[!pibncjmfx\\&]\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_[wblvums]\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\__w\\[\\d+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\&\\[.+?\\]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\[01456huncvCxt\\*e\\-\\+]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_[nqs\\?\\+V]",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\w[0-9]",
+					"name": "markup.underline"
+				},
+				{
+					"begin": "\\\\q\\[",
+					"end": "\\]",
+					"name": "markup.underline",
+					"patterns": [
+						{
+							"include": "#rawstringcontent"
+						}
+					]
+				},
+				{
+					"match": "\\\\__q\\[.+?\\].+?\\\\__q",
+					"name": "markup.underline"
+				},
+				{
+					"match": "\\\\_a\\[.+?\\].+?\\\\_a",
+					"name": "markup.underline"
 				}
 			]
 		},
