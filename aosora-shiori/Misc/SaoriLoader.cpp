@@ -27,6 +27,7 @@ namespace sakura {
 		{
 			//request()がない
 			loadResult.type = SaoriResultType::LOAD_REQUEST_NOT_FOUND;
+			FreeLibrary(loadedModule.hModule);
 			return loadResult;
 		}
 
@@ -41,6 +42,7 @@ namespace sakura {
 			memcpy(requestData, saoriDir.c_str(), saoriDir.size());
 			if (loadedModule.fLoad(requestData, saoriDir.size()) == FALSE) {
 				loadResult.type = SaoriResultType::LOAD_RESULT_FALSE;
+				FreeLibrary(loadedModule.hModule);
 				return loadResult;
 			}
 		}
@@ -61,6 +63,10 @@ namespace sakura {
 			if (status.type != ProtocolType::SAORI || status.version != "1.0") {
 				loadResult.type = SaoriResultType::PROTOCOL_ERROR;
 				GlobalFree(resultData);
+				if (loadedModule.fUnload != nullptr) {
+					loadedModule.fUnload();
+				}
+				FreeLibrary(loadedModule.hModule);
 				return loadResult;
 			}
 
@@ -69,6 +75,10 @@ namespace sakura {
 			if (charset == Charset::UNKNOWN) {
 				loadResult.type = SaoriResultType::UNKNOWN_CHARSET;
 				GlobalFree(resultData);
+				if (loadedModule.fUnload != nullptr) {
+					loadedModule.fUnload();
+				}
+				FreeLibrary(loadedModule.hModule);
 				return loadResult;
 			}
 
@@ -86,6 +96,7 @@ namespace sakura {
 		if (saori->fUnload != nullptr) {
 			saori->fUnload();
 		}
+		FreeLibrary(saori->hModule);
 		delete saori;
 	}
 
