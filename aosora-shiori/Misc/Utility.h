@@ -65,6 +65,17 @@ namespace sakura{
 		return std::to_string(val);
 	}
 
+	//文字からsize_tへ
+	inline bool StringToIndex(const std::string& str, size_t& result) {
+		try {
+			result = std::stoul(str);
+			return true;
+		}
+		catch (const std::exception&) {
+			return false;
+		}
+	}
+
 	//区切り文字を使用した分割
 	inline void SplitString(const std::string& input, std::vector<std::string>& result, char delimiter) {
 		std::istringstream ist(input);
@@ -192,6 +203,106 @@ namespace sakura{
 			index += count;
 		}
 		return cIndex;
+	}
+
+	//charsetのパース
+	enum class Charset {
+		UNKNOWN,
+		SHIFT_JIS,
+		UTF_8
+	};
+
+	//SHIORI,SAORIのrequest/responseからcharsetを取得する
+	inline Charset ProtocolParseCharset(const std::string_view& data) {
+		//\r\nで囲まれていることを確認する。やりとりの本文に含まれている場合の誤認識を避けるため
+		if (data.find("\r\nCharset: Shift_JIS\r\n")) {
+			return Charset::SHIFT_JIS;
+		}
+		else if (data.find("\r\nCharset: UTF-8\r\n")) {
+			return Charset::UTF_8;
+		}
+		else {
+			return Charset::UNKNOWN;
+		}
+	}
+
+	enum class ProtocolType {
+		UNKNOWN,		//不明もしくは失敗
+		SHIORI,
+		SAORI
+	};
+
+	struct ProtocolStatus {
+		ProtocolType type;						//SAORI
+		std::string_view version;				//1.0
+		std::string_view statusDescription;		//OK
+		size_t statusCode;						//200
+		bool isResponse;						//レスポンスならステータスコードがつく
+	};
+
+	inline ProtocolStatus ProtocolParseStatus(const std::string_view& data, bool isResponse) {
+		ProtocolStatus result;
+		result.type = ProtocolType::UNKNOWN;
+		result.isResponse = isResponse;
+		result.statusCode = 0;
+
+		const size_t crlfPos = data.find("\r\n");
+		if (crlfPos == std::string::npos) {
+			return result;
+		}
+
+		//"SAORI/1.0 200 OK"
+		std::string_view line(data.begin(), data.begin() + crlfPos);
+		const size_t slashPos = line.find('/');
+		if (slashPos == std::string::npos) {
+			return result;
+		}
+
+		std::string_view protocol = line.substr(0, slashPos);
+		ProtocolType protocolType = ProtocolType::UNKNOWN;
+		if (protocol == "SHIORI") {
+			protocolType = ProtocolType::SHIORI;
+		}
+		else if (protocol == "SAORI") {
+			protocolType = ProtocolType::SAORI;
+		}
+		else {
+			return result;
+		}
+
+		const size_t spacePos = line.find(' ');
+		if (spacePos == std::string::npos) {
+			return result;
+		}
+
+		result.version = line.substr(slashPos + 1, spacePos - slashPos - 1);
+		std::string_view status = line.substr(spacePos + 1);
+
+		if (isResponse) {
+			//レスポンスならステータスコードと説明を分離
+			const size_t spacePos2 = status.find(' ');
+			if (spacePos2 == std::string::npos) {
+				//ステータスコードがないのでおかしい
+				return result;
+			}
+
+			std::string_view statusCodeStr = status.substr(0, spacePos2);
+			result.statusDescription = status.substr(spacePos2 + 1);
+
+			if (!StringToIndex(std::string(statusCodeStr), result.statusCode)) {
+				//ステータスコード位置が数値ではない
+				return result;
+			}
+
+			//ここまでくれば正常
+			result.type = protocolType;
+			return result;
+		}
+		else {
+			result.type = protocolType;
+			result.statusDescription = status;
+			return result;
+		}
 	}
 
 

@@ -71,13 +71,15 @@ namespace {
 					charset = value;
 				}
 				else if (key.starts_with("Reference")) {
-					size_t index = std::stol(key.substr(9));
-					shioriRequest.SetReference(static_cast<uint32_t>(index), value);
+					size_t index;
+					if (sakura::StringToIndex(key.substr(9), index)) {
+						shioriRequest.SetReference(static_cast<uint32_t>(index), value);
+					}
 				}
 				else if (key.starts_with("Argument")) {
 					//as SAORIとしての場合、１つずらしてReferenceにし、インデックス0はEventにする
-					size_t index = std::stol(key.substr(8));
-					if (index == 0) {
+					size_t index;
+					if (sakura::StringToIndex(key.substr(8), index)) {
 						shioriRequest.SetEventId(value);
 					}
 					else {
