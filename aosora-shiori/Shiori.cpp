@@ -28,11 +28,7 @@ namespace sakura {
 		interpreter.SetWorkingDirectory(path);
 
 		std::string scriptProjPath = path;
-#if defined(WIN32) || defined(_WIN32)
-		scriptProjPath.append("\\ghost.asproj");
-#else
 		scriptProjPath.append("ghost.asproj");
-#endif // WIN32 or _WIN32
 
 		//設定ファイルをロードする
 		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
@@ -168,11 +164,7 @@ namespace sakura {
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptFile(const std::string& path) {
-#if defined(WIN32) || defined(_WIN32)
-		std::string fullPath = ghostMasterPath + "\\" + path;
-#else
 		std::string fullPath = ghostMasterPath + path;
-#endif // WIN32 or _WIN32
 		std::ifstream loadStream(fullPath, std::ios_base::in);
 
 		if (loadStream.fail()) {

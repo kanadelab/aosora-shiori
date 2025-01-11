@@ -146,7 +146,7 @@ namespace sakura {
 		}
 
 		std::string GetFileName(const std::string& relativePath) const {
-			return workingDirectory + "\\" + relativePath;
+			return workingDirectory + relativePath;
 		}
 
 
