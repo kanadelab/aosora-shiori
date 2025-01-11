@@ -543,6 +543,7 @@ namespace sakura {
 
 					if (parseContext.GetCurrent().starts_with(TOKEN_COMMON_BRACKET_BEGIN)) {
 						//開始カッコがあれば引数リスト
+						parseContext.PushToken(TOKEN_COMMON_BRACKET_BEGIN.size(), ScriptTokenType::BracketBegin);
 						ParseFunctionBlock(parseContext, BLOCK_END_FLAG_BRACKET);
 						if (parseContext.IsEnd()) {
 							return;
