@@ -8,3 +8,8 @@
 #endif
 
 #define AOSORA_ENABLE_SAORI_LOADER
+
+//型定義
+namespace sakura {
+	using number = double;
+}

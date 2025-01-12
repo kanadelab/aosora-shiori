@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include "Base.h"
 
 
 namespace sakura{
@@ -21,6 +22,11 @@ namespace sakura{
 	inline int Rand(int32_t min, int32_t max) {
 		max--;
 		return min + (int32_t)(rand() * (max - min + 1.0) / (1.0 + RAND_MAX));
+	}
+
+	//実数ランダム 0.0-1.0
+	inline number RandNum() {
+		return (static_cast<number>(rand()) / static_cast<number>(RAND_MAX));
 	}
 
 	//文字列全置換

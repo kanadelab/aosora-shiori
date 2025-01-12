@@ -1,15 +1,13 @@
 ﻿#pragma once
-#include "Tokens/Tokens.h"
 #include <memory>
 #include <string>
 #include <cassert>
 #include <vector>
 #include <map>
+#include "Base.h"
+#include "Tokens/Tokens.h"
 
 namespace sakura {
-
-	//数値型
-	using number = double;
 
 	//内部関数型
 	class FunctionRequest;
