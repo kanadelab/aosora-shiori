@@ -8,6 +8,38 @@
 #include "Misc/SaoriLoader.h"
 
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
+
+#if !defined(AOSORA_REQUIRED_WIN32)
+
+#include <cstring>
+#include <dlfcn.h>
+
+namespace {
+	const long FALSE = 0;
+	const int GMEM_FIXED = 0;
+};
+
+using BOOL = long;
+using HGLOBAL = char *;
+
+inline HMODULE GetProcAddress(void *handle, const char *symbol) {
+	return dlsym(handle, symbol);
+}
+
+inline int FreeLibrary(HMODULE handle) {
+	return dlclose(handle);
+}
+
+inline HGLOBAL GlobalAlloc(int _, size_t size) {
+	return static_cast<HGLOBAL>(malloc(size));
+}
+
+inline void GlobalFree(HGLOBAL ptr) {
+	free(ptr);
+}
+
+#endif // not(AOSORA_REQUIRED_WIN32)
+
 namespace sakura {
 
 	SaoriModuleLoadResult LoadSaori(const std::string& saoriPath) {
@@ -16,7 +48,68 @@ namespace sakura {
 		loadResult.type = SaoriResultType::SUCCESS;
 
 		LoadedSaoriModule loadedModule;
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.hModule = LoadLibraryEx(saoriPath.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+#else
+		// SAORI名。
+		// dlsymで呼び出す関数名はSAORIの名前に依存する。
+		std::string name;
+		if (getenv("SAORI_FALLBACK_ALWAYS")) {
+			loadedModule.hModule = nullptr;
+		}
+		else {
+			loadedModule.hModule = dlopen(saoriPath.c_str(), RTLD_LAZY);
+		}
+		if (loadedModule.hModule == nullptr) {
+			char *tmp = getenv("SAORI_FALLBACK_PATH");
+			if (tmp == nullptr) {
+				loadResult.type = SaoriResultType::LOAD_DLL_FAILED;
+				return loadResult;
+			}
+
+			auto posSlash = saoriPath.rfind('/');
+			auto posBackSlash = saoriPath.rfind('\\');
+			if (posSlash == std::string::npos) {
+				posSlash = 0;
+			}
+			if (posBackSlash == std::string::npos) {
+				posBackSlash = 0;
+			}
+			std::string saoriFilename = saoriPath.substr(std::max(posSlash, posBackSlash) + 1);
+			{
+				auto pos = saoriFilename.rfind('.');
+				if (pos == std::string::npos) {
+					name = saoriFilename;
+				}
+				else {
+					name = saoriFilename.substr(0, pos);
+				}
+			}
+			std::string fallbackPath(tmp);
+			std::vector<std::string> fallbackPathList;
+			for (std::string::size_type index = 0; index < fallbackPath.length(); index++) {
+				auto pos = fallbackPath.find(':', index);
+				if (pos == std::string::npos) {
+					fallbackPathList.push_back(fallbackPath.substr(index));
+					break;
+				}
+				else if (index < pos) {
+					fallbackPathList.push_back(fallbackPath.substr(index, pos - index));
+					index = pos;
+				}
+			}
+			for (auto& path : fallbackPathList) {
+				if (!path.ends_with('/')) {
+					path += '/';
+				}
+				std::string p = path + saoriFilename;
+				loadedModule.hModule = dlopen(p.c_str(), RTLD_LAZY);
+				if (loadedModule.hModule != nullptr) {
+					break;
+				}
+			}
+		}
+#endif // AOSORA_REQUIRED_WIN32
 		if (loadedModule.hModule == nullptr)
 		{
 			//DLLロード失敗
@@ -24,7 +117,12 @@ namespace sakura {
 			return loadResult;
 		}
 
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.fRequest = reinterpret_cast<RequestFunc>(GetProcAddress(loadedModule.hModule, "request"));
+#else
+		std::string requestName = name + "_saori_request";
+		loadedModule.fRequest = reinterpret_cast<RequestFunc>(GetProcAddress(loadedModule.hModule, requestName.c_str()));
+#endif // AOSORA_REQUIRED_WIN32
 		if (loadedModule.fRequest == nullptr)
 		{
 			//request()がない
@@ -33,8 +131,15 @@ namespace sakura {
 			return loadResult;
 		}
 
+#if defined(AOSORA_REQUIRED_WIN32)
 		loadedModule.fLoad = reinterpret_cast<LoadFunc>(GetProcAddress(loadedModule.hModule, "load"));
 		loadedModule.fUnload = reinterpret_cast<UnloadFunc>(GetProcAddress(loadedModule.hModule, "unload"));
+#else
+		std::string loadName = name + "_saori_load";
+		std::string unloadName = name + "_saori_unload";
+		loadedModule.fLoad = reinterpret_cast<LoadFunc>(GetProcAddress(loadedModule.hModule, loadName.c_str()));
+		loadedModule.fUnload = reinterpret_cast<UnloadFunc>(GetProcAddress(loadedModule.hModule, unloadName.c_str()));
+#endif
 		loadedModule.charset = Charset::UNKNOWN;
 
 		//loadがあれば実行
@@ -42,11 +147,17 @@ namespace sakura {
 			std::string saoriDir = saoriPath.substr(0, saoriPath.rfind("\\")+1);
 			HGLOBAL requestData = GlobalAlloc(GMEM_FIXED, saoriDir.size());
 			memcpy(requestData, saoriDir.c_str(), saoriDir.size());
-			if (loadedModule.fLoad(requestData, saoriDir.size()) == FALSE) {
+			BOOL ret = loadedModule.fLoad(requestData, saoriDir.size());
+			if (ret == FALSE) {
 				loadResult.type = SaoriResultType::LOAD_RESULT_FALSE;
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
 			}
+#if !(defined(AOSORA_REQUIRED_WIN32))
+			else {
+				loadedModule.id = ret;
+			}
+#endif // not(AOSORA_REQUIRED_WIN32)
 		}
 		
 		//get version
@@ -57,7 +168,11 @@ namespace sakura {
 			long requestSize = request.size();
 
 			//リクエスト呼出
+#if defined(AOSORA_REQUIRED_WIN32)
 			HGLOBAL resultData = loadedModule.fRequest(requestData, &requestSize);
+#else
+			HGLOBAL resultData = loadedModule.fRequest(loadedModule.id, requestData, &requestSize);
+#endif // AOSORA_REQUIRED_WIN32
 			std::string_view response_view(reinterpret_cast<const char*>(resultData), requestSize);
 
 			//ステータスを解析
@@ -66,7 +181,11 @@ namespace sakura {
 				loadResult.type = SaoriResultType::PROTOCOL_ERROR;
 				GlobalFree(resultData);
 				if (loadedModule.fUnload != nullptr) {
+#if defined(AOSORA_REQUIRED_WIN32)
 					loadedModule.fUnload();
+#else
+					loadedModule.fUnload(loadedModule.id);
+#endif // AOSORA_REQUIRED_WIN32
 				}
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
@@ -78,7 +197,11 @@ namespace sakura {
 				loadResult.type = SaoriResultType::UNKNOWN_CHARSET;
 				GlobalFree(resultData);
 				if (loadedModule.fUnload != nullptr) {
+#if defined(AOSORA_REQUIRED_WIN32)
 					loadedModule.fUnload();
+#else
+					loadedModule.fUnload(loadedModule.id);
+#endif // AOSORA_REQUIRED_WIN32
 				}
 				FreeLibrary(loadedModule.hModule);
 				return loadResult;
@@ -96,7 +219,11 @@ namespace sakura {
 	void UnloadSaori(LoadedSaoriModule* saori) {
 		assert(saori != nullptr);
 		if (saori->fUnload != nullptr) {
+#if defined(AOSORA_REQUIRED_WIN32)
 			saori->fUnload();
+#else
+			saori->fUnload(saori->id);
+#endif // AOSORA_REQUIRED_WIN32
 		}
 		FreeLibrary(saori->hModule);
 		delete saori;
@@ -155,7 +282,11 @@ namespace sakura {
 		long requestSize = request.size();
 		HGLOBAL requestData = GlobalAlloc(GMEM_FIXED, requestSize);
 		memcpy(requestData, request.c_str(), requestSize);
+#if defined(AOSORA_REQUIRED_WIN32)
 		HGLOBAL resultData = saori->fRequest(requestData, &requestSize);
+#else
+		HGLOBAL resultData = saori->fRequest(saori->id, requestData, &requestSize);
+#endif // AOSORA_REQUIRED_WIN32
 		std::string_view responseView(reinterpret_cast<const char*>(resultData), requestSize);
 
 		//レスポンスをチェック
@@ -272,4 +403,5 @@ namespace sakura {
 		}
 	}
 }
+
 #endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)
