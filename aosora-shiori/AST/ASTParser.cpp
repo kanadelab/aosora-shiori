@@ -1217,6 +1217,7 @@ namespace sakura {
 		}
 
 		std::vector<std::string> argList;
+		bool isSyntaxSugar = false;
 
 		//開カッコがあれば引数リスト
 		if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
@@ -1230,6 +1231,7 @@ namespace sakura {
 			}
 		}
 		else if (parseContext.GetCurrent().type == ScriptTokenType::VerticalBar) {
+			isSyntaxSugar = true;
 			parseContext.FetchNext();
 			if (parseContext.GetCurrent().type != ScriptTokenType::VerticalBar) {
 				ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_VERTICAL_BAR);
@@ -1241,6 +1243,7 @@ namespace sakura {
 		}
 		// 引数無しの関数式とみなす。
 		else if (parseContext.GetCurrent().type == ScriptTokenType::LogicalOr) {
+			isSyntaxSugar = true;
 			parseContext.FetchNext();
 		}
 
@@ -1249,6 +1252,28 @@ namespace sakura {
 			return parseContext.Error(ERROR_AST_018, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
+
+		// 関数式の内部の式が1行で終わる場合は式の戻り値をreturnする
+		if (isSyntaxSugar) {
+			auto tentativeContext = parseContext;
+			// 内部の式が1行で終わると仮定して読み進める
+			// 戻り値はshared_ptrなので捨てて大丈夫
+			ParseASTReturn(tentativeContext, true);
+
+			// 成功するようなら改めてparseContextでやり直す
+			if (!tentativeContext.IsEnd() && tentativeContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
+				const ScriptToken& beginSyntaxSugarToken = parseContext.GetCurrent();
+				std::shared_ptr<ASTNodeCodeBlock> funcBody(new ASTNodeCodeBlock());
+				auto node = ParseASTReturn(parseContext, true);
+				funcBody->AddStatement(node);
+				parseContext.FetchNext();
+				funcBody->SetSourceRange(beginSyntaxSugarToken, parseContext.GetPrev());
+
+				auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList))));
+				r->SetSourceRange(beginToken, parseContext.GetPrev());
+				return r;
+			}
+		}
 
 		//コードブロックを取得
 		ASTNodeRef funcBody = ParseASTCodeBlock(parseContext, true);
@@ -1811,11 +1836,16 @@ namespace sakura {
 	}
 
 	//return文のパース
-	ASTNodeRef ASTParser::ParseASTReturn(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTReturn(ASTParseContext& parseContext, bool isLambdaSyntaxSugar) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
 
-		assert(parseContext.GetCurrent().type == ScriptTokenType::Return);
-		parseContext.FetchNext();
+		if (isLambdaSyntaxSugar) {
+			assert(parseContext.GetPrev().type == ScriptTokenType::BlockBegin);
+		}
+		else {
+			assert(parseContext.GetCurrent().type == ScriptTokenType::Return);
+			parseContext.FetchNext();
+		}
 
 		ASTNodeRef r;
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {

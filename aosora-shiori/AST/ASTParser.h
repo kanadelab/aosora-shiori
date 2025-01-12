@@ -52,7 +52,7 @@ namespace sakura {
 		static ASTNodeRef ParseASTWhile(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTFor(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTIf(ASTParseContext& parseContext);
-		static ASTNodeRef ParseASTReturn(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTReturn(ASTParseContext& parseContext, bool isLambdaSyntaxSugar = false);
 		static ASTNodeRef ParseASTBreak(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTContinue(ASTParseContext& parseContext);
 
