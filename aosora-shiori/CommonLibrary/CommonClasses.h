@@ -65,6 +65,12 @@ namespace sakura {
 
 		//配列から１つ選ぶ
 		static void Select(const FunctionRequest& request, FunctionResponse& response);
+
+		//最小最大から１つ選択
+		static void GetIndex(const FunctionRequest& request, FunctionResponse& response);
+
+		//0.0-1.0範囲の実数を取得
+		static void GetNumber(const FunctionRequest& request, FunctionResponse& response);
 	};
 
 	//セーブデータオブジェクト

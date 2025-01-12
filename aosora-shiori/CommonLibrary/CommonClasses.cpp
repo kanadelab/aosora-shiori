@@ -417,6 +417,12 @@ namespace sakura {
 		if (key == "Select") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Random::Select));
 		}
+		else if (key == "GetNumber") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Random::GetNumber));
+		}
+		else if (key == "GetIndex") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Random::GetIndex));
+		}
 
 		return nullptr;
 	}
@@ -452,6 +458,27 @@ namespace sakura {
 
 		ScriptValueRef item = sobj->At(result);
 		response.SetReturnValue(item != nullptr ? item : ScriptValue::Null);
+	}
+
+	void Random::GetIndex(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			size_t randMin, randMax;
+			if (request.GetArgument(0)->ToIndex(randMin) && request.GetArgument(1)->ToIndex(randMax)) {
+				if (randMin > randMax) {
+					std::swap(randMin, randMax);
+				}
+				else if (randMin == randMax) {
+					response.SetReturnValue(ScriptValue::Make(static_cast<number>(randMin)));
+					return;
+				}
+
+				response.SetReturnValue(ScriptValue::Make(static_cast<number>(Rand(randMin, randMax))));
+			}
+		}
+	}
+
+	void Random::GetNumber(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(ScriptValue::Make(RandNum()));
 	}
 
 
