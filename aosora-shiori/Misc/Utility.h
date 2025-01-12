@@ -119,13 +119,13 @@ namespace sakura{
 		if (firstByte <= 0x7f) {
 			return 1;
 		}
-		else if (firstByte >= 0xc2 && firstByte < 0xdf) {
+		else if (firstByte >= 0xc2 && firstByte <= 0xdf) {
 			return 2;
 		}
-		else if (firstByte >= 0xe0 && firstByte < 0xef) {
+		else if (firstByte >= 0xe0 && firstByte <= 0xef) {
 			return 3;
 		}
-		else if (firstByte >= 0xf0 && firstByte < 0xf7) {
+		else if (firstByte >= 0xf0 && firstByte <= 0xf4) {
 			return 4;
 		}
 
