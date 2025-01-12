@@ -470,7 +470,13 @@ namespace sakura {
 
 		//戻り値
 		void SetReturnValue(const ScriptValueRef& v) {
-			returnValue = v;
+			if (v != nullptr) {
+				returnValue = v;
+			}
+			else {
+				//emptyを不許容
+				returnValue = ScriptValue::Null;
+			}
 		}
 
 		const ScriptValueRef& GetReturnValue() const {
