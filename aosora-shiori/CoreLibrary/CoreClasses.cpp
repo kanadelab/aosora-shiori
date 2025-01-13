@@ -318,4 +318,59 @@ namespace sakura {
 		}
 	}
 
+	void TalkBuilderSettings::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		if (key == "AutoLineBreak") {
+			autoLineBreak = value->ToString();
+		}
+		else if (key == "ScopeChangeLineBreak") {
+			scopeChangeLineBreak = value->ToString();
+		}
+	}
+
+	ScriptValueRef TalkBuilderSettings::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "AutoLineBreak") {
+			return ScriptValue::Make(autoLineBreak);
+		}
+		else if (key == "ScopeChangeLineBreak") {
+			return ScriptValue::Make(scopeChangeLineBreak);
+		}
+		return nullptr;
+	}
+
+	ScriptValueRef TalkBuilder::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "Global") {
+			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet("Global");
+		}
+		else if (key == "Current") {
+			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet("Current");
+		}
+		return nullptr;
+	}
+
+	void TalkBuilder::StaticInit(ScriptInterpreter& interpreter) {
+		//グローバル設定用オブジェクトを追加
+		auto staticStore = interpreter.StaticStore<TalkBuilder>();
+		staticStore->RawSet("Global", ScriptValue::Make(interpreter.CreateNativeObject<TalkBuilderSettings>()));
+	}
+
+	void TalkBuilder::Prepare(ScriptInterpreter& interpreter) {
+		//Globalからクローンを作成
+		auto staticStore = interpreter.StaticStore<TalkBuilder>();
+		auto* globalObj = interpreter.InstanceAs<TalkBuilderSettings>(staticStore->RawGet("Global"));
+		auto currentObj = interpreter.CreateNativeObject<TalkBuilderSettings>(*globalObj);
+		staticStore->RawSet("Current", ScriptValue::Make(currentObj));
+	}
+
+	TalkBuilderSettings& TalkBuilder::GetCurrentSettings(ScriptInterpreter& interpreter) {
+		return *interpreter.InstanceAs<TalkBuilderSettings>(interpreter.StaticStore<TalkBuilder>()->RawGet("Current"));
+	}
+
+	const std::string& TalkBuilder::GetAutoLineBreak(ScriptInterpreter& interpreter) {
+		return GetCurrentSettings(interpreter).GetLineBreak();
+	}
+
+	const std::string& TalkBuilder::GetScopeChangeLineBreak(ScriptInterpreter& interpreter) {
+		return GetCurrentSettings(interpreter).GetScopeChangeLineBreak();
+	}
+
 }

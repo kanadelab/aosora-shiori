@@ -367,7 +367,8 @@ namespace sakura {
 
 		//トークの結合
 		//SpeakedSpeakersを取ってある場合はそちらを使ってleftと結果に対するSpeakedSpeakerをキャッシュとして更新する
-		static std::string CombineTalk(const std::string& left, const std::string& right, SpeakedSpeakers* speakedCache);
+		//disableSpeakerChangeLineBreak がtrueなら、結合ルールを無視するが、SpeakedSpeakerの更新は行う
+		static std::string CombineTalk(const std::string& left, const std::string& right, ScriptInterpreter& interpreter, SpeakedSpeakers* speakedCache, bool disableSpeakerChangeLineBreak = false);
 
 		//SpeakedScopesをleftにrightを追加する形でマージ
 		static void MergeSpeakedScopes(SpeakedSpeakers& left, const SpeakedSpeakers& right);
@@ -585,43 +586,23 @@ namespace sakura {
 		}
 
 		//トーク内容を追加
-		void AppendTalkBody(const std::string& str) {
-			if (speakedCache.lastSpeakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+		void AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter, bool isLineAppend);
 
-				//最初の発話で話者指定が入ってなければ自動的に付与
-				auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
-				if (firstSpeaker.speakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
-					talkBody.append("\\0");
-					speakedCache.lastSpeakerIndex = 0;
-					speakedCache.usedSpeaker.insert(0);
-				}
-			}
-
-			//改行要求
-			if (isTalkLineEnd) {
-				talkBody.append("\\n");
-				isTalkLineEnd = false;
-			}
-			
-			//単純に文字列を結合
-			talkBody = TalkStringCombiner::CombineTalk(talkBody, str, &speakedCache);
-		}
+		//話者を指定
+		void SetTalkSpeakerIndex(int32_t speakerIndex, ScriptInterpreter& interpreter);
 
 		void TalkLineEnd() {
 			isTalkLineEnd = true;
 		}
 
-		//話者を指定
-		void SetTalkSpeakerIndex(int32_t speakerIndex);
-
 		//話者交替タグ
-		void SwitchTalkSpeakerIndex() {
+		void SwitchTalkSpeakerIndex(ScriptInterpreter& interpreter) {
 			//0と1の間で変更
 			if (speakedCache.lastSpeakerIndex != 0) {
-				SetTalkSpeakerIndex(0);
+				SetTalkSpeakerIndex(0, interpreter);
 			}
 			else {
-				SetTalkSpeakerIndex(1);
+				SetTalkSpeakerIndex(1, interpreter);
 			}
 		}
 

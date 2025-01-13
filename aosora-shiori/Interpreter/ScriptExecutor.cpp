@@ -1082,7 +1082,7 @@ namespace sakura {
 			}
 		}
 
-		executeContext.GetStack().AppendTalkBody(r->ToString());
+		executeContext.GetStack().AppendTalkBody(r->ToString(), executeContext.GetInterpreter(), true);
 		executeContext.GetStack().TalkLineEnd();
 		return ScriptValue::Null;
 	}
@@ -1091,10 +1091,10 @@ namespace sakura {
 
 		//話者指定を作成
 		if (node.GetSpeakerIndex() == ASTNodeTalkSetSpeaker::SPEAKER_INDEX_SWITCH) {
-			executeContext.GetStack().SwitchTalkSpeakerIndex();
+			executeContext.GetStack().SwitchTalkSpeakerIndex(executeContext.GetInterpreter());
 		}
 		else {
-			executeContext.GetStack().SetTalkSpeakerIndex(node.GetSpeakerIndex());
+			executeContext.GetStack().SetTalkSpeakerIndex(node.GetSpeakerIndex(), executeContext.GetInterpreter());
 		}
 		return ScriptValue::Null;
 	}
@@ -1146,7 +1146,7 @@ namespace sakura {
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
-				executeContext.GetStack().AppendTalkBody(str);
+				executeContext.GetStack().AppendTalkBody(str, executeContext.GetInterpreter(), false);
 
 				//ここまでのトーク内容を関数の戻り値として返す
 				executeContext.GetStack().ReturnTalk();
@@ -1240,6 +1240,8 @@ namespace sakura {
 		ImportClass(NativeClass::Make<Random>("Random"));
 		ImportClass(NativeClass::Make<SaoriManager>("Saori"));
 		ImportClass(NativeClass::Make<SaoriModule>("SaoriModule"));
+		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
+		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {
@@ -1779,7 +1781,7 @@ namespace sakura {
 		return { -1, std::string_view(str.c_str(),0) };
 	}
 
-	std::string TalkStringCombiner::CombineTalk(const std::string& left, const std::string& right, SpeakedSpeakers* speakedCache) {
+	std::string TalkStringCombiner::CombineTalk(const std::string& left, const std::string& right, ScriptInterpreter& interpreter, SpeakedSpeakers* speakedCache, bool disableSpeakerChangeLineBreak) {
 
 		//leftの話者指定を検索
 		auto selector = FetchFirstSpeaker(right);
@@ -1799,8 +1801,8 @@ namespace sakura {
 			std::string result;
 
 			//話者変更、かつ使用済みの話者であれば改行+半改行を行う
-			if (speakers->lastSpeakerIndex != selector.speakerIndex && speakers->usedSpeaker.contains(selector.speakerIndex)) {
-				result = left + std::string(selector.selectorTag) + "\\n\\n[half]" + right.substr(selector.selectorTag.size());
+			if (!disableSpeakerChangeLineBreak && speakers->lastSpeakerIndex != selector.speakerIndex && speakers->usedSpeaker.contains(selector.speakerIndex)) {
+				result = left + std::string(selector.selectorTag) + TalkBuilder::GetScopeChangeLineBreak(interpreter) + right.substr(selector.selectorTag.size());
 			}
 			else {
 				result = left + right;
@@ -1826,8 +1828,46 @@ namespace sakura {
 		}
 	}
 
+	//トーク内容を追加
+	void ScriptInterpreterStack::AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter, bool isLineAppend) {
+
+		//話者指定があるかをチェック
+		auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
+
+		if (speakedCache.lastSpeakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+
+			//最初の発話で話者指定が入ってなければ自動的に付与
+			if (firstSpeaker.speakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+				talkBody.append("\\0");
+				speakedCache.lastSpeakerIndex = 0;
+				speakedCache.usedSpeaker.insert(0);
+			}
+		}
+
+		//追加先がスコープ指定で開始しているかをチェック
+		auto scopeChange = TalkStringCombiner::FetchFirstSpeaker(str);
+
+		//先頭に話者設定がある場合、改行要求を無視する
+		bool disableLineBreak = false;
+		if (isLineAppend && firstSpeaker.speakerIndex != TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+			//行単位追加でかつ話者指定がある場合改行を無視
+			disableLineBreak = true;
+		}
+
+		//改行要求
+		if (isTalkLineEnd) {
+			if (!disableLineBreak) {
+				talkBody.append(TalkBuilder::GetAutoLineBreak(interpreter));
+			}
+			isTalkLineEnd = false;
+		}
+
+		//単純に文字列を結合
+		talkBody = TalkStringCombiner::CombineTalk(talkBody, str, interpreter, &speakedCache, disableLineBreak);
+	}
+
 	//話者を指定
-	void ScriptInterpreterStack::SetTalkSpeakerIndex(int32_t speakerIndex) {
+	void ScriptInterpreterStack::SetTalkSpeakerIndex(int32_t speakerIndex, ScriptInterpreter& interpreter) {
 
 		if (speakedCache.lastSpeakerIndex != speakerIndex) {
 
@@ -1849,7 +1889,7 @@ namespace sakura {
 			}
 
 			//スコープ変更タグを結合して、必要に任せて改行
-			talkBody = TalkStringCombiner::CombineTalk(talkBody, selectorTag, &speakedCache);
+			talkBody = TalkStringCombiner::CombineTalk(talkBody, selectorTag, interpreter, &speakedCache);
 		}
 	}
 	

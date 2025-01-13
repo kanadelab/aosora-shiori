@@ -195,7 +195,7 @@ namespace sakura {
 		if (request.GetArgumentCount() >= 1) {
 			std::string left = request.GetThisValue()->ToString();
 			std::string right = request.GetArgument(0)->ToString();
-			response.SetReturnValue(ScriptValue::Make(TalkStringCombiner::CombineTalk(left, right, nullptr)));
+			response.SetReturnValue(ScriptValue::Make(TalkStringCombiner::CombineTalk(left, right, request.GetContext().GetInterpreter(), nullptr)));
 		}
 	}
 

@@ -209,6 +209,9 @@ namespace sakura {
 		//セキュリティレベルを設定
 		interpreter.SetSecurityLevel(request.GetSecurityLevel());
 
+		//呼出ごとの設定をリセット
+		TalkBuilder::Prepare(interpreter);
+
 		//固定値を返すべきリクエストの場合はそこで終える
 		auto infoRecord = shioriInfo.find(request.GetEventId());
 		if (infoRecord != shioriInfo.end()) {

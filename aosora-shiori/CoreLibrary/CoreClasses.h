@@ -499,4 +499,42 @@ namespace sakura {
 
 	};
 
+	//トーク内にタグを自動挿入する関係の設定オブジェクト
+	class TalkBuilderSettings : public Object<TalkBuilderSettings> {
+	private:
+		std::string autoLineBreak;
+		std::string scopeChangeLineBreak;
+
+	public:
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {};
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+
+		TalkBuilderSettings():
+			autoLineBreak("\\n"),
+			scopeChangeLineBreak("\\n\\n[half]")
+		{}
+
+		const std::string& GetLineBreak() { return autoLineBreak; }
+		const std::string& GetScopeChangeLineBreak() { return scopeChangeLineBreak; }
+	};
+
+	//TalkBuildSettingsを格納するためのもの
+	class TalkBuilder : public Object<TalkBuilder> {
+
+	public:
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {};
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+		static void StaticInit(ScriptInterpreter& interpreter);
+		static void Prepare(ScriptInterpreter& interpreter);
+
+		static TalkBuilderSettings& GetCurrentSettings(ScriptInterpreter& interpreter);
+
+		//自動改行につかう文字列を取得
+		static const std::string& GetAutoLineBreak(ScriptInterpreter& interpreter);
+
+		//スコープ切替時の改行に使う文字列を取得
+		static const std::string& GetScopeChangeLineBreak(ScriptInterpreter& interpreter);
+	};
+
 }
