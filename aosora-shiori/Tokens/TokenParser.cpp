@@ -684,6 +684,14 @@ namespace sakura {
 
 					parseContext.PushToken(match[2].length(), ScriptTokenType::SpeakerSwitch);
 
+					//コロン１個ならインデントを無視する
+					const bool removeIndent = match[2].length() == 1;
+					if (removeIndent) {
+						while (parseContext.GetCurrent().at(0) == ' ' || parseContext.GetCurrent().at(0) == '\t') {
+							parseContext.SeekChar(1);
+						}
+					}
+
 					//残りは行末までトーク本文扱い
 					parseContext.PushToken(0, ScriptTokenType::SpeakBegin);
 					ParseStringLiteral(parseContext, BLOCK_END_FLAG_NEWLINE, false);
