@@ -46,6 +46,7 @@ namespace sakura {
 		Colon,
 		BracketBegin,
 		BracketEnd,
+		VerticalBar,
 		Talk,
 		Word,
 		Function,

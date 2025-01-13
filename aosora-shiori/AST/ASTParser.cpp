@@ -105,6 +105,7 @@ namespace sakura {
 	const uint32_t SEQUENCE_END_FLAG_SEMICOLON = 1u << 5u;
 	const uint32_t SEQUENCE_END_FLAG_COLON = 1u << 6u;
 	const uint32_t SEQUENCE_END_FALG_TALK_NEWLINE = 1u << 7u;
+	const uint32_t SEQUENCE_END_FLAG_VERTICAL_BAR = 1u << 8u;
 
 	//ASTパース
 	class ASTParseContext {
@@ -776,6 +777,14 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
 				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
 			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::VerticalBar) {
+				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
+			}
+			// オペレータが要求されない場合は
+			// ||は引数無しの関数式として扱う
+			else if (parseContext.GetCurrent().type == ScriptTokenType::LogicalOr && isRequireOperand) {
+				parseStack.PushOperand(ParseASTFunctionInitializer(parseContext));
+			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Talk) {
 				parseStack.PushOperand(ParseASTTalkInitializer(parseContext));
 			}
@@ -1031,6 +1040,8 @@ namespace sakura {
 			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_ARRAY_BLACKET);
 		case ScriptTokenType::BlockEnd:
 			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_BLOCK_BLACKET);
+		case ScriptTokenType::VerticalBar:
+			return CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_VERTICAL_BAR);
 		default:
 			return false;
 		}
@@ -1191,10 +1202,22 @@ namespace sakura {
 	//関数イニシャライザ function(val) {  }
 	ASTNodeRef ASTParser::ParseASTFunctionInitializer(ASTParseContext& parseContext) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
-		assert(parseContext.GetCurrent().type == ScriptTokenType::Function);
-		parseContext.FetchNext();
+		switch (parseContext.GetCurrent().type) {
+			case ScriptTokenType::Function:
+			case ScriptTokenType::VerticalBar:
+			// 引数無しの関数式とみなす。
+			case ScriptTokenType::LogicalOr:
+				break;
+			default:
+				assert(false);
+		}
+
+		if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
+			parseContext.FetchNext();
+		}
 
 		std::vector<std::string> argList;
+		bool isSyntaxSugar = false;
 
 		//開カッコがあれば引数リスト
 		if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
@@ -1207,12 +1230,50 @@ namespace sakura {
 				parseContext.FetchNext();
 			}
 		}
+		else if (parseContext.GetCurrent().type == ScriptTokenType::VerticalBar) {
+			isSyntaxSugar = true;
+			parseContext.FetchNext();
+			if (parseContext.GetCurrent().type != ScriptTokenType::VerticalBar) {
+				ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_VERTICAL_BAR);
+				parseContext.FetchNext();
+			}
+			else {
+				parseContext.FetchNext();
+			}
+		}
+		// 引数無しの関数式とみなす。
+		else if (parseContext.GetCurrent().type == ScriptTokenType::LogicalOr) {
+			isSyntaxSugar = true;
+			parseContext.FetchNext();
+		}
 
 		//中括弧開
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
 			return parseContext.Error(ERROR_AST_018, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
+
+		// 関数式の内部の式が1行で終わる場合は式の戻り値をreturnする
+		if (isSyntaxSugar) {
+			auto tentativeContext = parseContext;
+			// 内部の式が1行で終わると仮定して読み進める
+			// 戻り値はshared_ptrなので捨てて大丈夫
+			ParseASTReturn(tentativeContext, true);
+
+			// 成功するようなら改めてparseContextでやり直す
+			if (!tentativeContext.IsEnd() && tentativeContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
+				const ScriptToken& beginSyntaxSugarToken = parseContext.GetCurrent();
+				std::shared_ptr<ASTNodeCodeBlock> funcBody(new ASTNodeCodeBlock());
+				auto node = ParseASTReturn(parseContext, true);
+				funcBody->AddStatement(node);
+				parseContext.FetchNext();
+				funcBody->SetSourceRange(beginSyntaxSugarToken, parseContext.GetPrev());
+
+				auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList))));
+				r->SetSourceRange(beginToken, parseContext.GetPrev());
+				return r;
+			}
+		}
 
 		//コードブロックを取得
 		ASTNodeRef funcBody = ParseASTCodeBlock(parseContext, true);
@@ -1775,11 +1836,16 @@ namespace sakura {
 	}
 
 	//return文のパース
-	ASTNodeRef ASTParser::ParseASTReturn(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTReturn(ASTParseContext& parseContext, bool isLambdaSyntaxSugar) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
 
-		assert(parseContext.GetCurrent().type == ScriptTokenType::Return);
-		parseContext.FetchNext();
+		if (isLambdaSyntaxSugar) {
+			assert(parseContext.GetPrev().type == ScriptTokenType::BlockBegin);
+		}
+		else {
+			assert(parseContext.GetCurrent().type == ScriptTokenType::Return);
+			parseContext.FetchNext();
+		}
 
 		ASTNodeRef r;
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
