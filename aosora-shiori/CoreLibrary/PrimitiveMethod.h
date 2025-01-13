@@ -17,6 +17,8 @@ namespace sakura {
 		static void String_Split(const FunctionRequest& request, FunctionResponse& response);
 		static void String_Substring(const FunctionRequest& request, FunctionResponse& response);
 		static void String_IndexOf(const FunctionRequest& request, FunctionResponse& response);
+		static void String_Replace(const FunctionRequest& request, FunctionResponse& response);
+		static void String_AddTalk(const FunctionRequest& request, FunctionResponse& response);
 
 		static void General_ToString(const FunctionRequest& request, FunctionResponse& response);
 		static void General_ToNumber(const FunctionRequest& request, FunctionResponse& response);

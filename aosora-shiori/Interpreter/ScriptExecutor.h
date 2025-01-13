@@ -342,10 +342,40 @@ namespace sakura {
 
 	};
 
+	//トーク結合システム。トーク向けのルールで文字列を結合する
+	class TalkStringCombiner {
+	public:
+		static const int32_t TALK_SPEAKER_INDEX_DEFAULT = -1;
+
+		//話者選択情報
+		struct SpeakerSelector {
+			int32_t speakerIndex;
+			std::string_view selectorTag;
+		};
+
+		//話者仕様履歴情報
+		struct SpeakedSpeakers {
+			std::set<int32_t> usedSpeaker;
+			int32_t lastSpeakerIndex;
+		};
+
+		//先頭のタグから話者情報を取得
+		static SpeakerSelector FetchFirstSpeaker(const std::string& str);
+
+		//最後に来る話者情報と、トーク内で使われた話者を取得
+		static SpeakedSpeakers FetchLastSpeaker(const std::string& str);
+
+		//トークの結合
+		//SpeakedSpeakersを取ってある場合はそちらを使ってleftと結果に対するSpeakedSpeakerをキャッシュとして更新する
+		static std::string CombineTalk(const std::string& left, const std::string& right, SpeakedSpeakers* speakedCache);
+
+		//SpeakedScopesをleftにrightを追加する形でマージ
+		static void MergeSpeakedScopes(SpeakedSpeakers& left, const SpeakedSpeakers& right);
+	};
+
 	//スクリプト実行スタック
 	class ScriptInterpreterStack {
 	private:
-		static const int32_t TALK_SPEAKER_INDEX_DEFAULT = -1;
 
 		//関数離脱モード
 		enum class LeaveMode {
@@ -392,7 +422,7 @@ namespace sakura {
 		LoopMode loopMode;
 
 		//トーク
-		int32_t talkSpeakerIndex;
+		TalkStringCombiner::SpeakedSpeakers speakedCache;
 		std::string talkBody;
 		bool isTalkLineEnd;
 
@@ -408,9 +438,10 @@ namespace sakura {
 			leaveMode(LeaveMode::None),
 			loopDepth(0),
 			loopMode(LoopMode::Normal),
-			talkSpeakerIndex(TALK_SPEAKER_INDEX_DEFAULT),
 			isTalkLineEnd(false)
-		{}
+		{
+			speakedCache.lastSpeakerIndex = TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT;
+		}
 
 	public:
 		ScriptInterpreterStack() :
@@ -419,9 +450,10 @@ namespace sakura {
 			callingAstNode(nullptr),
 			parent(nullptr),
 			leaveMode(LeaveMode::None),
-			talkSpeakerIndex(TALK_SPEAKER_INDEX_DEFAULT),
 			isTalkLineEnd(false)
-		{}
+		{
+			speakedCache.lastSpeakerIndex = TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT;
+		}
 
 		//関数を抜ける設定
 		void Return(const ScriptValueRef& value) {
@@ -554,10 +586,15 @@ namespace sakura {
 
 		//トーク内容を追加
 		void AppendTalkBody(const std::string& str) {
-			if (talkSpeakerIndex == TALK_SPEAKER_INDEX_DEFAULT) {
-				//話者指定が入ってなければ\0を自動的に付与
-				talkBody.append("\\0");
-				talkSpeakerIndex = 0;
+			if (speakedCache.lastSpeakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+
+				//最初の発話で話者指定が入ってなければ自動的に付与
+				auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
+				if (firstSpeaker.speakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
+					talkBody.append("\\0");
+					speakedCache.lastSpeakerIndex = 0;
+					speakedCache.usedSpeaker.insert(0);
+				}
 			}
 
 			//改行要求
@@ -567,7 +604,7 @@ namespace sakura {
 			}
 			
 			//単純に文字列を結合
-			talkBody.append(str);
+			talkBody = TalkStringCombiner::CombineTalk(talkBody, str, &speakedCache);
 		}
 
 		void TalkLineEnd() {
@@ -575,34 +612,12 @@ namespace sakura {
 		}
 
 		//話者を指定
-		void SetTalkSpeakerIndex(int32_t speakerIndex) {
-
-			if (talkSpeakerIndex != speakerIndex) {
-
-				//話者が変更になる場合、SSP側での改行となるため改行を切る
-				isTalkLineEnd = false;
-
-				talkSpeakerIndex = speakerIndex;
-				switch (talkSpeakerIndex) {
-				case 0:
-					talkBody.append("\\0");
-					break;
-				case 1:
-					talkBody.append("\\1");
-					break;
-				default:
-					talkBody.append("\\p[" + std::to_string(talkSpeakerIndex) + "]");
-					break;
-				}
-
-				//話者変更時の改行がいりそう…
-			}
-		}
+		void SetTalkSpeakerIndex(int32_t speakerIndex);
 
 		//話者交替タグ
 		void SwitchTalkSpeakerIndex() {
 			//0と1の間で変更
-			if (talkSpeakerIndex != 0) {
+			if (speakedCache.lastSpeakerIndex != 0) {
 				SetTalkSpeakerIndex(0);
 			}
 			else {

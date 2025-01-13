@@ -6,6 +6,8 @@
 
 namespace sakura {
 
+	const std::regex PATTERN_PTAG(R"(\\p(\[([0-9]+)\]|([0-9])))");
+
 	//ASTノード実行系
 	ScriptValueRef ScriptExecutor::ExecuteASTNode(const ASTNodeBase& node, ScriptExecuteContext& executorContext) {
 		return ExecuteInternal(node, executorContext);
@@ -1667,6 +1669,189 @@ namespace sakura {
 		stack.Throw(e);
 	}
 
+	TalkStringCombiner::SpeakedSpeakers TalkStringCombiner::FetchLastSpeaker(const std::string& str) {
+		//一旦\p[0]はおいといて、検索
+		int32_t items[5];
+		SpeakedSpeakers result;
+		result.lastSpeakerIndex = 0;
+
+		//NOTE: 見つからない場合~0になることを利用してマイナス化する
+		items[0] = static_cast<int32_t>(str.rfind("\\0"));
+		items[1] = static_cast<int32_t>(str.rfind("\\h"));
+
+		if (items[0] >= 0 || items[1] >= 0) {
+			result.usedSpeaker.insert(0);
+		}
+
+		items[2] = static_cast<int32_t>(str.rfind("\\1"));
+		items[3] = static_cast<int32_t>(str.rfind("\\u"));
+
+		if (items[2] >= 0 || items[3] >= 0) {
+			result.usedSpeaker.insert(1);
+		}
+
+		items[4] = static_cast<int32_t>(str.rfind("\\p"));
+		int32_t lastPTagIndex = 0;
+
+		if (items[4] >= 0) {
+			//\\pがある場合、すべての話者指定を抽出して処理
+			std::string testing = str;
+			std::smatch match{};
+
+			//すべてのマッチをループ
+			while (std::regex_search(testing, match, PATTERN_PTAG)) {
+
+				//マッチの取り出し
+				if (*(match[1].first) == '[') {
+					size_t index;
+					if (StringToIndex(match[2].str(), index)) {
+						result.usedSpeaker.insert(static_cast<int32_t>(index));
+						lastPTagIndex = static_cast<int32_t>(index);
+					}
+				}
+				else {
+					size_t index;
+					if (StringToIndex(match[1].str(), index)) {
+						result.usedSpeaker.insert(static_cast<int32_t>(index));
+						lastPTagIndex = static_cast<int32_t>(index);
+					}
+				}
+
+				testing = match.suffix();
+			}
+		}
+
+		//最も最後に現れた話者を取得
+		auto maxIterator = std::max_element(items, items + (sizeof(items)/sizeof(int32_t)));
+		size_t maxIndex = std::distance(items, maxIterator);
+
+		//1つも話者指定がない場合：\0扱いで終える
+		if (items[maxIndex] == std::string::npos) {
+			result.lastSpeakerIndex = 0;
+			return result;
+		}
+		
+		//最後のタグから話者の番号を決定
+		switch (maxIndex) {
+		case 0:
+		case 1:
+			result.lastSpeakerIndex = 0;
+			return result;
+		case 2:
+		case 3:
+			result.lastSpeakerIndex = 1;
+			return result;
+		case 4:
+			result.lastSpeakerIndex = lastPTagIndex;
+			return result;
+		default:
+			assert(false);
+		}
+
+		return result;
+	}
+
+	TalkStringCombiner::SpeakerSelector TalkStringCombiner::FetchFirstSpeaker(const std::string& str) {
+
+		//先頭一致で話者を確認する
+		if (str.starts_with("\\0") || str.starts_with("\\h")) {
+			return { 0, std::string_view(str.c_str(), 2) };
+		}
+		else if (str.starts_with("\\1") || str.starts_with("\\u")) {
+			return { 1, std::string_view(str.c_str(), 2) };
+		}
+		else if (str.starts_with("\\p[")) {
+			size_t endBlacketIndex = str.find(']');
+			if (endBlacketIndex != std::string::npos) {
+				std::string n = str.substr(3, endBlacketIndex - 3);
+				size_t speakerIndex;
+				if (StringToIndex(n, speakerIndex)) {
+					return { static_cast<int32_t>(speakerIndex), std::string_view(str.c_str(), endBlacketIndex) };
+				}
+			}
+		}
+		else if (str.starts_with("\\p")) {
+			if (str.size() >= 3) {
+				return { str[2] - '0', std::string_view(str.c_str(), 3) };
+			}
+		}
+		
+		return { -1, std::string_view(str.c_str(),0) };
+	}
+
+	std::string TalkStringCombiner::CombineTalk(const std::string& left, const std::string& right, SpeakedSpeakers* speakedCache) {
+
+		//leftの話者指定を検索
+		auto selector = FetchFirstSpeaker(right);
+		if (selector.speakerIndex == -1) {
+			//話者指定が先頭にないのでそのままくっつける
+			return left + right;
+		}
+		else {
+			//話者指定があるので前半の最終の話者をチェック
+			SpeakedSpeakers localSpeakers;
+			SpeakedSpeakers* speakers = speakedCache;
+			if (speakers == nullptr) {
+				localSpeakers = FetchLastSpeaker(left);
+				speakers = &localSpeakers;
+			}
+
+			std::string result;
+
+			//話者変更、かつ使用済みの話者であれば改行+半改行を行う
+			if (speakers->lastSpeakerIndex != selector.speakerIndex && speakers->usedSpeaker.contains(selector.speakerIndex)) {
+				result = left + std::string(selector.selectorTag) + "\\n\\n[half]" + right.substr(selector.selectorTag.size());
+			}
+			else {
+				result = left + right;
+			}
+
+			//キャッシュが設定されてれば後半部を使用して更新する
+			if (speakedCache != nullptr) {
+				SpeakedSpeakers rightScopes = FetchLastSpeaker(right);
+				MergeSpeakedScopes(*speakedCache, rightScopes);
+			}
+
+			return result;
+		}
+	}
+
+	void TalkStringCombiner::MergeSpeakedScopes(SpeakedSpeakers& left, const SpeakedSpeakers& right) {
+		if (right.lastSpeakerIndex != TALK_SPEAKER_INDEX_DEFAULT) {
+			left.lastSpeakerIndex = right.lastSpeakerIndex;
+		}
+
+		for (uint32_t index : right.usedSpeaker) {
+			left.usedSpeaker.insert(index);
+		}
+	}
+
+	//話者を指定
+	void ScriptInterpreterStack::SetTalkSpeakerIndex(int32_t speakerIndex) {
+
+		if (speakedCache.lastSpeakerIndex != speakerIndex) {
+
+			//話者が変更になる場合、変更先で改行が必要化の判断になるので改行を切る
+			isTalkLineEnd = false;
+
+			std::string selectorTag;
+
+			switch (speakerIndex) {
+			case 0:
+				selectorTag = "\\0";
+				break;
+			case 1:
+				selectorTag = "\\1";
+				break;
+			default:
+				selectorTag = "\\p[" + std::to_string(speakerIndex) + "]";
+				break;
+			}
+
+			//スコープ変更タグを結合して、必要に任せて改行
+			talkBody = TalkStringCombiner::CombineTalk(talkBody, selectorTag, &speakedCache);
+		}
+	}
 	
 
 }

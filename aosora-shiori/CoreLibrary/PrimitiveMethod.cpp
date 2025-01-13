@@ -180,6 +180,25 @@ namespace sakura {
 		}
 	}
 
+	void PrimitiveMethod::String_Replace(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			std::string search = request.GetArgument(0)->ToString();
+			std::string replaced = request.GetArgument(1)->ToString();
+			std::string target = request.GetThisValue()->ToString();
+			Replace(target, search, replaced);
+			response.SetReturnValue(ScriptValue::Make(target));
+		}
+	}
+
+	void PrimitiveMethod::String_AddTalk(const FunctionRequest& request, FunctionResponse& response) {
+		//トークの結合ルールを使用してくっつける
+		if (request.GetArgumentCount() >= 1) {
+			std::string left = request.GetThisValue()->ToString();
+			std::string right = request.GetArgument(0)->ToString();
+			response.SetReturnValue(ScriptValue::Make(TalkStringCombiner::CombineTalk(left, right, nullptr)));
+		}
+	}
+
 	ScriptValueRef PrimitiveMethod::GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
 		if (member == "Round") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_Round, value));
@@ -218,6 +237,12 @@ namespace sakura {
 		}
 		else if (member == "Substring") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Substring, value));
+		}
+		else if (member == "Replace") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Replace, value));
+		}
+		else if (member == "AddTalk") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_AddTalk, value));
 		}
 		else if (member == "length") {
 #if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
