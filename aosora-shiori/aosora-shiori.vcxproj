@@ -180,6 +180,7 @@
     <ClInclude Include="Shiori.h" />
     <ClInclude Include="Tokens\TokenParser.h" />
     <ClInclude Include="Tokens\Tokens.h" />
+    <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AST\ASTNodeBase.cpp" />

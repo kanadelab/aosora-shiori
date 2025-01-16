@@ -1,5 +1,6 @@
 ﻿#include <fstream>
 #include <cstdio>
+#include "Version.h"
 #include "Shiori.h"
 
 namespace sakura {
@@ -15,7 +16,7 @@ namespace sakura {
 		SRand();
 
 		//固定値情報を設定
-		shioriInfo["version"] = "0.0.1";
+		shioriInfo["version"] = AOSORA_SHIORI_VERSION " " AOSORA_SHIORI_BUILD;
 		shioriInfo["craftman"] = "kanadelab";
 		shioriInfo["craftmanw"] = "ななっち";
 		shioriInfo["name"] = "Aosora";

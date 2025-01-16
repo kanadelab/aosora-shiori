@@ -93,6 +93,7 @@
       <Filter>Misc</Filter>
     </ClInclude>
     <ClInclude Include="Base.h" />
+    <ClInclude Include="Version.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">
