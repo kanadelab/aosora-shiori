@@ -7,31 +7,38 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: setup nuget
-        uses: nuget/setup-nuget@v1
-
       - name: msbuild setup
         uses: microsoft/setup-msbuild@v1.1
-
-      - name: restore nuget
-        shell: cmd
-        run: |
-          nuget restore aosora-shiori.sln
 
       - name: run msbuild
         shell: cmd
         run: |
           MSBuild.exe aosora-shiori.sln -property:Configuration=Release;Platform="x86" -t:rebuild
 
-      - name: copy files
-        shell: cmd
-        run: |
-          mkdir deploy-output
-          copy Win32/Release/aosora.dll deploy-output/aosora.dll
-          copy Win32/Release/aosora-sstp.dll deploy-output/aosora-sstp.dll
+      - name: run vsce package
+      - run: |
+          pushd vscode-extension
+          npm install
+          npm install vsce
+          npx vsce package -o vscode-extension.vsix
+          popd
 
-      - name: upload artifacts
+      - name: upload build
         uses: actions/upload-artifact@v4
         with:
           name: aosora-shiori
-          path: deploy-output
+          path: Win32\Release
+
+      - name: upload vscode-extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension.vsix
+          path: vscode-extension.vsix
+
+      - name: upload demo-nar
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo.nar
+          path: ssp\ghost\test
+      
+
