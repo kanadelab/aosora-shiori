@@ -2,7 +2,7 @@ name: build
 on: [push]
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-2025
     steps:
       - name: checkout
         uses: actions/checkout@v2
