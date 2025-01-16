@@ -521,6 +521,9 @@ namespace sakura {
 
 	//TalkBuildSettingsを格納するためのもの
 	class TalkBuilder : public Object<TalkBuilder> {
+	private:
+		static const char* NAME_DEFAULT_SETTINGS;
+		static const char* NAME_CURRENT_SETTINGS;
 
 	public:
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {};

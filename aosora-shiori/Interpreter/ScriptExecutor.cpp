@@ -1082,7 +1082,7 @@ namespace sakura {
 			}
 		}
 
-		executeContext.GetStack().AppendTalkBody(r->ToString(), executeContext.GetInterpreter(), true);
+		executeContext.GetStack().AppendTalkBody(r->ToString(), executeContext.GetInterpreter());
 		executeContext.GetStack().TalkLineEnd();
 		return ScriptValue::Null;
 	}
@@ -1146,7 +1146,7 @@ namespace sakura {
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
-				executeContext.GetStack().AppendTalkBody(str, executeContext.GetInterpreter(), false);
+				executeContext.GetStack().AppendTalkBody(str, executeContext.GetInterpreter());
 
 				//ここまでのトーク内容を関数の戻り値として返す
 				executeContext.GetStack().ReturnTalk();
@@ -1829,7 +1829,7 @@ namespace sakura {
 	}
 
 	//トーク内容を追加
-	void ScriptInterpreterStack::AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter, bool isLineAppend) {
+	void ScriptInterpreterStack::AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter) {
 
 		//話者指定があるかをチェック
 		auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
@@ -1847,23 +1847,14 @@ namespace sakura {
 		//追加先がスコープ指定で開始しているかをチェック
 		auto scopeChange = TalkStringCombiner::FetchFirstSpeaker(str);
 
-		//先頭に話者設定がある場合、改行要求を無視する
-		bool disableLineBreak = false;
-		if (isLineAppend && firstSpeaker.speakerIndex != TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
-			//行単位追加でかつ話者指定がある場合改行を無視
-			disableLineBreak = true;
-		}
-
 		//改行要求
 		if (isTalkLineEnd) {
-			if (!disableLineBreak) {
-				talkBody.append(TalkBuilder::GetAutoLineBreak(interpreter));
-			}
+			talkBody.append(TalkBuilder::GetAutoLineBreak(interpreter));
 			isTalkLineEnd = false;
 		}
 
 		//単純に文字列を結合
-		talkBody = TalkStringCombiner::CombineTalk(talkBody, str, interpreter, &speakedCache, disableLineBreak);
+		talkBody = TalkStringCombiner::CombineTalk(talkBody, str, interpreter, &speakedCache, false);
 	}
 
 	//話者を指定

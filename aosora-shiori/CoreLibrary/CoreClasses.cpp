@@ -337,32 +337,35 @@ namespace sakura {
 		return nullptr;
 	}
 
+	const char* TalkBuilder::NAME_DEFAULT_SETTINGS = "Default";
+	const char* TalkBuilder::NAME_CURRENT_SETTINGS = "Current";
+
 	ScriptValueRef TalkBuilder::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
-		if (key == "Global") {
-			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet("Global");
+		if (key == NAME_DEFAULT_SETTINGS) {
+			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet(NAME_DEFAULT_SETTINGS);
 		}
-		else if (key == "Current") {
-			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet("Current");
+		else if (key == NAME_CURRENT_SETTINGS) {
+			return executeContext.GetInterpreter().StaticStore<TalkBuilder>()->RawGet(NAME_CURRENT_SETTINGS);
 		}
 		return nullptr;
 	}
 
 	void TalkBuilder::StaticInit(ScriptInterpreter& interpreter) {
-		//グローバル設定用オブジェクトを追加
+		//デフォルト設定用オブジェクトを追加
 		auto staticStore = interpreter.StaticStore<TalkBuilder>();
-		staticStore->RawSet("Global", ScriptValue::Make(interpreter.CreateNativeObject<TalkBuilderSettings>()));
+		staticStore->RawSet(NAME_DEFAULT_SETTINGS, ScriptValue::Make(interpreter.CreateNativeObject<TalkBuilderSettings>()));
 	}
 
 	void TalkBuilder::Prepare(ScriptInterpreter& interpreter) {
-		//Globalからクローンを作成
+		//デフォルトからクローンを作成
 		auto staticStore = interpreter.StaticStore<TalkBuilder>();
-		auto* globalObj = interpreter.InstanceAs<TalkBuilderSettings>(staticStore->RawGet("Global"));
+		auto* globalObj = interpreter.InstanceAs<TalkBuilderSettings>(staticStore->RawGet(NAME_DEFAULT_SETTINGS));
 		auto currentObj = interpreter.CreateNativeObject<TalkBuilderSettings>(*globalObj);
-		staticStore->RawSet("Current", ScriptValue::Make(currentObj));
+		staticStore->RawSet(NAME_CURRENT_SETTINGS, ScriptValue::Make(currentObj));
 	}
 
 	TalkBuilderSettings& TalkBuilder::GetCurrentSettings(ScriptInterpreter& interpreter) {
-		return *interpreter.InstanceAs<TalkBuilderSettings>(interpreter.StaticStore<TalkBuilder>()->RawGet("Current"));
+		return *interpreter.InstanceAs<TalkBuilderSettings>(interpreter.StaticStore<TalkBuilder>()->RawGet(NAME_CURRENT_SETTINGS));
 	}
 
 	const std::string& TalkBuilder::GetAutoLineBreak(ScriptInterpreter& interpreter) {
