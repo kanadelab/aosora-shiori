@@ -1,0 +1,37 @@
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup nuget
+        uses: nuget/setup-nuget@v1
+
+      - name: msbuild setup
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: restore nuget
+        shell: cmd
+        run: |
+          nuget restore aosora-shiori.sln
+
+      - name: run msbuild
+        shell: cmd
+        run: |
+          MSBuild.exe aosora-shiori.sln -property:Configuration=Release;Platform="x86" -t:rebuild
+
+      - name: copy files
+        shell: cmd
+        run: |
+          mkdir deploy-output
+          copy Win32/Release/aosora.dll deploy-output/aosora.dll
+          copy Win32/Release/aosora-sstp.dll deploy-output/aosora-sstp.dll
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aosora-shiori
+          path: deploy-output
