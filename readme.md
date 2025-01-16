@@ -23,5 +23,14 @@ Release のところにデモゴーストがあります。
 * [aosora-shiori ゴースト開発ガイド](https://note.com/kanade_lab/n/nae3551d35efb)
 * [aosora-shiori 未決定仕様とかまとめ ](https://note.com/kanade_lab/n/n62dc926d6caa)
 
+## ビルドにかんして
+* リポジトリ内のゴースト(/ssp/*)を起動する場合
+  * aosora.dll のビルドが必要
+* vscode拡張(/vscode-extension/*)をビルドする場合
+  * aosora-sstp.exe のビルドが必要
+
+先にaosora-shiori.slnをビルドしてください。  
+ビルド生成物として、それぞれに必要なファイルが配置されます。
+
 ## そのほか
 * 月波 清火 (@tukinami_seika@fedibird.com) 様がアイコンを作ってくださいました。
