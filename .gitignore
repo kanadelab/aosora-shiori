@@ -17,3 +17,8 @@ aosora.dll
 aosora.exp
 aosora.lib
 aosora.pdb
+
+/ssp/ghost/test/shell/master/profile
+/ssp/ghost/test/ghost/master/profile
+/ssp/ghost/test/ghost/master/aosora.*
+/ssp/ghost/test/ghost/master/savedata.asv
