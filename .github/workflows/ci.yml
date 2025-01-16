@@ -19,7 +19,7 @@ jobs:
       - name: run msbuild
         shell: cmd
         run: |
-          MSBuild.exe aosora-shiori.sln -property:Configuration=Release;Platform="x86" -t:rebuild
+          MSBuild.exe aosora-shiori.sln -property:Configuration=Deploy;Platform="x86" -t:rebuild
 
       - name: run vsce package
         run: |
@@ -33,18 +33,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aosora-shiori
-          path: Win32\Release
+          path: Win32\Deploy
 
       - name: upload vscode-extension
         uses: actions/upload-artifact@v4
         with:
-          name: vscode-extension.vsix
+          name: vscode-extension
           path: vscode-extension\vscode-extension.vsix
 
       - name: upload demo-nar
         uses: actions/upload-artifact@v4
         with:
-          name: demo.nar
+          name: demo
           path: ssp\ghost\test
       
 
