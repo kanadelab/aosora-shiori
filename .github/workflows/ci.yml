@@ -10,6 +10,12 @@ jobs:
       - name: msbuild setup
         uses: microsoft/setup-msbuild@v1.1
 
+      - name: generate versions
+        run: |
+          pushd tools
+          node version-setup.js
+          popd
+
       - name: run msbuild
         shell: cmd
         run: |
@@ -33,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vscode-extension.vsix
-          path: vscode-extension.vsix
+          path: vscode-extension\vscode-extension.vsix
 
       - name: upload demo-nar
         uses: actions/upload-artifact@v4
