@@ -16,7 +16,7 @@ jobs:
           MSBuild.exe aosora-shiori.sln -property:Configuration=Release;Platform="x86" -t:rebuild
 
       - name: run vsce package
-      - run: |
+        run: |
           pushd vscode-extension
           npm install
           npm install vsce
