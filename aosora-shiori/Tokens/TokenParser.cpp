@@ -173,20 +173,11 @@ namespace sakura {
 	const uint32_t BLOCK_END_FLAG_SINGLE_QUATATION = 1u << 4;		// '
 
 	//トークン解析エラー
-#if 0
-	const ScriptParseErrorData ERROR_TOKEN_001 = { "T001", "括弧 { } の対応関係が正しくありません。", "対応する開き括弧のない中括弧があったため、読み込みに失敗しました。" };
-	const ScriptParseErrorData ERROR_TOKEN_002 = { "T002", "トーク名として使用できない文字列です。", "変数名として使用できない文字をトーク名として使おうとしています。" };
-	const ScriptParseErrorData ERROR_TOKEN_003 = { "T003", "開き括弧 ( が必要です。", "ifの条件式の前に開き括弧 ( が必要です。" };
-	const ScriptParseErrorData ERROR_TOKEN_004 = { "T004", "開き括弧 { が必要です。", "トークブロック本文の開始前に中括弧 { が必要です。" };
-	const ScriptParseErrorData ERROR_TOKEN_005 = { "T005", "構文的に識できない文字です。", "スクリプトのどの構文にも当てはまらない文字です。書き方が間違ってないか確認してみてください。" };
-#else
 	const std::string ERROR_TOKEN_001 = "T001";
 	const std::string ERROR_TOKEN_002 = "T002";
 	const std::string ERROR_TOKEN_003 = "T003";
 	const std::string ERROR_TOKEN_004 = "T004";
 	const std::string ERROR_TOKEN_005 = "T005";
-#endif
-
 
 	//トークン解析用情報
 	class ScriptTokenParseContext {

@@ -10,47 +10,6 @@
 
 namespace sakura {
 
-#if 0
-	const ScriptParseErrorData ERROR_AST_001 = { "A001", "コードブロック終了の閉じ括弧 } が見つかりませんでした。", "コードブロックは { } で囲まれる一連の処理ですが、始まりに対して終わりが見つからないエラーです。コードブロックや、付近の { の閉じ括弧を忘れていないか確認してください。"};
-	const ScriptParseErrorData ERROR_AST_002 = { "A002", "演算子の使い方が正しくありません。", "2つの要素を足したり掛けたりするタイプの計算式で、足す側と足される側といったような２つの要素が揃っていないようです。"};
-	const ScriptParseErrorData ERROR_AST_003 = { "A003", "カッコの対応関係が間違っています。", "計算式に使うカッコ ( ) の対応関係が正しくないようです。計算式を確認してください。"};
-	const ScriptParseErrorData ERROR_AST_004 = { "A004", "演算子が必要か、ここでは使えない演算子です。", "値を2つ連続することはできません。足し合わせるなら + を使うなど、式にする必要があります。"};
-	const ScriptParseErrorData ERROR_AST_005 = { "A005", "メンバ名を指定する必要があります。", "Value.Item のように、ピリオドはオブジェクトのメンバーを参照するために使用します。"};
-	const ScriptParseErrorData ERROR_AST_006 = { "A006", "ここでセミコロン ; は使えません。", "この式ではセミコロン ; を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_007 = { "A007", "ここでコロン : は使えません。", "この式ではコロン : を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_008 = { "A008", "ここで閉じ括弧 } は使えません。", "この式では閉じ括弧 } を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_009 = { "A009", "ここで閉じ括弧 ] は使えません。", "この式では閉じ括弧 ] を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_010 = { "A010", "ここでカンマ , は使えません。", "この式ではカンマ , を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_011 = { "A011", "ここで閉じ括弧 ) は使えません。", "ここでは閉じ括弧 ) を使うことができません。機能の使い方が間違ってないか、確認してみてください。"};
-	const ScriptParseErrorData ERROR_AST_012 = { "A012", "カッコの対応関係が正しくありません。", "リストの始端終端のカッコが揃っていないようです。"};
-	const ScriptParseErrorData ERROR_AST_013 = { "A013", "引数名が必要です。", "ここは引数リストなので、引数名を書かないといけません"};
-	const ScriptParseErrorData ERROR_AST_014 = { "A014", "カンマ , で引数を区切るか、閉じ括弧 ) で引数リストを閉じる必要があります。"};
-	const ScriptParseErrorData ERROR_AST_015 = { "A015", "カッコの対応関係が正しくありません。", "引数リストが正しく閉じられていません。"};
-	const ScriptParseErrorData ERROR_AST_016 = { "A016", "キーが必要です。", "連想配列の式では キー: 値　の形式で内容を記述します。キーが正しい形式ではないようです。"};
-	const ScriptParseErrorData ERROR_AST_017 = { "A017", "コロン : が必要です。", "連想配列の式では キー: 値 の形式で内容を記述します。キーと値を分けるコロンが無いようです。"};
-	const ScriptParseErrorData ERROR_AST_018 = { "A018", "開き括弧 { が必要です。", "関数式では { から関数本体を始める必要があります。"};
-	const ScriptParseErrorData ERROR_AST_019 = { "A019", "開き括弧 { が必要です。", "トーク式では { からトーク本体を始める必要があります。"};
-	const ScriptParseErrorData ERROR_AST_020 = { "A020", "関数名が必要です。", "関数定義ではfunction に続けて関数名が必要です。"};
-	const ScriptParseErrorData ERROR_AST_021 = { "A021", "開き括弧 ( が必要です。", "関数定義の発生条件を使用する場合は if に続けて括弧 ( ) で条件を記述します。"};
-	const ScriptParseErrorData ERROR_AST_022 = { "A022", "開き括弧 { が必要です。", "関数定義では { から関数本体を始める必要があります。"};
-	const ScriptParseErrorData ERROR_AST_023 = { "A023", "書き込めない対象に書き込もうとしています。", "読み取り専用の情報に代入等で変更をしようとしています。"};
-	const ScriptParseErrorData ERROR_AST_024 = { "A024", "newキーワードには呼出式 ( ) が必要です。", "new Class() のように、newキーワードには呼出式が必要です。"};
-	const ScriptParseErrorData ERROR_AST_025 = { "A025", "クラス名が必要です。", "クラス定義では class キーワードに続いてクラス名を記述します。"};
-	const ScriptParseErrorData ERROR_AST_026 = { "A026", "継承クラス名が必要です。", "クラスを継承する場合はクラス名の後のコロン : に続けて継承元のクラス名を記述します。"};
-	const ScriptParseErrorData ERROR_AST_027 = { "A027", "開き括弧 { が必要です。", "クラス本体の記述前に始端の括弧 { が必要です。"};
-	const ScriptParseErrorData ERROR_AST_028 = { "A028", "開き括弧 { が必要です。", "initの本体の前に始端の括弧 { が必要です。"};
-	const ScriptParseErrorData ERROR_AST_029 = { "A029", "閉じ括弧 } が必要です。", "クラス終端の括弧 } が必要です。"};
-	const ScriptParseErrorData ERROR_AST_030 = { "A030", "変数名が必要です。", "ここでは変数名が必要です。変数名に使用できないキーワードか記号が使われているかもしれません。"};
-	const ScriptParseErrorData ERROR_AST_031 = { "A031", "開き括弧 ( が必要です。", "for文の開き括弧が必要です。"};
-	const ScriptParseErrorData ERROR_AST_032 = { "A032", "開き括弧 ( が必要です。", "while文の開き括弧が必要です。"};
-	const ScriptParseErrorData ERROR_AST_033 = { "A033", "開き括弧 ( が必要です。", "if文の開き括弧が必要です。"};
-	const ScriptParseErrorData ERROR_AST_034 = { "A034", "セミコロン ; が必要です。", "break文の終わりにはセミコロンが必要です。"};
-	const ScriptParseErrorData ERROR_AST_035 = { "A035", "セミコロン ; が必要です。", "continue文の終わりにはセミコロンが必要です。"};
-	const ScriptParseErrorData ERROR_AST_036 = { "A036", "開き括弧 { が必要です。", "tryブロック始端には開き括弧 { が必要です。"};
-	const ScriptParseErrorData ERROR_AST_037 = { "A037", "開き括弧 { が必要です。", "catchブロック始端には開き括弧 { が必要です。"};
-	const ScriptParseErrorData ERROR_AST_038 = { "A038", "開き括弧 { が必要です。", "finallyブロック始端には開き括弧 { が必要です。"};
-	const ScriptParseErrorData ERROR_AST_039 = { "A039", "セミコロン ; が必要です。", "変数宣言の終わりにはセミコロン ; が必要です。" };
-#else
 	const std::string ERROR_AST_001 = "A001";
 	const std::string ERROR_AST_002 = "A002";
 	const std::string ERROR_AST_003 = "A003";
@@ -90,7 +49,6 @@ namespace sakura {
 	const std::string ERROR_AST_037 = "A037";
 	const std::string ERROR_AST_038 = "A038";
 	const std::string ERROR_AST_039 = "A039";
-#endif
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };

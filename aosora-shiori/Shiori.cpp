@@ -6,13 +6,8 @@
 
 namespace sakura {
 	
-#if 0
-	ScriptParseErrorData ERROR_SHIORI_001 = { "S001", "設定ファイル ghost.asproj が開けませんでした。" };
-	ScriptParseErrorData ERROR_SHIORI_002 = { "S002", "スクリプトファイルが開けませんでした。" };
-#else
 	const std::string ERROR_SHIORI_001 = "S001";
 	const std::string ERROR_SHIORI_002 = "S002";
-#endif
 
 	Shiori::Shiori():
 		isResponsedLoadError(false),

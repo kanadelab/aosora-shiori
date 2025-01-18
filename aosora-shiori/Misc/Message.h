@@ -95,6 +95,7 @@ namespace sakura {
 
 		//取得
 		static const char* Find(const std::string& key) {
+			//TODO: 別言語設定も可能にするなど
 			return ReadContext(instance->languages["ja-jp"], instance->languages["ja-jp"]).Find(key);
 		}
 
