@@ -42,6 +42,7 @@ namespace sakura {
 
 	public:
 		Shiori();
+		~Shiori();
 		void Load(const std::string& path);
 		void LoadWithoutProject();
 		void Unload();

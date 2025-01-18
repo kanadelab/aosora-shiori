@@ -3,12 +3,14 @@
 #include "AST/ASTNodeBase.h"
 #include "AST/ASTNodes.h"
 #include "AST/ASTParser.h"
+#include "Misc/Message.h"
 
 //パースエラー発生時にassertで止める
 //#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
 
 namespace sakura {
 
+#if 0
 	const ScriptParseErrorData ERROR_AST_001 = { "A001", "コードブロック終了の閉じ括弧 } が見つかりませんでした。", "コードブロックは { } で囲まれる一連の処理ですが、始まりに対して終わりが見つからないエラーです。コードブロックや、付近の { の閉じ括弧を忘れていないか確認してください。"};
 	const ScriptParseErrorData ERROR_AST_002 = { "A002", "演算子の使い方が正しくありません。", "2つの要素を足したり掛けたりするタイプの計算式で、足す側と足される側といったような２つの要素が揃っていないようです。"};
 	const ScriptParseErrorData ERROR_AST_003 = { "A003", "カッコの対応関係が間違っています。", "計算式に使うカッコ ( ) の対応関係が正しくないようです。計算式を確認してください。"};
@@ -48,7 +50,47 @@ namespace sakura {
 	const ScriptParseErrorData ERROR_AST_037 = { "A037", "開き括弧 { が必要です。", "catchブロック始端には開き括弧 { が必要です。"};
 	const ScriptParseErrorData ERROR_AST_038 = { "A038", "開き括弧 { が必要です。", "finallyブロック始端には開き括弧 { が必要です。"};
 	const ScriptParseErrorData ERROR_AST_039 = { "A039", "セミコロン ; が必要です。", "変数宣言の終わりにはセミコロン ; が必要です。" };
-
+#else
+	const std::string ERROR_AST_001 = "A001";
+	const std::string ERROR_AST_002 = "A002";
+	const std::string ERROR_AST_003 = "A003";
+	const std::string ERROR_AST_004 = "A004";
+	const std::string ERROR_AST_005 = "A005";
+	const std::string ERROR_AST_006 = "A006";
+	const std::string ERROR_AST_007 = "A007";
+	const std::string ERROR_AST_008 = "A008";
+	const std::string ERROR_AST_009 = "A009";
+	const std::string ERROR_AST_010 = "A010";
+	const std::string ERROR_AST_011 = "A011";
+	const std::string ERROR_AST_012 = "A012";
+	const std::string ERROR_AST_013 = "A013";
+	const std::string ERROR_AST_014 = "A014";
+	const std::string ERROR_AST_015 = "A015";
+	const std::string ERROR_AST_016 = "A016";
+	const std::string ERROR_AST_017 = "A017";
+	const std::string ERROR_AST_018 = "A018";
+	const std::string ERROR_AST_019 = "A019";
+	const std::string ERROR_AST_020 = "A020";
+	const std::string ERROR_AST_021 = "A021";
+	const std::string ERROR_AST_022 = "A022";
+	const std::string ERROR_AST_023 = "A023";
+	const std::string ERROR_AST_024 = "A024";
+	const std::string ERROR_AST_025 = "A025";
+	const std::string ERROR_AST_026 = "A026";
+	const std::string ERROR_AST_027 = "A027";
+	const std::string ERROR_AST_028 = "A028";
+	const std::string ERROR_AST_029 = "A029";
+	const std::string ERROR_AST_030 = "A030";
+	const std::string ERROR_AST_031 = "A031";
+	const std::string ERROR_AST_032 = "A032";
+	const std::string ERROR_AST_033 = "A033";
+	const std::string ERROR_AST_034 = "A034";
+	const std::string ERROR_AST_035 = "A035";
+	const std::string ERROR_AST_036 = "A036";
+	const std::string ERROR_AST_037 = "A037";
+	const std::string ERROR_AST_038 = "A038";
+	const std::string ERROR_AST_039 = "A039";
+#endif
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -154,7 +196,7 @@ namespace sakura {
 		}
 
 		//エラーのセット
-		ASTNodeRef Error(const ScriptParseErrorData& error, const ScriptToken& token) {
+		ASTNodeRef Error(const std::string& errorCode, const ScriptToken& token) {
 
 #if defined(AOSORA_ENABLE_PARSE_ERROR_ASSERT)
 			//デバッグのためエラーだったら即止め
@@ -162,7 +204,9 @@ namespace sakura {
 #endif
 			//最初に発生したエラーだけを記録(エラーでパースが崩れたのにあわせてまたエラーになるのを回避するため)
 			if (!hasError) {
-				errorData = error;
+				errorData.errorCode = errorCode;
+				errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + errorCode);
+				errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + errorCode);
 				errorToken = &token;
 				hasError = true;
 			}

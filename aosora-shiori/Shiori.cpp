@@ -2,15 +2,25 @@
 #include <cstdio>
 #include "Version.h"
 #include "Shiori.h"
+#include "Misc/Message.h"
 
 namespace sakura {
 	
+#if 0
 	ScriptParseErrorData ERROR_SHIORI_001 = { "S001", "設定ファイル ghost.asproj が開けませんでした。" };
 	ScriptParseErrorData ERROR_SHIORI_002 = { "S002", "スクリプトファイルが開けませんでした。" };
+#else
+	const std::string ERROR_SHIORI_001 = "S001";
+	const std::string ERROR_SHIORI_002 = "S002";
+#endif
 
 	Shiori::Shiori():
 		isResponsedLoadError(false),
 		isBooted(false){
+
+		//テキストシステム作成
+		//TODO: これのせいで複数インスタンス対応が微妙になってるので注意
+		TextSystem::CreateInstance();
 
 		//ランダムを準備
 		SRand();
@@ -20,6 +30,10 @@ namespace sakura {
 		shioriInfo["craftman"] = "kanadelab";
 		shioriInfo["craftmanw"] = "ななっち";
 		shioriInfo["name"] = "Aosora";
+	}
+
+	Shiori::~Shiori() {
+		TextSystem::DestroyInstance();
 	}
 
 	//基準設定とかファイル読み込みとか
@@ -34,7 +48,12 @@ namespace sakura {
 		//設定ファイルをロードする
 		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
 		if (settingsStream.fail()) {
-			scriptLoadErrors.push_back(ScriptParseError(ERROR_SHIORI_001, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
+			ScriptParseErrorData errorData;
+			errorData.errorCode = ERROR_SHIORI_001;
+			errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_001);
+			errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_001);
+
+			scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
 			return;
 		}
 		
@@ -169,10 +188,16 @@ namespace sakura {
 		std::ifstream loadStream(fullPath, std::ios_base::in);
 
 		if (loadStream.fail()) {
+
+			ScriptParseErrorData errorData;
+			errorData.errorCode = ERROR_SHIORI_002;
+			errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_002);
+			errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_002);
+
 			//ファイルがなければ打ち切る
 			auto* errorResult = new ASTParseResult();
 			errorResult->success = false;
-			errorResult->error.reset(new ScriptParseError(ERROR_SHIORI_002, SourceCodeRange(std::shared_ptr<std::string>(new std::string(path)), 0,0,0,0)));
+			errorResult->error.reset(new ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string(path)), 0,0,0,0)));
 			return std::shared_ptr<const ASTParseResult>(errorResult);
 		}
 

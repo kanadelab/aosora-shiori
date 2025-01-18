@@ -38,6 +38,9 @@
     <ClCompile Include="Misc\SaoriLoader.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\Message.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -94,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="Base.h" />
     <ClInclude Include="Version.h" />
+    <ClInclude Include="Misc\Message.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">
