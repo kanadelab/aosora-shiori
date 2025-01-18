@@ -210,9 +210,6 @@ namespace sakura {
 		//セキュリティレベルを設定
 		interpreter.SetSecurityLevel(request.GetSecurityLevel());
 
-		//呼出ごとの設定をリセット
-		TalkBuilder::Prepare(interpreter);
-
 		//固定値を返すべきリクエストの場合はそこで終える
 		auto infoRecord = shioriInfo.find(request.GetEventId());
 		if (infoRecord != shioriInfo.end()) {
@@ -267,6 +264,9 @@ namespace sakura {
 		
 		//ここまで来ると実行可能なので最後に発生したエラーの情報をリセットする
 		lastExecuteErrorLog.clear();
+
+		//呼出ごとの設定をリセット
+		TalkBuilder::Prepare(interpreter);
 
 		//エラー処理から呼ばれてリロードに成功していた場合。完了の旨を表示して終了
 		if (request.GetEventId() == "OnAosoraReloaded") {
