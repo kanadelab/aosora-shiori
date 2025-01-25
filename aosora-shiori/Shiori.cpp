@@ -168,8 +168,12 @@ namespace sakura {
 	}
 
 	void Shiori::Unload() {
-		//セーブして終了
-		SaveData::Save(interpreter);
+
+		//起動時エラーがあればセーブを読めてない可能性もあるので保存しない
+		if (!HasBootError()) {
+			//セーブして終了
+			SaveData::Save(interpreter);
+		}
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadExternalScriptFile(const std::string& fullPath, const std::string& label) {
