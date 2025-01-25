@@ -131,6 +131,19 @@ namespace sakura {
 		//セーブデータロード前にデフォルトセーブデータを用意する機会をつくる
 		{
 			ShioriResponse response;
+			Request(ShioriRequest("OnAosoraDefaultSaveData"), response);
+
+			if (response.HasError()) {
+				//エラーを報告していたらエラーを引き上げる
+				bootingExecuteErrorGuide = response.GetValue();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				return;
+			}
+		}
+
+		//セーブデータロード前にデフォルトセーブデータを用意する機会をつくる
+		{
+			ShioriResponse response;
 			Request(ShioriRequest("OnDefaultSaveData"), response);
 
 			if (response.HasError()) {
