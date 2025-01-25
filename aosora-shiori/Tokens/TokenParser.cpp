@@ -99,27 +99,6 @@ namespace sakura {
 	//線形に比較するので文字数の多いものを手前に置く必要あり
 	const ScriptTokenSet TOKEN_BASICS[] = {
 
-		{TOKEN_KEYWORD_FUNCTION, ScriptTokenType::Function},
-		{TOKEN_KEYWORD_FOR, ScriptTokenType::For},
-		{TOKEN_KEYWORD_WHILE, ScriptTokenType::While},
-		{TOKEN_KEYWORD_IF, ScriptTokenType::If},
-		{TOKEN_KEYWORD_ELSE, ScriptTokenType::Else},
-		{TOKEN_KEYWORD_BREAK, ScriptTokenType::Break},
-		{TOKEN_KEYWORD_CONTINUE, ScriptTokenType::Continue},
-		{TOKEN_KEYWORD_RETURN, ScriptTokenType::Return},
-		{TOKEN_KEYWORD_LOCAL, ScriptTokenType::Local},
-		{TOKEN_KEYWORD_CONST, ScriptTokenType::Const},
-		{TOKEN_KEYWORD_TRUE, ScriptTokenType::True},
-		{TOKEN_KEYWORD_FALSE, ScriptTokenType::False},
-		{TOKEN_KEYWORD_TRY, ScriptTokenType::Try},
-		{TOKEN_KEYWORD_CATCH, ScriptTokenType::Catch},
-		{TOKEN_KEYWORD_FINALLY, ScriptTokenType::Finally},
-		{TOKEN_KEYWORD_THROW, ScriptTokenType::Throw},
-		{TOKEN_KEYWORD_CLASS, ScriptTokenType::Class},
-		{TOKEN_KEYWORD_MEMBER, ScriptTokenType::Member},
-		{TOKEN_KEYWORD_INIT, ScriptTokenType::Init},
-		{TOKEN_KEYWORD_NEW, ScriptTokenType::New},
-
 		{TOKEN_LOGICAL_OPERATOR_AND, ScriptTokenType::LogicalAnd},
 		{TOKEN_LOGICAL_OPERATOR_OR, ScriptTokenType::LogicalOr},
 
@@ -159,6 +138,31 @@ namespace sakura {
 		{TOKEN_BLOCK_END, ScriptTokenType::BlockEnd},
 		{JSON_ARRAY_BEGIN_PATTERN, ScriptTokenType::ArrayBegin},
 		{JSON_ARRAY_END_PATTERN, ScriptTokenType::ArrayEnd}
+	};
+
+	//キーワードトークン
+	//固定トークンと異なり、シンボル名として取り出された範囲で一致する必要がある
+	const ScriptTokenSet TOKEN_KEYWORDS[] = {
+		{TOKEN_KEYWORD_FUNCTION, ScriptTokenType::Function},
+		{TOKEN_KEYWORD_FOR, ScriptTokenType::For},
+		{TOKEN_KEYWORD_WHILE, ScriptTokenType::While},
+		{TOKEN_KEYWORD_IF, ScriptTokenType::If},
+		{TOKEN_KEYWORD_ELSE, ScriptTokenType::Else},
+		{TOKEN_KEYWORD_BREAK, ScriptTokenType::Break},
+		{TOKEN_KEYWORD_CONTINUE, ScriptTokenType::Continue},
+		{TOKEN_KEYWORD_RETURN, ScriptTokenType::Return},
+		{TOKEN_KEYWORD_LOCAL, ScriptTokenType::Local},
+		{TOKEN_KEYWORD_CONST, ScriptTokenType::Const},
+		{TOKEN_KEYWORD_TRUE, ScriptTokenType::True},
+		{TOKEN_KEYWORD_FALSE, ScriptTokenType::False},
+		{TOKEN_KEYWORD_TRY, ScriptTokenType::Try},
+		{TOKEN_KEYWORD_CATCH, ScriptTokenType::Catch},
+		{TOKEN_KEYWORD_FINALLY, ScriptTokenType::Finally},
+		{TOKEN_KEYWORD_THROW, ScriptTokenType::Throw},
+		{TOKEN_KEYWORD_CLASS, ScriptTokenType::Class},
+		{TOKEN_KEYWORD_MEMBER, ScriptTokenType::Member},
+		{TOKEN_KEYWORD_INIT, ScriptTokenType::Init},
+		{TOKEN_KEYWORD_NEW, ScriptTokenType::New},
 	};
 
 	const std::regex JSON_NUMBER_PATTERN(R"((^[0-9.]+))");
@@ -434,7 +438,6 @@ namespace sakura {
 				break;
 			}
 
-
 			//演算子の処理
 			{
 				bool isHit = false;
@@ -526,9 +529,45 @@ namespace sakura {
 				}
 			}
 
+			//シンボルを取り出す
+			std::string symbol = "";
+			{
+				std::match_results<std::string_view::const_iterator> match;
+				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN)) {
+					symbol = match[1].str();
+					
+					//シンボルの先頭にマッチしてない場合は無効
+					//TODO: １行目だけを対象に取る方法を確認
+					if (!parseContext.GetCurrent().starts_with(symbol)) {
+						symbol = "";
+					}
+				}
+			}
+
+			//キーワードの処理
+			{
+				bool isHit = false;
+				if (!symbol.empty()) {
+					for (const auto& op : TOKEN_KEYWORDS) {
+
+						//キーワードは完全一致
+						if (op.str == symbol) {
+							parseContext.PushToken(op.str.size(), op.type);
+							isHit = true;
+							break;
+						}
+					}
+				}
+
+				if (isHit) {
+					//ヒットしたら最初から
+					continue;
+				}
+			}
+
 			//トーク
 			{
-				if (parseContext.GetCurrent().starts_with(TOKEN_KEYWORD_TALK)) {
+				if (symbol == TOKEN_KEYWORD_TALK) {
 
 					//キーワード
 					parseContext.PushToken(TOKEN_KEYWORD_TALK.size(), ScriptTokenType::Talk);
@@ -616,13 +655,11 @@ namespace sakura {
 
 			//シンボル
 			{
-				std::match_results<std::string_view::const_iterator> match;
-				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN)) {
-					parseContext.PushToken(match[1].str().size(), ScriptTokenType::Symbol);
+				if (!symbol.empty()) {
+					parseContext.PushToken(symbol.size(), ScriptTokenType::Symbol);
 					continue;
 				}
 			}
-
 
 			//最終的にどのトークンにもあてはまらない場合はエラー
 			parseContext.Error(ERROR_TOKEN_005, parseContext.GetCurrentPosition());
