@@ -1,7 +1,7 @@
 
 
 //デフォルトセーブデータ
-function OnDefaultSaveData {
+function OnAosoraDefaultSaveData {
 	Save.Data.UserName = "おにいちゃん";
 	Save.Data.TalkInterval = 180;	
 }
