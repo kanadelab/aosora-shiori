@@ -290,7 +290,7 @@ namespace sakura {
 
 		//エラー処理から呼ばれてリロードに成功していた場合。完了の旨を表示して終了
 		if (request.GetEventId() == "OnAosoraReloaded") {
-			response.SetValue("\\0\\s[0]\\b[2]\\![quicksession,true]■蒼空 リロード完了\\n\\nリロードして、起動エラーはありませんでした。");
+			response.SetValue( std::string() + "\\0\\s[0]\\b[2]\\![quicksession,true]■" + TextSystem::Find("AOSORA_ERROR_RELOADED_0") + "\\n\\n" + TextSystem::Find("AOSORA_ERROR_RELOADED_1"));
 			return;
 		}
 
@@ -430,7 +430,7 @@ namespace sakura {
 	}
 
 	std::string Shiori::ShowErrors() {
-		std::string errorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 起動エラー / Aosora shiori error\\n(ゴーストをダブルクリックで再度開けます)\\n";
+		std::string errorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_BOOT_ERROR_0") + "\\n" + TextSystem::Find("AOSORA_BOOT_ERROR_1") + "\\n";
 
 		//エラー情報をリストアップ
 		for (size_t i = 0; i < scriptLoadErrors.size(); i++) {
@@ -438,8 +438,8 @@ namespace sakura {
 			errorGuide += "\\n\\![*]\\q[" + err.GetPosition().ToString() + ",OnAosoraErrorView," + std::to_string(i) + "]\\n" + err.GetData().errorCode + ": " + err.GetData().message + "\\n";
 		}
 
-		errorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
-		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ", OnAosoraErrorClose]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") +  ", OnAosoraRequestReload]";
 		return errorGuide;
 	}
 
@@ -447,7 +447,7 @@ namespace sakura {
 		
 
 		const auto& err = scriptLoadErrors[index];
-		std::string errorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 エラー詳細ビュー　";
+		std::string errorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_BOOT_ERROR_2") + "　";
 		
 		//１個戻るボタン
 		if (index > 0) {

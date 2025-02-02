@@ -59,6 +59,27 @@ namespace sakura {
 
 			ERROR_MESSAGES("S001", "設定ファイル ghost.asproj が開けませんでした。", "")
 			ERROR_MESSAGES("S002", "スクリプトファイルが開けませんでした。", "")
+
+			.Register("AOSORA_ERROR_RELOADED_0", "蒼空 リロード完了")
+			.Register("AOSORA_ERROR_RELOADED_1", "リロードして、起動エラーはありませんでした。")
+
+			.Register("AOSORA_BOOT_ERROR_0", "蒼空 起動エラー / Aosora boot error")
+			.Register("AOSORA_BOOT_ERROR_1", "(ゴーストをダブルクリックで再度開けます)")
+			.Register("AOSORA_BOOT_ERROR_2", "蒼空 エラー詳細ビュー")
+			.Register("AOSORA_BOOT_ERROR_3", "エラーリストに戻る")
+			.Register("AOSORA_BOOT_ERROR_4", "エラー位置")
+			.Register("AOSORA_BOOT_ERROR_5", "エラー")
+			.Register("AOSORA_BOOT_ERROR_5", "解決のヒント")
+
+			.Register("AOSORA_RUNTIME_ERROR_0", "蒼空 実行エラー / aosora runtime error")
+			.Register("AOSORA_RUNTIME_ERROR_1", "エラーが発生しため、実行を中断しました。")
+			.Register("AOSORA_RUNTIME_ERROR_2", "エラー位置")
+			.Register("AOSORA_RUNTIME_ERROR_3", "エラー内容")
+			.Register("AOSORA_RUNTIME_ERROR_4", "スタックトレース")
+			.Register("AOSORA_RUNTIME_ERROR_5", "蒼空 実行エラー")
+
+			.Register("AOSORA_BALLOON_CLOSE", "閉じる")
+			.Register("AOSORA_BALLOON_RELOAD", "ゴーストを再読み込み")
 			;
 
 	}
