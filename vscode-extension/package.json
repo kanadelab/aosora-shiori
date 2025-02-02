@@ -3,7 +3,7 @@
   "displayName": "Aosora SHIORI",
   "publisher": "kanadelab",
   "description": "Aosora SHIORI extension",
-  "version": "0.0.17",
+  "version": "0.0.19",
   "repository": "https://github.com/kanadelab/aosora-shiori.git",
   "icon": "aosora-icon.png",
   "engines": {

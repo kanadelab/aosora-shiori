@@ -960,14 +960,13 @@ namespace sakura {
 
 		result.clear();
 
-		//からっぽの場合
-		if (IsSequenceEnd(parseContext, sequenceEndFlags)) {
-			parseContext.FetchNext();
-			return;
-		}
-
 		//要素数だけループ
 		while (!parseContext.IsEnd()) {
+			//からっぽまたはカンマ後にExpressionが存在しない場合
+			if (IsSequenceEnd(parseContext, sequenceEndFlags)) {
+				parseContext.FetchNext();
+				return;
+			}
 			ASTNodeRef node = ParseASTExpression(parseContext, sequenceEndFlags | SEQUENCE_END_FLAG_COMMA);
 			result.push_back(node);
 			if (parseContext.GetPrev().type != ScriptTokenType::Comma) {
@@ -1153,46 +1152,43 @@ namespace sakura {
 
 		std::vector<ASTNodeObjectInitializer::Item> items;
 
-		//アイテム無しで終了してなければ次に進む
-		if (parseContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
-			//アイテムなし
-			parseContext.FetchNext();
-		}
-		else {
-
-			//javascriptの記法を参考に
-			while (!parseContext.IsEnd()) {
-
-				//key
-				std::string key;
-				if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
-					//ダブルクォーテーションでかこまないシンボル形式
-					key = parseContext.GetCurrent().body;
-					parseContext.FetchNext();
-				}
-				else if (parseContext.GetCurrent().type == ScriptTokenType::String) {
-					//ダブルクォーテーションでかこむ文字列形式
-					key = parseContext.GetCurrent().body;
-					parseContext.FetchNext();
-				}
-				else {
-					return parseContext.Error(ERROR_AST_016, parseContext.GetCurrent());
-				}
-
-				//コロン
-				if (parseContext.GetCurrent().type != ScriptTokenType::Colon) {
-					return parseContext.Error(ERROR_AST_017, parseContext.GetCurrent());
-				}
+		//javascriptの記法を参考に
+		while (!parseContext.IsEnd()) {
+			//閉じ括弧で終わってれば終了
+			if (parseContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
 				parseContext.FetchNext();
+				break;
+			}
 
-				//value
-				ASTNodeRef value = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_COMMA | SEQUENCE_END_FLAG_BLOCK_BLACKET);
-				items.push_back({ key, value });
+			//key
+			std::string key;
+			if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+				//ダブルクォーテーションでかこまないシンボル形式
+				key = parseContext.GetCurrent().body;
+				parseContext.FetchNext();
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::String) {
+				//ダブルクォーテーションでかこむ文字列形式
+				key = parseContext.GetCurrent().body;
+				parseContext.FetchNext();
+			}
+			else {
+				return parseContext.Error(ERROR_AST_016, parseContext.GetCurrent());
+			}
 
-				//閉じ括弧で終わってれば終了
-				if (parseContext.GetPrev().type == ScriptTokenType::BlockEnd) {
-					break;
-				}
+			//コロン
+			if (parseContext.GetCurrent().type != ScriptTokenType::Colon) {
+				return parseContext.Error(ERROR_AST_017, parseContext.GetCurrent());
+			}
+			parseContext.FetchNext();
+
+			//value
+			ASTNodeRef value = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_COMMA | SEQUENCE_END_FLAG_BLOCK_BLACKET);
+			items.push_back({ key, value });
+
+			//閉じ括弧で終わってれば終了
+			if (parseContext.GetPrev().type == ScriptTokenType::BlockEnd) {
+				break;
 			}
 		}
 

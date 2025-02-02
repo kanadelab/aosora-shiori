@@ -131,6 +131,19 @@ namespace sakura {
 		//セーブデータロード前にデフォルトセーブデータを用意する機会をつくる
 		{
 			ShioriResponse response;
+			Request(ShioriRequest("OnAosoraDefaultSaveData"), response);
+
+			if (response.HasError()) {
+				//エラーを報告していたらエラーを引き上げる
+				bootingExecuteErrorGuide = response.GetValue();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				return;
+			}
+		}
+
+		//セーブデータロード前にデフォルトセーブデータを用意する機会をつくる
+		{
+			ShioriResponse response;
 			Request(ShioriRequest("OnDefaultSaveData"), response);
 
 			if (response.HasError()) {
@@ -168,8 +181,12 @@ namespace sakura {
 	}
 
 	void Shiori::Unload() {
-		//セーブして終了
-		SaveData::Save(interpreter);
+
+		//起動時エラーがあればセーブを読めてない可能性もあるので保存しない
+		if (!HasBootError()) {
+			//セーブして終了
+			SaveData::Save(interpreter);
+		}
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadExternalScriptFile(const std::string& fullPath, const std::string& label) {

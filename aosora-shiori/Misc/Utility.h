@@ -227,10 +227,10 @@ namespace sakura{
 	//SHIORI,SAORIのrequest/responseからcharsetを取得する
 	inline Charset ProtocolParseCharset(const std::string_view& data) {
 		//\r\nで囲まれていることを確認する。やりとりの本文に含まれている場合の誤認識を避けるため
-		if (data.find("\r\nCharset: Shift_JIS\r\n")) {
+		if (data.find("\r\nCharset: Shift_JIS\r\n") != std::string::npos) {
 			return Charset::SHIFT_JIS;
 		}
-		else if (data.find("\r\nCharset: UTF-8\r\n")) {
+		else if (data.find("\r\nCharset: UTF-8\r\n") != std::string::npos) {
 			return Charset::UTF_8;
 		}
 		else {

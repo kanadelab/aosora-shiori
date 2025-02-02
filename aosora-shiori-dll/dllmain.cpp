@@ -122,8 +122,8 @@ namespace {
 			sakura::Replace(value, "\n", "");
 			response.append(isSaori ? "Result: " : "Value: ");
 			response.append(value);
-			if (!isSaori) {
-				response.append(isRequestClose ? "\\-" : "\\e");
+			if (!isSaori && isRequestClose) {
+				response.append("\\-");
 			}
 			response.append("\r\n");
 		}
