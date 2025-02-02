@@ -14,7 +14,9 @@ namespace sakura {
 
 	private:
 		static TextSystem* instance;
+
 		std::map<std::string, TextMap> languages;
+		std::string primaryLanguage;
 
 	public:
 
@@ -87,6 +89,14 @@ namespace sakura {
 			}
 		};
 
+		//言語の設定
+		void SetPrimaryLanguage(const std::string& langCode) {
+			//有効な言語のみ
+			if (languages.contains(langCode)) {
+				primaryLanguage = langCode;
+			}
+		}
+
 		//登録
 		RegisterContext RegisterLanguage(const std::string& langCode) {
 			languages.insert(std::map<std::string, TextMap>::value_type(langCode, TextMap()));
@@ -95,8 +105,7 @@ namespace sakura {
 
 		//取得
 		static const char* Find(const std::string& key) {
-			//TODO: 別言語設定も可能にするなど
-			return ReadContext(instance->languages["ja-jp"], instance->languages["ja-jp"]).Find(key);
+			return ReadContext(instance->languages[instance->primaryLanguage], instance->languages["ja-jp"]).Find(key);
 		}
 
 	};

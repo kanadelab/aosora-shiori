@@ -37,6 +37,24 @@ namespace sakura {
 		ghostMasterPath = path;
 		interpreter.SetWorkingDirectory(path);
 
+		//他の言語を用意するまで無効
+#if 0
+		{
+			//言語設定ファイルがあれば最初に読み、言語を切り替える
+			std::string scirptLangPath = path;
+			scirptLangPath.append("ghost.aslang");
+
+			std::ifstream langStream(scirptLangPath, std::ios_base::in);
+			if (!langStream.fail()) {
+				std::string langLine;
+				if (std::getline(langStream, langLine)) {
+					//言語設定を試みる
+					TextSystem::GetInstance()->SetPrimaryLanguage(langLine);
+				}
+			}
+		}
+#endif
+
 		std::string scriptProjPath = path;
 		scriptProjPath.append("ghost.asproj");
 
@@ -455,8 +473,8 @@ namespace sakura {
 			errorGuide += "\\n\\![*]\\q[" + err.GetPosition().ToString() + ",OnAosoraErrorView," + std::to_string(i) + "]\\n" + err.GetData().errorCode + ": " + err.GetData().message + "\\n";
 		}
 
-		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ", OnAosoraErrorClose]";
-		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") +  ", OnAosoraRequestReload]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") +  ",OnAosoraRequestReload]";
 		return errorGuide;
 	}
 
@@ -485,10 +503,10 @@ namespace sakura {
 			errorGuide += " ";
 		}
 		
-		errorGuide += "\\n\\n\\_?[エラー位置]\\_?\\n\\_?" + err.GetPosition().ToString() + "\\_?\\n\\n\\_?[エラー]\\_?\\n\\_?" + err.GetData().errorCode + ": " + err.GetData().message + "\\_?\\n\\n\\_?[解決のヒント]\\_?\\n\\_?" + err.GetData().hint + "\\_?";
-		errorGuide += "\\n\\n\\![*]\\q[エラーリストに戻る,OnAosoraErrors]";
-		errorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
-		errorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
+		errorGuide += std::string() + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_4") + "]\\_?\\n\\_?" + err.GetPosition().ToString() + "\\_?\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_5") + "]\\_?\\n\\_?" + err.GetData().errorCode + ": " + err.GetData().message + "\\_?\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_6") + "]\\_?\\n\\_?" + err.GetData().hint + "\\_?";
+		errorGuide += std::string() + "\\n\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BOOT_ERROR_3") + ",OnAosoraErrors]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
+		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
 		return errorGuide;
 	}
 
@@ -573,11 +591,11 @@ namespace sakura {
 		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
 		assert(err != nullptr);
 
-		std::string ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 実行エラー / aosora runtime error\\nエラーが発生しため、実行を中断しました。\\n\\n";
+		std::string ghostErrorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_RUNTIME_ERROR_0") + "\\n" + TextSystem::Find("AOSORA_RUNTIME_ERROR_1") + "\\n\\n";
 
 		if (isBooting) {
 			//起動エラーの場合は区別する
-			ghostErrorGuide = "\\0\\b[2]\\s[0]\\![quicksession,true]■蒼空 起動エラー / aosora boot error\\n(ゴーストをダブルクリックで再度開けます)\\n\\n";
+			ghostErrorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_BOOT_ERROR_0") + "\\n" + TextSystem::Find("AOSORA_BOOT_ERROR_1") + "\\n\\n";
 		}
 
 		std::string trace;
@@ -600,9 +618,9 @@ namespace sakura {
 			}
 		}
 
-		ghostErrorGuide += "\\_?[エラー位置]\\_?\\n" + firstTrace + "\\n\\_?[エラー内容]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[スタックトレース]\\_?\\n" + trace;
-		ghostErrorGuide += "\\n\\![*]\\q[閉じる,OnAosoraErrorClose]";
-		ghostErrorGuide += "\\n\\![*]\\q[ゴーストを再読み込み,OnAosoraRequestReload]";
+		ghostErrorGuide += std::string() + "\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "]\\_?\\n" + firstTrace + "\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "]\\_?\\n" + trace;
+		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
+		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
 
 		return ghostErrorGuide;
 	}
@@ -612,7 +630,7 @@ namespace sakura {
 		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
 		assert(err != nullptr);
 
-		std::string scriptErrorLog = "蒼空 実行エラー ";
+		std::string scriptErrorLog = TextSystem::Find("AOSORA_RUNTIME_ERROR_5");
 
 		std::string trace;
 		std::string firstTrace;
@@ -634,7 +652,7 @@ namespace sakura {
 			}
 		}
 
-		scriptErrorLog += "[エラー位置] " + firstTrace + " [エラー内容] " + err->GetMessage() + " [スタックトレース] " + trace;
+		scriptErrorLog += std::string() + "[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "] " + firstTrace + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "] " + err->GetMessage() + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "] " + trace;
 		return scriptErrorLog;
 	}
 }

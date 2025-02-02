@@ -3,6 +3,7 @@
 #include "Interpreter/ScriptExecutor.h"
 #include "CoreLibrary/CoreLibrary.h"
 #include "CommonLibrary/CommonClasses.h"
+#include "Misc/Message.h"
 
 namespace sakura {
 
@@ -20,7 +21,7 @@ namespace sakura {
 		//無限ループ対策の実行ステップ制限
 		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
 			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
-				executeContext.ThrowRuntimeError<RuntimeError>(node, "1リクエスト内の実行処理数が制限を超えました。無限ループになってませんか？")->SetCanCatch(false);
+				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"))->SetCanCatch(false);
 				return ScriptValue::Null;
 			}
 		}
@@ -877,7 +878,7 @@ namespace sakura {
 
 		//呼び出し不可時、エラーを生成する
 		if (!function->IsObject() || !function->GetObjectRef()->CanCall()) {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, "関数またはトークではないため、関数呼び出しができません。");
+			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"));
 			return ScriptValue::Null;
 		}
 

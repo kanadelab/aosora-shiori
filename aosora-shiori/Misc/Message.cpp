@@ -8,7 +8,10 @@ namespace sakura {
 
 	TextSystem::TextSystem() {
 
-		//にほんご
+		//デフォルト
+		primaryLanguage = "ja-jp";
+
+		//ja-jp
 		RegisterLanguage("ja-jp")
 
 			ERROR_MESSAGES("A001", "コードブロック終了の閉じ括弧 } が見つかりませんでした。", "コードブロックは { } で囲まれる一連の処理ですが、始まりに対して終わりが見つからないエラーです。コードブロックや、付近の { の閉じ括弧を忘れていないか確認してください。")
@@ -55,7 +58,7 @@ namespace sakura {
 			ERROR_MESSAGES("T002", "トーク名として使用できない文字列です。", "変数名として使用できない文字をトーク名として使おうとしています。")
 			ERROR_MESSAGES("T003", "開き括弧 ( が必要です。", "ifの条件式の前に開き括弧 ( が必要です。")
 			ERROR_MESSAGES("T004", "開き括弧 { が必要です。", "トークブロック本文の開始前に中括弧 { が必要です。")
-			ERROR_MESSAGES("T005", "構文的に識できない文字です。", "スクリプトのどの構文にも当てはまらない文字です。書き方が間違ってないか確認してみてください。")
+			ERROR_MESSAGES("T005", "構文的に認識できない文字です。", "スクリプトのどの構文にも当てはまらない文字です。書き方が間違ってないか確認してみてください。")
 
 			ERROR_MESSAGES("S001", "設定ファイル ghost.asproj が開けませんでした。", "")
 			ERROR_MESSAGES("S002", "スクリプトファイルが開けませんでした。", "")
@@ -69,7 +72,7 @@ namespace sakura {
 			.Register("AOSORA_BOOT_ERROR_3", "エラーリストに戻る")
 			.Register("AOSORA_BOOT_ERROR_4", "エラー位置")
 			.Register("AOSORA_BOOT_ERROR_5", "エラー")
-			.Register("AOSORA_BOOT_ERROR_5", "解決のヒント")
+			.Register("AOSORA_BOOT_ERROR_6", "解決のヒント")
 
 			.Register("AOSORA_RUNTIME_ERROR_0", "蒼空 実行エラー / aosora runtime error")
 			.Register("AOSORA_RUNTIME_ERROR_1", "エラーが発生しため、実行を中断しました。")
@@ -80,7 +83,17 @@ namespace sakura {
 
 			.Register("AOSORA_BALLOON_CLOSE", "閉じる")
 			.Register("AOSORA_BALLOON_RELOAD", "ゴーストを再読み込み")
+
+			.Register("AOSORA_BUILTIN_ERROR_001", "1リクエスト内の実行処理数が制限を超えました。無限ループになってませんか？")
+			.Register("AOSORA_BUILTIN_ERROR_002", "関数またはトークではないため、関数呼び出しができません。")
 			;
+
+
+		//en-us
+		RegisterLanguage("en-us")
+
+			ERROR_MESSAGES("S001", "ghost.asproj was not found.", "")
+		;
 
 	}
 
