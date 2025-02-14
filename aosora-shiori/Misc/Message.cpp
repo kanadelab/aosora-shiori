@@ -1,4 +1,4 @@
-﻿#include "Misc/Message.h"
+#include "Misc/Message.h"
 
 #define ERROR_MESSAGES(ERR_ID, MESSAGE, HINT)	.Register("ERROR_MESSAGE" ERR_ID, MESSAGE).Register("ERROR_HINT" ERR_ID, HINT)
 
@@ -92,8 +92,79 @@ namespace sakura {
 		//en-us
 		RegisterLanguage("en-us")
 
+			ERROR_MESSAGES("A001", "Closing brace } at the end of code block not found.", "A code block is a sequence of operations enclosed in {}, but there is no ending brace to go with the beginning brace. Check to make sure you did not misplace a code block or the closing brace for a nearby {")
+			ERROR_MESSAGES("A002", "Operator is used incorrectly.", "This formula involves adding or multiplying two elements, but it seems that one of the two sides is missing.")
+			ERROR_MESSAGES("A003", "The parenthesis don't seem to match up correctly.", "The parenthesis () used in the formula seem to have an invalid match. Please check the calculation formula.")
+			ERROR_MESSAGES("A004", "An operator is required, or the operator cannot be used here.", "You cannot have two consecutive values. You need to make it an expression, such as using + to add them together.")
+			ERROR_MESSAGES("A005", "A member name must be specified.", "A period is used to refer to a member of an object, as in Value.Item")
+			ERROR_MESSAGES("A006", "A semicolon ; cannot be used here.", "You cannot use a semicolon ; in this expression. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A007", "A colon : cannot be used here.", "You cannot use a colon : in this expression. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A008", "A closing brace } cannot be used here.", "You cannot use a closing brace } in this expression. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A009", "A closing bracket ] cannot be used here.", "You cannot use a closing bracket ] in this expression. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A010", "A comma , cannot be used here.", "You cannot use a comma , in this expression. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A011", "A closing parenthesis ) cannot be used here.", "You cannot use a closing parenthesis ) here. Please check that you are using the function correctly.")
+			ERROR_MESSAGES("A012", "The parenthesis do not match correctly.", "It appears that the parenthesis at the beginning and end of the list do not match.")
+			ERROR_MESSAGES("A013", "An argument name is required.", "Since this is an argument list, you must write the argument names.")
+			ERROR_MESSAGES("A014", "The argument list is incorrect.", "You must use a comma , to separate arguments, or close the argument list with closing parenthesis )")
+			ERROR_MESSAGES("A015", "The parenthesis do not match correctly.", "The argument list is not closed properly.")
+			ERROR_MESSAGES("A016", "Key is required.", "Associative array expressions describe their contents in a key:value format. The key does not seem to be in the correct format.")
+			ERROR_MESSAGES("A017", "Colon : is required.", "Associative array expressions describe their contents in a key:value format. There does not appear to be a colon separating the key and value.")
+			ERROR_MESSAGES("A018", "Opening brace { is required.", "In a function expression, you must begin the body of the function with {")
+			ERROR_MESSAGES("A019", "Opening brace { is required.", "In a talk expression, you must begin the body of the function with {")
+			ERROR_MESSAGES("A020", "A function name is required.", "A function definition requires the word 'function' followed by a function name.")
+			ERROR_MESSAGES("A021", "Opening parenthesis ( is required.", "When using a function occurence condition, write 'if' followed by the condition in parenthesis ()")
+			ERROR_MESSAGES("A022", "Opening brace { is required.", "In a function definition, you must begin the body of the function with {")
+			ERROR_MESSAGES("A023", "You are trying to write to a target that cannot be written to.", "An attempt is being made to change read-only information by assigning or otherwise modifying it.")
+			ERROR_MESSAGES("A024", "The 'new' keyword requires a call expression ()", "The 'new' keyword requires a call expression, such as new Class()")
+			ERROR_MESSAGES("A025", "Class name is required.", "In a class definition, the 'class' keyword must be followed by the class name.")
+			ERROR_MESSAGES("A026", "Inherited class name is required.", "When inheriting a class, write a colon : and then the name of the class you want to inherit from.")
+			ERROR_MESSAGES("A027", "Opening brace { is required.", "An opening brace { is required before the description of the class body.")
+			ERROR_MESSAGES("A028", "Opening brace { is required.", "An opening brace { is required before the body of init.")
+			ERROR_MESSAGES("A029", "Closing brace } is required.", "A brace } to close the class is required.")
+			ERROR_MESSAGES("A030", "Variable name is required.", "A variable name is required here. The variable name may contain keywords or symbols that cannot be used.")
+			ERROR_MESSAGES("A031", "Opening parenthesis ( is required.", "The opening parenthesis of the 'for' statement are required.")
+			ERROR_MESSAGES("A032", "Opening parenthesis ( is required.", "The opening parenthesis of the 'while' statement are required.")
+			ERROR_MESSAGES("A033", "Opening parenthesis ( is required.", "The opening parenthesis of the 'if' statement are required.")
+			ERROR_MESSAGES("A034", "A semicolon ; is required.", "A semicolon is required at the end of the 'break' statement.")
+			ERROR_MESSAGES("A035", "A semicolon ; is required.", "A semicolon is required at the end of the 'continue' statement.")
+			ERROR_MESSAGES("A036", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'try' block.")
+			ERROR_MESSAGES("A037", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'catch' block.")
+			ERROR_MESSAGES("A038", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'finally' block.")
+			ERROR_MESSAGES("A039", "A semicolon ; is required.", "Variable declarations must end with a semicolon ;")
+
+			ERROR_MESSAGES("T001", "The braces {} do not match.", "Loading failed because there are closing braces without opening braces.")
+			ERROR_MESSAGES("T002", "This string cannot be used as a talk name.", "You are trying to use characters that cannot be used as variable names in a talk name.")
+			ERROR_MESSAGES("T003", "Opening parenthesis ( is required.", "The 'if' conditional expression must be preceded by an opening parenthesis (")
+			ERROR_MESSAGES("T004", "Opening brace { is required.", "A brace { is required before the start of the talk block body.")
+			ERROR_MESSAGES("T005", "These characters are not recognized syntax.", "This character does not fit any of the script syntax. Please check to see if you have written it correctly.")
+
 			ERROR_MESSAGES("S001", "ghost.asproj was not found.", "")
-		;
+			ERROR_MESSAGES("S002", "Could not open script file.", "")
+
+			.Register("AOSORA_ERROR_RELOADED_0", "Aosora reload completed")
+			.Register("AOSORA_ERROR_RELOADED_1", "Reloaded, no startup errors.")
+
+			.Register("AOSORA_BOOT_ERROR_0", "Aosora boot error")
+			.Register("AOSORA_BOOT_ERROR_1", "(Double click on the ghost to open it again)")
+			.Register("AOSORA_BOOT_ERROR_2", "Aosora error detail view")
+			.Register("AOSORA_BOOT_ERROR_3", "Return to error list")
+			.Register("AOSORA_BOOT_ERROR_4", "Error position")
+			.Register("AOSORA_BOOT_ERROR_5", "Error")
+			.Register("AOSORA_BOOT_ERROR_6", "Solution hint")
+
+			.Register("AOSORA_RUNTIME_ERROR_0", "Aosora runtime error")
+			.Register("AOSORA_RUNTIME_ERROR_1", "Execution was aborted due to an error.")
+			.Register("AOSORA_RUNTIME_ERROR_2", "Error position")
+			.Register("AOSORA_RUNTIME_ERROR_3", "Error description")
+			.Register("AOSORA_RUNTIME_ERROR_4", "Stack trace")
+			.Register("AOSORA_RUNTIME_ERROR_5", "Aosora runtime error")
+
+			.Register("AOSORA_BALLOON_CLOSE", "Close")
+			.Register("AOSORA_BALLOON_RELOAD", "Reload ghost")
+
+			.Register("AOSORA_BUILTIN_ERROR_001", "The number of processes performed in one request has exceeded the limit. Is there an infinite loop?")
+			.Register("AOSORA_BUILTIN_ERROR_002", "Function call cannot be made because it is not a function or talk.")
+			;
 
 	}
 
