@@ -38,7 +38,6 @@ namespace sakura {
 		interpreter.SetWorkingDirectory(path);
 
 		//他の言語を用意するまで無効
-#if 0
 		{
 			//言語設定ファイルがあれば最初に読み、言語を切り替える
 			std::string scirptLangPath = path;
@@ -53,7 +52,6 @@ namespace sakura {
 				}
 			}
 		}
-#endif
 
 		std::string scriptProjPath = path;
 		scriptProjPath.append("ghost.asproj");
