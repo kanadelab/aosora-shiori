@@ -117,14 +117,13 @@ namespace sakura {
 		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
 		ScriptParseErrorData errorData;
-		const ScriptToken* errorToken;
+		ScriptToken errorToken;
 
 	public:
 		ASTParseContext(const std::list<ScriptToken>& tokenList, ASTParseResult& parseResult) :
 			result(parseResult),
 			tokens(tokenList),
-			hasError(false),
-			errorToken(nullptr)
+			hasError(false)
 		{
 			//最初のアイテムをとる
 			current = tokens.cbegin();
@@ -165,7 +164,7 @@ namespace sakura {
 				errorData.errorCode = errorCode;
 				errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + errorCode);
 				errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + errorCode);
-				errorToken = &token;
+				errorToken = token;
 				hasError = true;
 			}
 
@@ -200,7 +199,7 @@ namespace sakura {
 			return errorData;
 		}
 
-		const ScriptToken* GetErrorToken() const {
+		ScriptToken GetErrorToken() const {
 			return errorToken;
 		}
 	};
@@ -223,8 +222,7 @@ namespace sakura {
 				printf("Position: %s\n", parseContext.GetErrorToken()->sourceRange.ToString().c_str());
 			}
 #endif
-			assert(parseContext.GetErrorToken() != nullptr);
-			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken()->sourceRange));
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken().sourceRange));
 		}
 
 		parseResult->root = codeBlock;
@@ -598,6 +596,11 @@ namespace sakura {
 
 				expressionStack.push_back(StackItem(ASTNodeRef(new ASTNodeEvalOperator1(*operatorInfo, operand))));
 			}
+			else if (operatorInfo->type == OperatorType::Bracket) {
+				//カッコの対応関係がおかしい
+				parseContext.Error(ERROR_AST_003, expressionStack[expressionStack.size() - 2].operatorToken);
+				return;
+			}
 			else {
 				assert(false);
 			}
@@ -628,6 +631,11 @@ namespace sakura {
 			//アイテムが１個になるまで続ける
 			while (expressionStack.size() > 1) {
 				ReduceOne(parseContext);
+
+				if (parseContext.HasError()) {
+					//エラー発生済みなのでカラのエラーオブジェクトを返して解析を打ち切る
+					return ASTNodeRef(new ASTError());
+				}
 			}
 
 			return expressionStack[expressionStack.size() - 1].operandNode;
