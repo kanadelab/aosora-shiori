@@ -10,6 +10,7 @@ namespace sakura {
 	const std::string TOKEN_SPACE = " ";
 	const std::string TOKEN_TAB = "\t";
 	const std::string TOKEN_STRING = "\"";
+	const std::string TOKEN_STRING2 = "`";		//バッククォートも " と同じ文字列として使用できる
 	const std::string TOKEN_RAW_STRING = "'";
 
 	const std::string TOKEN_OPERATOR_PLUS = "+";
@@ -175,6 +176,7 @@ namespace sakura {
 	const uint32_t BLOCK_END_FLAG_NEWLINE = 1u << 2;				// 改行
 	const uint32_t BLOCK_END_FLAG_DOUBLE_QUATATION = 1u << 3;		// "
 	const uint32_t BLOCK_END_FLAG_SINGLE_QUATATION = 1u << 4;		// '
+	const uint32_t BLOCK_END_FLAG_BACK_QUATATION = 1u << 5;			// `
 
 	//トークン解析エラー
 	const std::string ERROR_TOKEN_001 = "T001";
@@ -513,6 +515,22 @@ namespace sakura {
 				}
 			}
 
+			//文字列（バッククォート）
+			{
+				if (parseContext.GetCurrent().starts_with(TOKEN_STRING2)) {
+					parseContext.SeekChar(TOKEN_STRING2.size());
+
+					//文字列解析に飛ばす
+					parseContext.PushToken(0, ScriptTokenType::StringBegin);
+					ParseStringLiteral(parseContext, BLOCK_END_FLAG_BACK_QUATATION, false);
+					if (parseContext.IsEnd()) {
+						return;
+					}
+					parseContext.PushToken(0, ScriptTokenType::StringEnd);
+					continue;
+				}
+			}
+
 			//raw文字列
 			{
 				if (parseContext.GetCurrent().starts_with(TOKEN_RAW_STRING)) {
@@ -787,6 +805,16 @@ namespace sakura {
 
 				//とりこみ
 				parseContext.AppendLastToken(TOKEN_STRING.size());
+			}
+			else if(parseContext.GetCurrent().starts_with(TOKEN_STRING2)) {
+				if (CheckFlags(blockEndFlags, BLOCK_END_FLAG_BACK_QUATATION)) {
+					//終端
+					parseContext.SeekChar(TOKEN_STRING2.size());
+					return;
+				}
+
+				//とりこみ
+				parseContext.AppendLastToken(TOKEN_STRING2.size());
 			}
 			else if (parseContext.GetCurrent().starts_with(TOKEN_RAW_STRING)) {
 				if (CheckFlags(blockEndFlags, BLOCK_END_FLAG_SINGLE_QUATATION)) {

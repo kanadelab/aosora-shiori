@@ -128,6 +128,9 @@
 					"include": "#strings"
 				},
 				{
+					"include": "#strings2"
+				},
+				{
 					"include": "#rawstrings"
 				},
 				{
@@ -148,6 +151,21 @@
 		"strings": {
 			"begin": "\"",
 			"end": "\"",
+			"beginCaptures": {
+				"0": {"name": "string"}
+			},
+			"endCaptures": {
+				"0": {"name": "string"}
+			},
+			"patterns": [
+				{
+					"include": "#stringcontent"
+				}
+			]
+		},
+		"strings2": {
+			"begin": "`",
+			"end": "`",
 			"beginCaptures": {
 				"0": {"name": "string"}
 			},
