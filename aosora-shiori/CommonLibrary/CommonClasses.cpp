@@ -395,6 +395,9 @@ namespace sakura {
 		else if (key == "GetNowMinute") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowMinute));
 		}
+		else if (key == "GetNowSecond") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowSecond));
+		}
 		else if (key == "GetNowYear") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowYear));
 		}
@@ -406,6 +409,9 @@ namespace sakura {
 		}
 		else if (key == "GetNowDayOfWeek") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowDayOfWeek));
+		}
+		else if (key == "GetNowUnixEpoch") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Time::GetNowUnixEpoch));
 		}
 
 		return nullptr;

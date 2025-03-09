@@ -27,6 +27,13 @@ namespace sakura {
 			response.SetReturnValue(ScriptValue::Make(static_cast<number>(lt->tm_min)));
 		}
 
+		//現在秒
+		static void GetNowSecond(const FunctionRequest& request, FunctionResponse& response) {
+			std::time_t now = std::time(nullptr);
+			std::tm* lt = std::localtime(&now);
+			response.SetReturnValue(ScriptValue::Make(static_cast<number>(lt->tm_sec)));
+		}
+
 		//現在年
 		static void GetNowYear(const FunctionRequest& request, FunctionResponse& response) {
 			std::time_t now = std::time(nullptr);
