@@ -55,6 +55,12 @@ namespace sakura {
 			response.SetReturnValue(ScriptValue::Make(static_cast<number>(lt->tm_wday)));
 		}
 
+		//Unixエポックの取得
+		static void GetNowUnixEpoch(const FunctionRequest& request, FunctionResponse& response) {
+			std::time_t now = std::time(nullptr);
+			response.SetReturnValue(ScriptValue::Make(static_cast<number>(now)));
+		}
+
 	};
 
 	//ランダム

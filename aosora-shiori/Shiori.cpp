@@ -356,6 +356,16 @@ namespace sakura {
 			shioriMap->RawSet(st, ScriptValue::True);
 		}
 
+		//status配列
+		auto statusList = interpreter.CreateNativeObject<ScriptArray>();
+		for (const std::string& st : request.GetStatusCollection()) {
+			statusList->Add(ScriptValue::Make(st));
+		}
+		shioriMap->RawSet("Status", ScriptValue::Make(statusList));
+
+		//イベント名
+		shioriMap->RawSet("Event", ScriptValue::Make(request.GetEventId()));
+
 		//グローバル空間からイベントを探す
 		auto variable = interpreter.GetGlobalVariable(eventName);
 

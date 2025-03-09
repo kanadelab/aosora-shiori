@@ -335,6 +335,7 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual bool CanCall() const override { return true; }
 		virtual void Call(const FunctionRequest& request, FunctionResponse& response);
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 	};
 
 	//インスタンス付きの関数オーバーロードオブジェクト

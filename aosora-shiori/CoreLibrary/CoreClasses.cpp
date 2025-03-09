@@ -242,6 +242,13 @@ namespace sakura {
 		}
 	}
 
+	ScriptValueRef OverloadedFunctionList::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "length") {
+			return ScriptValue::Make(static_cast<number>(functions.size()));
+		}
+		return nullptr;
+	}
+
 	ScriptValueRef OverloadedFunctionList::SelectItem(ScriptExecuteContext& executeContext, const ScriptValueRef& thisValue) {
 		FunctionRequest request(executeContext);
 		FunctionResponse response;
