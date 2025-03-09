@@ -6,6 +6,9 @@
 #include <sstream>
 #include <set>
 #include <deque>
+#include <iostream>
+#include <iomanip>
+#include <limits>
 
 #include "AST/ASTNodeBase.h"
 #include "Interpreter/ObjectSystem.h"
@@ -174,7 +177,8 @@ namespace sakura {
 			case ScriptValueType::Number:
 			{
 				std::ostringstream ost;
-				ost << numberValue;
+				//doubleが正確に示せる整数範囲では指数表記にならないようにする
+				ost << std::setprecision(std::numeric_limits<double>::digits10) << numberValue;
 				return ost.str();
 			}
 			case ScriptValueType::String:
