@@ -259,6 +259,7 @@ namespace sakura {
 			assert(false);
 			break;
 		}
+		request.append("\r\n");
 
 		request.append("SecurityLevel: ");
 		switch (securityLevel) {
