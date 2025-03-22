@@ -7,8 +7,12 @@ const resourceCharset = "utf-16le";
 const versionHeaderFile = "../aosora-shiori/Version.h";
 const versionHeaderCharset = "utf-8";
 
+const packageFile = "../vscode-extension/package.json";
+const packageCharset = "utf-8";
+
 //バージョンデータの読み込み
 const aosora_ver = version["aosora-version"];
+const vscode_extension_ver = version["vscode-extension-version"];
 let build_num = "0";
 if(process.env.GITHUB_RUN_NUMBER){
     build_num = process.env.GITHUB_RUN_NUMBER;
@@ -25,3 +29,8 @@ fs.writeFileSync(resourceFile, resourceFileBody, resourceCharset);
 //Version.hの書き換え
 let versionHeader = `#pragma once\r\n#define AOSORA_SHIORI_VERSION\t"${aosora_ver}"\r\n#define AOSORA_SHIORI_BUILD\t"Build#${build_num}"\r\n`;
 fs.writeFileSync(versionHeaderFile, versionHeader, versionHeaderCharset);
+
+//vscode-extensionのpackage.json書き換え
+let packageFileBody = fs.readFileSync(packageFile, packageCharset);
+packageFileBody = packageFile.replace('0.0.1', vscode_extension_ver);
+fs.writeFileSync(packageFile, packageFileBody, packageCharset);
