@@ -4,6 +4,7 @@
 /aosora-shiori/Win32
 /aosora-shiori-dll/x64
 /aosora-shiori-dll/Win32
+/aosora-shiori-dll/*.aps
 /aosora-shiori-test/x64
 /aosora-shiori-test/Win32
 /aosora-sstp/Debug
@@ -22,3 +23,4 @@ aosora.pdb
 /ssp/ghost/test/ghost/master/profile
 /ssp/ghost/test/ghost/master/aosora.*
 /ssp/ghost/test/ghost/master/savedata.asv
+/ssp/headline
