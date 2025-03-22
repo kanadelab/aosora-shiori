@@ -29,22 +29,26 @@ jobs:
           npx vsce package -o vscode-extension.vsix
           popd
 
-      - name: upload build
+      - name: make demo.nar
+        uses: thedoctor0/zip-release@0.7.5
+        with:
+          type: zip
+          filename: demo.nar
+          directory: ssp\ghost\test
+
+      - name: collect files
+        shell: cmd
+        run: |
+          mkdir temp-github
+          copy /Y vscode-extension\vscode-extension.vsix temp-github\vscode-extension.vsix
+          copy /Y demo.nar temp-github\demo.nar
+          copy /Y Win32\Deploy\aosora.dll temp-github\aosora.dll
+          copy /Y Win32\Deploy\aosora.pdb temp-github\aosora.pdb
+
+      - name: upload
         uses: actions/upload-artifact@v4
         with:
           name: aosora-shiori
-          path: Win32\Deploy
+          path: temp-github
 
-      - name: upload vscode-extension
-        uses: actions/upload-artifact@v4
-        with:
-          name: vscode-extension
-          path: vscode-extension\vscode-extension.vsix
-
-      - name: upload demo-nar
-        uses: actions/upload-artifact@v4
-        with:
-          name: demo
-          path: ssp\ghost\test
-      
 
