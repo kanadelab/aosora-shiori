@@ -32,5 +32,5 @@ fs.writeFileSync(versionHeaderFile, versionHeader, versionHeaderCharset);
 
 //vscode-extensionのpackage.json書き換え
 let packageFileBody = fs.readFileSync(packageFile, packageCharset);
-packageFileBody = packageFile.replace('0.0.1', vscode_extension_ver);
+packageFileBody = packageFileBody.replace('0.0.1', vscode_extension_ver);
 fs.writeFileSync(packageFile, packageFileBody, packageCharset);
