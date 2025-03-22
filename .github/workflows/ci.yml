@@ -33,15 +33,15 @@ jobs:
         uses: thedoctor0/zip-release@0.7.5
         with:
           type: zip
-          filename: demo.nar
-          directory: ssp\ghost\test
+          filename: demo.zip
+          path: ssp\ghost\test
 
       - name: collect files
         shell: cmd
         run: |
           mkdir temp-github
           copy /Y vscode-extension\vscode-extension.vsix temp-github\vscode-extension.vsix
-          copy /Y demo.nar temp-github\demo.nar
+          copy /Y demo.zip temp-github\demo.nar
           copy /Y Win32\Deploy\aosora.dll temp-github\aosora.dll
           copy /Y Win32\Deploy\aosora.pdb temp-github\aosora.pdb
 
