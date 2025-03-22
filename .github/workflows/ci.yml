@@ -34,14 +34,14 @@ jobs:
         with:
           type: zip
           filename: demo.zip
-          path: ssp\ghost\test
+          directory: ssp\ghost\test
 
       - name: collect files
         shell: cmd
         run: |
           mkdir temp-github
           copy /Y vscode-extension\vscode-extension.vsix temp-github\vscode-extension.vsix
-          copy /Y demo.zip temp-github\demo.nar
+          copy /Y ssp\ghost\test\demo.zip temp-github\demo.nar
           copy /Y Win32\Deploy\aosora.dll temp-github\aosora.dll
           copy /Y Win32\Deploy\aosora.pdb temp-github\aosora.pdb
 
