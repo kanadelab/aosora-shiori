@@ -1,4 +1,6 @@
-﻿#include "AST/AST.h"
+﻿#include <filesystem>
+
+#include "AST/AST.h"
 #include "Interpreter/ScriptVariable.h"
 #include "Interpreter/ScriptExecutor.h"
 #include "CoreLibrary/CoreLibrary.h"
@@ -1196,6 +1198,17 @@ namespace sakura {
 		}
 	}
 
+	std::string ScriptInterpreter::GetClassName(uint32_t typeId) {
+		auto item = classIdMap.find(typeId);
+		if (item != classIdMap.end()) {
+			return item->second->GetMetadata().GetName();
+		}
+		else {
+			assert(false);
+			return "";	//登録してないクラスはないはず⋯ 入力IDが誤りなので、C++側に問題がありそう
+		}
+	}
+
 	//ルートステートメント実行
 	ToStringFunctionCallResult ScriptInterpreter::Execute(const ConstASTNodeRef& node, bool toStringResult) {
 		ScriptInterpreterStack rootStack;
@@ -1221,7 +1234,8 @@ namespace sakura {
 	ScriptInterpreter::ScriptInterpreter() :
 		scriptSteps(0),
 		limitScriptSteps(100 * 10000),	//100万ステップでエラーにしておく
-		scriptClassCount(0)
+		scriptClassCount(0),
+		debugOutputStream(nullptr)
 	{
 		//組み込みのクラスを登録
 		RegisterNativeFunction("print", &ScriptInterpreter::Print);
@@ -1243,15 +1257,21 @@ namespace sakura {
 		ImportClass(NativeClass::Make<SaoriModule>("SaoriModule"));
 		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
 		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
+		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {
+
+		//各クラスの終了処理
 		for (auto item : classMap) {
 			//ネイティブクラスのstatic情報解放
 			if (!item.second->GetMetadata().IsScriptClass()) {
 				static_cast<const NativeClass&>(item.second->GetMetadata()).GetStaticDestructFunc()(*this);
 			}
 		}
+
+		//デバッグストリームの削除
+		CloseDebugOutputStream();
 	}
 
 	//クラスのインポート
@@ -1557,6 +1577,26 @@ namespace sakura {
 		}
 
 		objectManager.CollectObjects(rootCollectables);
+	}
+
+	//デバッグ出力
+	void ScriptInterpreter::OpenDebugOutputStream(const std::string& filename) {
+		//場合によって追記モード
+		assert(debugOutputStream == nullptr);
+		if (debugOutputStream == nullptr) {
+			debugOutputStream = new std::ofstream(workingDirectory + filename, std::ofstream::out | std::ofstream::app);
+		}
+	}
+
+	std::ofstream* ScriptInterpreter::GetDebugOutputStream() {
+		return debugOutputStream;
+	}
+
+	void ScriptInterpreter::CloseDebugOutputStream() {
+		if (debugOutputStream != nullptr) {
+			delete debugOutputStream;
+			debugOutputStream = nullptr;
+		}
 	}
 
 	//子ブロックスコープ作成

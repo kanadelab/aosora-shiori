@@ -5,7 +5,7 @@
 #include "Misc/Message.h"
 
 namespace sakura {
-	
+	//SHIORI 起動エラー
 	const std::string ERROR_SHIORI_001 = "S001";
 	const std::string ERROR_SHIORI_002 = "S002";
 
@@ -31,6 +31,7 @@ namespace sakura {
 	//基準設定とかファイル読み込みとか
 	void Shiori::Load(const std::string& path) {
 
+		ProjectSettings projectSettings;
 		ghostMasterPath = path;
 		interpreter.SetWorkingDirectory(path);
 
@@ -50,66 +51,42 @@ namespace sakura {
 			}
 		}
 
-		std::string scriptProjPath = path;
-		scriptProjPath.append("ghost.asproj");
-
 		//設定ファイルをロードする
-		std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
-		if (settingsStream.fail()) {
-			ScriptParseErrorData errorData;
-			errorData.errorCode = ERROR_SHIORI_001;
-			errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_001);
-			errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_001);
+		{
+			std::string scriptProjPath = path;
+			scriptProjPath.append("ghost.asproj");
+			std::ifstream settingsStream(scriptProjPath, std::ios_base::in);
+			if (settingsStream.fail()) {
+				ScriptParseErrorData errorData;
+				errorData.errorCode = ERROR_SHIORI_001;
+				errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_001);
+				errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_001);
 
-			scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
-			return;
+				scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
+				return;
+			}
+			LoadProjectFile(settingsStream, projectSettings);
 		}
-		
-		std::vector<std::string> files;
-		std::string line;
-		while (std::getline(settingsStream, line)) {
-#if !(defined(WIN32) || defined(_WIN32))
-            // CRLFのCRが残るので削除。
-			Replace(line, "\r", "");
-#endif // not(WIN32 or _WIN32)
 
-			//空白行のスキップ
-			std::string emptyTest = line;
-			Replace(emptyTest, " ", "");
-			Replace(emptyTest, "\t", "");
-			if (emptyTest.empty()) {
-				continue;
+		//デバッグ用の設定ファイルはあればロードする
+		{
+			std::string debugProjPath = path;
+			debugProjPath.append("debug.asproj");
+			std::ifstream settingsStream(debugProjPath, std::ios_base::in);
+			if (!settingsStream.fail()) {
+				LoadProjectFile(settingsStream, projectSettings);
 			}
+		}
 
-			if (line.find(',') != std::string::npos) {
-				//スペースを削除して、カンマで分離
-				std::string cmd = line;
-				Replace(cmd, " ", "");
-				std::vector<std::string> commands;
-				SplitString(cmd, commands, ",", 2);
-				
-				std::string settingsKey = commands[0];
-				std::string settingsValue = commands[1];
-
-				//実行ステップ制限
-				if (settingsKey == "limit_script_steps") {
-					try {
-						interpreter.SetLimitScriptSteps(std::stol(settingsValue));
-					}
-					catch(const std::exception&){}
-					continue;
-				}
-			}
-
-			//とりあえずロードすべきファイルの列挙があるということにしてみる
-			std::string filename = line;
-			files.push_back(filename);
+		//デバッグモードが有効ならデバッグ出力のストリームを開く
+		if (projectSettings.enableDebug && projectSettings.enableDebugLog && !projectSettings.debugOutputFilename.empty()) {
+			interpreter.OpenDebugOutputStream(projectSettings.debugOutputFilename);
 		}
 
 		std::vector<std::shared_ptr<const sakura::ASTParseResult>> parsedFileList;
 
 		//各ファイルを読み込み処理
-		for (auto item : files) {
+		for (auto item : projectSettings.scriptFiles) {
 			
 			auto loadResult = LoadScriptFile(item);
 			if (loadResult->success) {
@@ -185,6 +162,65 @@ namespace sakura {
 
 		//起動完了としてマーク
 		isBooted = true;
+	}
+
+	void Shiori::LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings) {
+		std::string line;
+		while (std::getline(loadStream, line)) {
+#if !(defined(WIN32) || defined(_WIN32))
+			// CRLFのCRが残るので削除。
+			Replace(line, "\r", "");
+#endif // not(WIN32 or _WIN32)
+
+			//空白行のスキップ
+			std::string emptyTest = line;
+			Replace(emptyTest, " ", "");
+			Replace(emptyTest, "\t", "");
+			if (emptyTest.empty()) {
+				continue;
+			}
+
+			if (line.find(',') != std::string::npos) {
+				//スペースを削除して、カンマで分離
+				std::string cmd = line;
+				Replace(cmd, " ", "");
+				std::vector<std::string> commands;
+				SplitString(cmd, commands, ",", 2);
+
+				std::string settingsKey = commands[0];
+				std::string settingsValue = commands[1];
+
+				//実行ステップ制限
+				if (settingsKey == "limit_script_steps") {
+					try {
+						projectSettings.limitScriptSteps = std::stol(settingsValue);
+						projectSettings.setLimitScriptSteps = true;
+					}
+					catch (const std::exception&) {}
+					continue;
+				}
+
+				//デバッグモード
+				if (settingsKey == "debug") {
+					projectSettings.enableDebug = StringToSettingsBool(settingsValue);
+					return;
+				}
+
+				if (settingsKey == "debug.logfile.name") {
+					projectSettings.debugOutputFilename = settingsValue;
+					return;
+				}
+
+				if (settingsKey == "debug.logfile.enable") {
+					projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
+					return;
+				}
+			}
+
+			//とりあえずロードすべきファイルの列挙があるということにしてみる
+			std::string filename = line;
+			projectSettings.scriptFiles.push_back(filename);
+		}
 	}
 
 	void Shiori::LoadWithoutProject() {

@@ -322,6 +322,33 @@ namespace sakura {
 		}
 	}
 
+	std::string ScriptArray::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
+		if (members.empty()) {
+			//からっぽ
+			return "[]";
+		}
+
+		//ディクショナリ形式で文字列化
+		std::string result("[");
+		{
+			DebugOutputContext::IndentScope indentScope(debugOutputContext);
+			bool isFirst = true;
+			for (auto item : members) {
+				if (!isFirst) {
+					result.append(",");
+				}
+				else {
+					isFirst = false;
+				}
+				debugOutputContext.AppendNewLine(result);
+				result.append(item->DebugToString(executeContext, debugOutputContext));
+			}
+		}
+		debugOutputContext.AppendNewLine(result);
+		result.append("]");
+		return result;
+	}
+
 	void TalkBuilderSettings::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		if (key == "AutoLineBreak") {
 			autoLineBreak = value->ToString();

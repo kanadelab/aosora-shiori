@@ -498,6 +498,8 @@ namespace sakura {
 			}
 		}
 
+		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) override;
+
 	};
 
 	//トーク内にタグを自動挿入する関係の設定オブジェクト

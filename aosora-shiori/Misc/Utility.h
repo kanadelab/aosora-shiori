@@ -90,6 +90,21 @@ namespace sakura{
 		}
 	}
 
+	//設定ファイル解析用:文字列をboolに変換
+	inline bool StringToSettingsBool(std::string& str) {
+
+		//falseと0だけがfalse
+		if (str == "0") {
+			return false;
+		}
+		std::string lw = str;
+		ToLower(lw);
+		if (lw == "false") {
+			return false;
+		}
+		return true;
+	}
+
 	//区切り文字を使用した分割
 	inline void SplitString(const std::string& input, std::vector<std::string>& result, char delimiter) {
 		std::istringstream ist(input);

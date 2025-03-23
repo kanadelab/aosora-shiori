@@ -376,4 +376,13 @@ namespace sakura {
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 	};
+
+	//デバッグ関係
+	class ScriptDebug : public Object<ScriptDebug> {
+	private:
+		static void WriteLine(const FunctionRequest& request, FunctionResponse& response);
+
+	public:
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
 }

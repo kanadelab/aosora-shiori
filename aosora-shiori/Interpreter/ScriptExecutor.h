@@ -1,5 +1,5 @@
 ﻿#pragma once
-
+#include <fstream>
 #include "AST/AST.h"
 #include "Interpreter/ScriptVariable.h"
 #include "Misc/Utility.h"
@@ -101,8 +101,11 @@ namespace sakura {
 		//オブジェクト管理
 		ObjectSystem objectManager;
 
-		//作業ディレクトリ
+		//作業ディレクトリ(末尾にパス区切りを含む)
 		std::string workingDirectory;
+
+		//デバッグ出力
+		std::ofstream* debugOutputStream;
 
 	private:
 		void CallFunctionInternal(const ScriptValue& funcVariable, const std::vector<ScriptValueRef>& args, ScriptInterpreterStack& funcStack, FunctionResponse& response);
@@ -119,7 +122,7 @@ namespace sakura {
 		ScriptInterpreter();
 		~ScriptInterpreter();
 
-		//ステップ数を計測、無限ループの矯正脱出用
+		//ステップ数を計測、無限ループの強制脱出用
 		uint64_t IncrementScriptStep() {
 			scriptSteps++;
 			return scriptSteps;
@@ -231,6 +234,9 @@ namespace sakura {
 		//クラスID取得
 		uint32_t GetClassId(const std::string& name);
 
+		//クラス名取得
+		std::string GetClassName(uint32_t typeId);
+
 		//ASTをインタプリタに渡して実行
 		ToStringFunctionCallResult Execute(const ConstASTNodeRef& node, bool toStringResult);
 
@@ -339,6 +345,11 @@ namespace sakura {
 
 		//GC
 		void CollectObjects();
+
+		//デバッグ情報書き出し
+		void OpenDebugOutputStream(const std::string& filename);
+		std::ofstream* GetDebugOutputStream();
+		void CloseDebugOutputStream();
 
 	};
 
@@ -654,6 +665,19 @@ namespace sakura {
 		bool RequireLeave() const {
 			return stack.IsLeave();
 		}
+
+		//直近で取得できるASTノードを取得(呼び出し元の取得)
+		const ASTNodeBase* GetLatestASTNode() {
+			const ScriptInterpreterStack* node = &stack;
+			while (node != nullptr) {
+				if (node->GetCallingASTNode() != nullptr) {
+					return node->GetCallingASTNode();
+				}
+				node = node->GetParentStackFrame();
+			}
+			return nullptr;
+		}
+		
 
 	};
 

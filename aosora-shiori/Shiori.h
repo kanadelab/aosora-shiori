@@ -12,6 +12,25 @@ namespace sakura {
 	//SHIORIとしての実装相当部分
 	class Shiori {
 	private:
+		class ProjectSettings {
+		public:
+			std::vector<std::string> scriptFiles;
+			std::string debugOutputFilename;
+			size_t limitScriptSteps;
+			bool setLimitScriptSteps;
+			bool enableDebug;
+			bool enableDebugLog;
+
+			ProjectSettings():
+				debugOutputFilename("aosora.log"),
+				limitScriptSteps(0),
+				setLimitScriptSteps(false),
+				enableDebug(false),
+				enableDebugLog(true)
+			{ }
+		};
+
+	private:
 		std::string ghostMasterPath;
 		ScriptInterpreter interpreter;
 		std::map<std::string, std::string> shioriInfo;
@@ -25,6 +44,7 @@ namespace sakura {
 
 	private:
 		void RequestInternal(const ShioriRequest& request, ShioriResponse& response);
+		void LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings);
 
 		//エラーガイダンス用のエラー情報取得
 		std::string ShowErrors();

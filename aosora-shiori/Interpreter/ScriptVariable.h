@@ -19,6 +19,7 @@ namespace sakura {
 	class ScriptObject;
 	class ScriptInterpreter;
 	class ScriptExecuteContext;
+	class ObjectBase;
 
 	//オブジェクト型
 	enum class ScriptValueType {
@@ -30,6 +31,93 @@ namespace sakura {
 		Object
 	};
 
+	//デバッグ出力用の情報
+	class DebugOutputContext
+	{
+	private:
+		bool enableIndent;	//改行およびインデントの適用
+		int32_t indentLevel;
+		char indentChar;
+		std::vector<std::set<ObjectBase*>> loopCheckSet;	//TODO: 再帰書き出し検出のためのセット。全世代でみないといけないのですこしややこしいかも？
+
+	public:
+
+		//インデント区間管理用のスコープオブジェクト
+		class IndentScope {
+			DebugOutputContext& context;
+		public:
+			IndentScope(DebugOutputContext& context) :
+				context(context)
+			{
+				context.indentLevel++;
+			}
+
+			~IndentScope()
+			{
+				context.indentLevel--;
+			}
+		};
+
+		//再帰出力回避管理用のスコープオブジェクト
+		class LoopCheckScope {
+			DebugOutputContext& context;
+		public:
+			LoopCheckScope(DebugOutputContext& context) :
+				context(context)
+			{
+				context.loopCheckSet.push_back(std::set<ObjectBase*>());
+			}
+
+			~LoopCheckScope()
+			{
+				context.loopCheckSet.pop_back();
+			}
+		};
+
+		DebugOutputContext() :
+			enableIndent(true),
+			indentLevel(0),
+			indentChar('\t')
+		{ }
+
+		bool IsEnableIndent() { return enableIndent; }
+		int32_t GetIndentLevel() { return indentLevel; }
+		char GetIndentChar() { return indentChar; }
+		std::string MakeIndent() { return std::string(indentLevel, indentChar); }
+
+		void AppendIndent(std::string& str) {
+			if (enableIndent && indentLevel > 0) {
+				str.append(MakeIndent());
+			}
+		}
+
+		void AppendNewLine(std::string& str) {
+			if (enableIndent) {
+				str.append("\n");
+				AppendIndent(str);
+			}
+		}
+
+		//再帰ループしてないかの検証
+		bool ValidateLoopedObject(ObjectBase* ptr) {
+
+			//要素がないので問題なし
+			if (loopCheckSet.empty()) {
+				return true;
+			}
+
+			//重複する要素がないか調べる
+			for (auto& map : loopCheckSet) {
+				if (map.contains(ptr)) {
+					return false;	//重複
+				}
+			}
+
+			//追加
+			loopCheckSet.rbegin()->insert(ptr);
+			return true;
+		}
+	};
 
 	//オブジェクト
 	class ObjectBase : public CollectableBase {
@@ -54,6 +142,9 @@ namespace sakura {
 		//関数呼び出しスタイルの使用が可能かどうか
 		virtual bool CanCall() const { return false; }
 		virtual void Call(const FunctionRequest& request, FunctionResponse& response) {}
+
+		//デバッグ向けの文字列化
+		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext);
 	};
 
 	using ObjectRef = Reference<ObjectBase>;
@@ -188,6 +279,32 @@ namespace sakura {
 			default:
 				//それ以外は文字列化を拒否する
 				return "";
+			}
+		}
+
+		//デバッグ用に文字列化する
+		std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) const {
+			switch (valueType) {
+			case ScriptValueType::String: {
+				//デバッグ出力のためにダブルクォートをつける
+				return std::string() + '"' + stringValue + '"';
+			}
+			case ScriptValueType::Null:
+				//null値も表示する
+				return "null";
+			case ScriptValueType::Object: {
+				DebugOutputContext::LoopCheckScope loopCheckScope(debugOutputContext);
+				if (debugOutputContext.ValidateLoopedObject(GetObjectRef().Get())) {
+					return GetObjectRef()->DebugToString(executeContext, debugOutputContext);
+				}
+				else {
+					//オブジェクトが再帰しているので、出力しないようにする
+					return "{...repeat...}";
+				}
+			}
+			default:
+				//ほかは通常通り
+				return ToString();
 			}
 		}
 
@@ -397,6 +514,7 @@ namespace sakura {
 		//操作
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) override;
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 

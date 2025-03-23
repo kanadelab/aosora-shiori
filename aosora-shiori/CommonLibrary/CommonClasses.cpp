@@ -457,7 +457,7 @@ namespace sakura {
 			return;
 		}
 		
-		//9オリジンでアイテムが入っている前提で、ランダムに１つ選択する
+		//配列からアイテムを1つランダム選択
 		Reference<ScriptArray> sobj = obj.template Cast<ScriptArray>();
 		const size_t size = sobj->Count();
 		const int32_t result = Rand(0, static_cast<int32_t>(size));
@@ -575,6 +575,31 @@ namespace sakura {
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
 		UnloadSaori(loadedModule);
 #endif // #if defined(AOSORA_ENABLE_SAORI_LOADER)
+	}
+
+	void ScriptDebug::WriteLine(const FunctionRequest& request, FunctionResponse& response) {
+		if(request.GetArgumentCount() == 0){
+			return;
+		}
+
+		DebugOutputContext debugOutputContext;
+		std::ofstream* const stream = request.GetContext().GetInterpreter().GetDebugOutputStream();
+		if (stream != nullptr) {
+			const ASTNodeBase* node = request.GetContext().GetLatestASTNode();
+			if (node != nullptr) {
+				//出力元のスクリプト位置をとっておく
+				*stream << node->GetSourceRange().ToString() << " ";
+			}
+			*stream << request.GetArgument(0)->DebugToString(request.GetContext(), debugOutputContext) << std::endl;
+			stream->flush();
+		}
+	}
+
+	ScriptValueRef ScriptDebug::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "WriteLine") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptDebug::WriteLine));
+		}
+		return nullptr;
 	}
 
 }
