@@ -77,7 +77,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.aosora",
-				"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|true|false|try|catch|finally|new|throw|class|member|init)\\b"
+				"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|true|false|null|try|catch|finally|new|throw|class|member|init)\\b"
 			}]
 		},
 		"rootblock":{
