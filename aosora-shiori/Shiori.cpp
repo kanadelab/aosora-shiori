@@ -17,9 +17,6 @@ namespace sakura {
 		//TODO: これのせいで複数インスタンス対応が微妙になってるので注意
 		TextSystem::CreateInstance();
 
-		//ランダムを準備
-		SRand();
-
 		//固定値情報を設定
 		shioriInfo["version"] = AOSORA_SHIORI_VERSION " " AOSORA_SHIORI_BUILD;
 		shioriInfo["craftman"] = "kanadelab";
