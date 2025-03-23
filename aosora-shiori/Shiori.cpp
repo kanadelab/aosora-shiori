@@ -78,6 +78,11 @@ namespace sakura {
 			}
 		}
 
+		//設定の適用
+		if (projectSettings.setLimitScriptSteps) {
+			interpreter.SetLimitScriptSteps(projectSettings.limitScriptSteps);
+		}
+
 		//デバッグモードが有効ならデバッグ出力のストリームを開く
 		if (projectSettings.enableDebug && projectSettings.enableDebugLog && !projectSettings.debugOutputFilename.empty()) {
 			interpreter.OpenDebugOutputStream(projectSettings.debugOutputFilename);
