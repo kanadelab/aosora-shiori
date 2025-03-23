@@ -2,6 +2,9 @@
 #include "Shiori.h"
 #include "Misc/Utility.h"
 #include "Misc/Json.h"
+#include "Misc/Message.h"
+
+#include <regex>
 
 //とりあえず試しに動かしてみる用
 
@@ -10,6 +13,8 @@ namespace sakura {
 	//ソースコードをパースする
 	void Execute(const std::string& document)
 	{
+		TextSystem::CreateInstance();
+
 		auto tokens = sakura::TokensParser::Parse(document,"test");
 		auto ast = sakura::ASTParser::Parse(tokens);
 
@@ -18,6 +23,8 @@ namespace sakura {
 		interpreter.ImportClasses(ast->classMap);
 		interpreter.CommitClasses();
 		interpreter.Execute(ast->root, false);
+
+		TextSystem::DestroyInstance();
 	}
 }
 
@@ -27,15 +34,7 @@ int main() {
 
 	std::string sourceCode2 = R"(
 	
-		print("あiうeお".length);
-		print("あ1うeお".IndexOf("う"));
-		local a = "あえいaaaうえおあお";
-		print(a.Substring(3, 3));
-		local b = "abc";
-		print(b.Substring(1, 2));
-
-		print("あい".Substring(0,1));
-		print("あいうえ".Substring(1,2));
+		print("！".length);
 
 )";
 
