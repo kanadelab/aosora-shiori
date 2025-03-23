@@ -27,7 +27,7 @@ namespace sakura{
 			//minとmaxが逆
 			return min;
 		}
-		std::uniform_int_distribution<> dist(min, max);
+		std::uniform_int_distribution<> dist(min, max-1);
 		return dist(GetInternalRandom());
 	}
 
