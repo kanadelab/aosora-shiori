@@ -5,28 +5,36 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <random>
 #include "Base.h"
 
 
 namespace sakura{
+	//統一で使用するランダムオブジェクト
+	extern std::mt19937 randomEngine;
+
 	inline bool CheckFlags(uint32_t target, uint32_t flag) {
 		return (target & flag) != 0u;
 	}
 
-	//乱数の初期化
-	inline void SRand() {
-		srand((unsigned int)time(nullptr));
+	inline std::mt19937& GetInternalRandom() {
+		return randomEngine;
 	}
 
 	//基本のランダム
 	inline int Rand(int32_t min, int32_t max) {
-		max--;
-		return min + (int32_t)(rand() * (max - min + 1.0) / (1.0 + RAND_MAX));
+		if (min >= max) {
+			//minとmaxが逆
+			return min;
+		}
+		std::uniform_int_distribution<> dist(min, max);
+		return dist(GetInternalRandom());
 	}
 
-	//実数ランダム 0.0-1.0
+	//実数ランダム 0.0以上、1.0未満
 	inline number RandNum() {
-		return (static_cast<number>(rand()) / static_cast<number>(RAND_MAX));
+		std::uniform_real_distribution<> dist(0.0, 1.0);
+		return dist(GetInternalRandom());
 	}
 
 	//文字列全置換

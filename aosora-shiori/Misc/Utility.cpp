@@ -11,6 +11,9 @@ namespace sakura {
 	constexpr UINT SHIFT_JIS = 932;
 #endif // WIN32 or _WIN32
 
+	//統一で使用するランダム用オブジェクト
+	std::mt19937 randomEngine((std::random_device())());
+
 	//ファイル読み込み
 	bool File::ReadAllText(const char* filename, std::string& result) {
 		std::ifstream loadStream(filename, std::ios_base::in);

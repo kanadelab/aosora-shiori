@@ -174,10 +174,7 @@ namespace sakura {
 		}
 
 		//シャッフル
-		//TODO: 局所的にランダムをもたないほうがいいかも？
-		std::random_device seed_gen;
-		std::mt19937 engine(seed_gen());
-		std::shuffle(callOrder.begin(), callOrder.end(), engine);
+		std::shuffle(callOrder.begin(), callOrder.end(), GetInternalRandom());
 	}
 
 	//関数オーバーロードオブジェクト
