@@ -351,7 +351,7 @@ namespace sakura {
 		}
 
 		//トーク可能であればイベントを呼び出す
-		if (canCallTalk && threshold > 0.0 && count > threshold) {
+		if (canCallTalk && threshold > 0.0 && count >= threshold) {
 
 			//トークをリクエストする
 			auto talkVal = staticStore->RawGet(KeyNadenadeTalk);
