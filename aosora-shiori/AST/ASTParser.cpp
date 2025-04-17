@@ -49,6 +49,7 @@ namespace sakura {
 	const std::string ERROR_AST_037 = "A037";
 	const std::string ERROR_AST_038 = "A038";
 	const std::string ERROR_AST_039 = "A039";
+	const std::string ERROR_AST_040 = "A040";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -956,6 +957,11 @@ namespace sakura {
 					}
 				}	
 			}
+		}
+
+		//スタックサイズが0の場合、式がなくて終了しているので問題
+		if (parseStack.Size() == 0) {
+			return parseContext.Error(ERROR_AST_040, parseContext.GetPrev());
 		}
 
 		//出揃ったので最終的にまとめて終了
