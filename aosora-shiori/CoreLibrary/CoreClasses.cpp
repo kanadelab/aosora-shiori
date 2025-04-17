@@ -356,6 +356,9 @@ namespace sakura {
 		else if (key == "ScopeChangeLineBreak") {
 			scopeChangeLineBreak = value->ToString();
 		}
+		else if (key == "Head") {
+			scriptHead = value->ToString();
+		}
 	}
 
 	ScriptValueRef TalkBuilderSettings::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
@@ -364,6 +367,9 @@ namespace sakura {
 		}
 		else if (key == "ScopeChangeLineBreak") {
 			return ScriptValue::Make(scopeChangeLineBreak);
+		}
+		else if (key == "Head") {
+			return ScriptValue::Make(scriptHead);
 		}
 		return nullptr;
 	}
@@ -407,4 +413,7 @@ namespace sakura {
 		return GetCurrentSettings(interpreter).GetScopeChangeLineBreak();
 	}
 
+	const std::string& TalkBuilder::GetScriptHead(ScriptInterpreter& interpreter) {
+		return GetCurrentSettings(interpreter).GetScriptHead();
+	}
 }

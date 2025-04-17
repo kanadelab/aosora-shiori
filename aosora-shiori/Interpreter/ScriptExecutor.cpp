@@ -1149,7 +1149,7 @@ namespace sakura {
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
-				executeContext.GetStack().AppendTalkBody(str, executeContext.GetInterpreter());
+				executeContext.GetStack().AppendJumpedTalkBody(str, executeContext.GetInterpreter());
 
 				//ここまでのトーク内容を関数の戻り値として返す
 				executeContext.GetStack().ReturnTalk();
@@ -1875,6 +1875,11 @@ namespace sakura {
 		//話者指定があるかをチェック
 		auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
 
+		if (talkBody.empty()) {
+			//最初のトーク内容を設定
+			talkBody = TalkBuilder::GetScriptHead(interpreter);
+		}
+
 		if (speakedCache.lastSpeakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
 
 			//最初の発話で話者指定が入ってなければ自動的に付与
@@ -1898,8 +1903,24 @@ namespace sakura {
 		talkBody = TalkStringCombiner::CombineTalk(talkBody, str, interpreter, &speakedCache, false);
 	}
 
+	void ScriptInterpreterStack::AppendJumpedTalkBody(const std::string& str, ScriptInterpreter& interpreter) {
+		if (talkBody.empty()) {
+			//発話してない場合（ジャンプ以外に反応しなかった場合）そのまま内容を受け入れる。先頭の話者指定などで冗長にしない
+			talkBody = str;
+		}
+		else {
+			//そうでない場合は通常の結合を行う
+			AppendTalkBody(str, interpreter);
+		}
+	}
+
 	//話者を指定
 	void ScriptInterpreterStack::SetTalkSpeakerIndex(int32_t speakerIndex, ScriptInterpreter& interpreter) {
+
+		if (talkBody.empty()) {
+			//最初のトーク内容を設定
+			talkBody = TalkBuilder::GetScriptHead(interpreter);
+		}
 
 		if (speakedCache.lastSpeakerIndex != speakerIndex) {
 

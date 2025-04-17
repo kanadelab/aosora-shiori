@@ -507,19 +507,22 @@ namespace sakura {
 	private:
 		std::string autoLineBreak;
 		std::string scopeChangeLineBreak;
+		std::string scriptHead;
 
 	public:
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {};
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 
-		TalkBuilderSettings():
+		TalkBuilderSettings() :
 			autoLineBreak("\\n"),
-			scopeChangeLineBreak("\\n\\n[half]")
+			scopeChangeLineBreak("\\n\\n[half]"),
+			scriptHead("")
 		{}
 
 		const std::string& GetLineBreak() { return autoLineBreak; }
 		const std::string& GetScopeChangeLineBreak() { return scopeChangeLineBreak; }
+		const std::string& GetScriptHead() { return scriptHead; }
 	};
 
 	//TalkBuildSettingsを格納するためのもの
@@ -541,6 +544,9 @@ namespace sakura {
 
 		//スコープ切替時の改行に使う文字列を取得
 		static const std::string& GetScopeChangeLineBreak(ScriptInterpreter& interpreter);
+
+		//トークの先頭に付与するスクリプトを取得
+		static const std::string& GetScriptHead(ScriptInterpreter& interpreter);
 	};
 
 }

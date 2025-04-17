@@ -599,6 +599,9 @@ namespace sakura {
 		//トーク内容を追加
 		void AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter);
 
+		//ジャンプによるトーク内容の追加
+		void AppendJumpedTalkBody(const std::string& str, ScriptInterpreter& interpreter);
+
 		//話者を指定
 		void SetTalkSpeakerIndex(int32_t speakerIndex, ScriptInterpreter& interpreter);
 
