@@ -430,6 +430,9 @@ namespace sakura {
 			if (key == "Add") {
 				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAdd, self));
 			}
+			else if (key == "AddRange") {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAddRange, self));
+			}
 			else if (key == "Insert") {
 				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptInsert, self));
 			}
@@ -470,6 +473,19 @@ namespace sakura {
 			if (request.GetArgumentCount() >= 1) {
 				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
 				obj->Add(request.GetArgument(0));
+			}
+		}
+
+		static void ScriptAddRange(const FunctionRequest& request, FunctionResponse& response) {
+			if (request.GetArgumentCount() >= 1) {
+				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+				ScriptArray* arg = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetArgument(0));
+
+				if (arg != nullptr) {
+					for (size_t i = 0; i < arg->Count(); i++) {
+						obj->Add(arg->At(i));
+					}
+				}
 			}
 		}
 
