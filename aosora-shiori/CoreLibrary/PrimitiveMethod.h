@@ -19,6 +19,9 @@ namespace sakura {
 		static void String_IndexOf(const FunctionRequest& request, FunctionResponse& response);
 		static void String_Replace(const FunctionRequest& request, FunctionResponse& response);
 		static void String_AddTalk(const FunctionRequest& request, FunctionResponse& response);
+		static void String_ToUpper(const FunctionRequest& request, FunctionResponse& response);
+		static void String_ToLower(const FunctionRequest& request, FunctionResponse& response);
+		static void String_Contains(const FunctionRequest& request, FunctionResponse& response);
 
 		static void General_ToString(const FunctionRequest& request, FunctionResponse& response);
 		static void General_ToNumber(const FunctionRequest& request, FunctionResponse& response);

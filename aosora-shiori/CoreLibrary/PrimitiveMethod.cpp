@@ -199,6 +199,36 @@ namespace sakura {
 		}
 	}
 
+	void PrimitiveMethod::String_ToUpper(const FunctionRequest& request, FunctionResponse& response)
+	{
+		std::string target = request.GetThisValue()->ToString();
+		for (size_t i = 0; i < target.size(); i++) {
+			target[i] = static_cast<char>(toupper(target[i]));
+		}
+		response.SetReturnValue(ScriptValue::Make(target));
+	}
+
+	void PrimitiveMethod::String_ToLower(const FunctionRequest& request, FunctionResponse& response)
+	{
+		std::string target = request.GetThisValue()->ToString();
+		for (size_t i = 0; i < target.size(); i++) {
+			target[i] = static_cast<char>(tolower(target[i]));
+		}
+		response.SetReturnValue(ScriptValue::Make(target));
+	}
+
+	void PrimitiveMethod::String_Contains(const FunctionRequest& request, FunctionResponse& response)
+	{
+		//IndexOfがnullを返していればflase、そうでなければtrue
+		String_IndexOf(request, response);
+		if (response.GetReturnValue() == nullptr || response.GetReturnValue()->IsNull()) {
+			response.SetReturnValue(ScriptValue::False);
+		}
+		else {
+			response.SetReturnValue(ScriptValue::True);
+		}
+	}
+
 	ScriptValueRef PrimitiveMethod::GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
 		if (member == "Round") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_Round, value));
@@ -243,6 +273,15 @@ namespace sakura {
 		}
 		else if (member == "AddTalk") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_AddTalk, value));
+		}
+		else if (member == "ToLower") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_ToLower, value));
+		}
+		else if (member == "ToUpper") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_ToUpper, value));
+		}
+		else if (member == "Contains") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Contains, value));
 		}
 		else if (member == "length") {
 #if defined(AOSORA_USE_UNICODE_CHAR_INDEX)
