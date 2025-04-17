@@ -329,10 +329,15 @@ namespace sakura {
 
 	//トークタイマー
 	class TalkTimer : public Object<TalkTimer> {
+	private:
+		static bool CallRandomTalk(ScriptInterpreter& interpreter, FunctionResponse& response);
+		static void ClearRandomTalkInterval(ScriptInterpreter& interpreter);
+
 	public:
 		static const char* KeyRandomTalk;
 		static const char* KeyRandomTalkIntervalSeconds;
 		static const char* KeyRandomTalkElapsedSeconds;
+		static const char* KeyRandomTalkQueue;
 
 		static const char* KeyNadenadeTalk;
 		static const char* KeyNadenadeMoveCount;
@@ -345,6 +350,9 @@ namespace sakura {
 		static bool OnSecondChange(ScriptInterpreter& interpreter, FunctionResponse& response, const ShioriRequest& shioriRequest, bool canCallRandomTalk);
 		static bool OnMouseMove(ScriptInterpreter& interpreter, FunctionResponse& response, const ShioriRequest& shioriRequest, bool canCallTalk);
 		static void ClearMouseMove(ScriptInterpreter& interpreter);
+
+		static void ScriptCallRandomTalk(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptClearTalkInterval(const FunctionRequest& request, FunctionResponse& response);
 
 		static void StaticInit(ScriptInterpreter& interpreter);
 		static void StaticSet(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);

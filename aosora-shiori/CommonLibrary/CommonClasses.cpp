@@ -195,6 +195,7 @@ namespace sakura {
 	const char* TalkTimer::KeyRandomTalk = "RandomTalk";
 	const char* TalkTimer::KeyRandomTalkIntervalSeconds = "RandomTalkIntervalSeconds";
 	const char* TalkTimer::KeyRandomTalkElapsedSeconds = "RandomTalkElapsedSeconds";
+	const char* TalkTimer::KeyRandomTalkQueue = "RandomTalkQueue";
 
 	const char* TalkTimer::KeyNadenadeTalk = "NadenadeTalk";
 	const char* TalkTimer::KeyNadenadeMoveCount = "NadenadeMoveCount";
@@ -253,29 +254,62 @@ namespace sakura {
 		}
 
 		//必要秒数を超えていればトークを発生
-		bool called = false;
-
 		if (canCallRandomTalk && interval > 0.0 && seconds > interval) {
-
-			//トークをリクエストする
-			auto talkVal = staticStore->RawGet(KeyRandomTalk);
-
-			if (talkVal != nullptr) {
-				//ランダムトーク呼出
-				std::vector<ScriptValueRef> args;
-				interpreter.CallFunction(*talkVal, response, args);
-
-				//秒数をリセット
-				seconds = 0.0;
-				called = true;
-			}
+			//呼び出しを実行したかどうかを返す
+			return CallRandomTalk(interpreter, response);
 		}
-		
-		//経過秒を書き戻す
-		staticStore->RawSet(KeyRandomTalkElapsedSeconds, ScriptValue::Make(seconds));
+		else {
+			//経過秒を書き戻す
+			staticStore->RawSet(KeyRandomTalkElapsedSeconds, ScriptValue::Make(seconds));
+			return false;
+		}
+	}
 
-		//呼び出しを実行したかどうかを返す
-		return called;
+	//ランダムトークの呼び出し要求
+	bool TalkTimer::CallRandomTalk(ScriptInterpreter& interpreter, FunctionResponse& response) {
+		auto staticStore = interpreter.StaticStore<TalkTimer>();
+		ScriptValueRef talkVal = nullptr;
+
+		//トークキューにトークがあるかを確認
+		auto talkQueue = staticStore->RawGet(KeyRandomTalkQueue);
+		ScriptArray* queue = interpreter.InstanceAs<ScriptArray>(talkQueue);
+		if (queue && queue->Count() > 0) {
+
+			//トークを取得してキューから取り除く
+			talkVal = queue->At(0);
+			queue->Remove(0);
+		}
+
+		if (talkVal == nullptr) {
+			//トークをリクエストする
+			talkVal = staticStore->RawGet(KeyRandomTalk);
+		}
+
+		if (talkVal != nullptr) {
+			//ランダムトーク呼出
+			std::vector<ScriptValueRef> args;
+			interpreter.CallFunction(*talkVal, response, args);
+
+			//秒数をリセット
+			ClearRandomTalkInterval(interpreter);
+			return true;
+		}
+		return false;
+	}
+
+	void TalkTimer::ClearRandomTalkInterval(ScriptInterpreter& interpreter) {
+		//間隔をクリアする
+		interpreter.StaticStore<TalkTimer>()->RawSet(KeyRandomTalkElapsedSeconds, ScriptValue::Make(0.0));
+	}
+
+	//ランダムトークを起動する
+	void TalkTimer::ScriptCallRandomTalk(const FunctionRequest& request, FunctionResponse& response) {
+		CallRandomTalk(request.GetContext().GetInterpreter(), response);
+	}
+
+	//ランダムトーク間隔のクリア
+	void TalkTimer::ScriptClearTalkInterval(const FunctionRequest& request, FunctionResponse& response) {
+		ClearRandomTalkInterval(request.GetContext().GetInterpreter());
 	}
 
 	bool TalkTimer::OnMouseMove(ScriptInterpreter& interpreter, FunctionResponse& response, const ShioriRequest& shioriRequest, bool canCallTalk) {
@@ -349,7 +383,9 @@ namespace sakura {
 
 	void TalkTimer::StaticInit(ScriptInterpreter& interpreter) {
 		//デフォルト値として適当に
-		interpreter.StaticStore<TalkTimer>()->RawSet(KeyNadenadeMoveThreshold, ScriptValue::Make(50.0));
+		auto staticStore = interpreter.StaticStore<TalkTimer>();
+		staticStore->RawSet(KeyNadenadeMoveThreshold, ScriptValue::Make(50.0));
+		staticStore->RawSet(KeyRandomTalkQueue, ScriptValue::Make(interpreter.CreateNativeObject<ScriptArray>()));
 	}
 
 	void TalkTimer::StaticSet(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
@@ -358,6 +394,7 @@ namespace sakura {
 			key == KeyRandomTalk ||
 			key == KeyRandomTalkElapsedSeconds ||
 			key == KeyRandomTalkIntervalSeconds ||
+			key == KeyRandomTalkQueue ||
 			key == KeyNadenadeActiveCollision ||
 			key == KeyNadenadeMoveCount ||
 			key == KeyNadenadeMoveThreshold ||
@@ -368,17 +405,27 @@ namespace sakura {
 	}
 
 	ScriptValueRef TalkTimer::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+
+		//ランダムトーク要求
+		if (key == "CallRandomTalk") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&TalkTimer::ScriptCallRandomTalk));
+		}
+		else if (key == "ClearTalkInterval") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&TalkTimer::ScriptCallRandomTalk));
+		}
+
 		//存在してるキーにだけアクセスを許容する
 		if (
 			key == KeyRandomTalk ||
 			key == KeyRandomTalkElapsedSeconds ||
 			key == KeyRandomTalkIntervalSeconds ||
+			key == KeyRandomTalkQueue ||
 			key == KeyNadenadeActiveCollision ||
 			key == KeyNadenadeMoveCount ||
 			key == KeyNadenadeMoveThreshold ||
 			key == KeyNadenadeTalk
 			) {
-			executeContext.GetInterpreter().StaticStore<TalkTimer>()->RawGet(key);
+			return executeContext.GetInterpreter().StaticStore<TalkTimer>()->RawGet(key);
 		}
 
 		return nullptr;
