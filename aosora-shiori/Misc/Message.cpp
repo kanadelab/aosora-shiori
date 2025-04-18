@@ -132,6 +132,7 @@ namespace sakura {
 			ERROR_MESSAGES("A037", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'catch' block.")
 			ERROR_MESSAGES("A038", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'finally' block.")
 			ERROR_MESSAGES("A039", "A semicolon ; is required.", "Variable declarations must end with a semicolon ;")
+			ERROR_MESSAGES("A040", "A formula is required.", "You need to write an expression or value, you seem to be trying to proceed without writing one.")
 
 			ERROR_MESSAGES("T001", "The braces {} do not match.", "Loading failed because there are closing braces without opening braces.")
 			ERROR_MESSAGES("T002", "This string cannot be used as a talk name.", "You are trying to use characters that cannot be used as variable names in a talk name.")
