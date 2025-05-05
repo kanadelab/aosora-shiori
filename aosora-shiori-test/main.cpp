@@ -15,7 +15,7 @@ namespace sakura {
 	{
 		TextSystem::CreateInstance();
 
-		auto tokens = sakura::TokensParser::Parse(document,"test");
+		auto tokens = sakura::TokensParser::Parse(document,SourceFilePath("test","test"));
 		auto ast = sakura::ASTParser::Parse(tokens);
 
 		printf("---Execute---\n");

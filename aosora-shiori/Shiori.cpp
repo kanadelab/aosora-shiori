@@ -3,6 +3,7 @@
 #include "Version.h"
 #include "Shiori.h"
 #include "Misc/Message.h"
+#include "Debugger/Debugger.h"
 
 namespace sakura {
 	//SHIORI 起動エラー
@@ -22,10 +23,17 @@ namespace sakura {
 		shioriInfo["craftman"] = "kanadelab";
 		shioriInfo["craftmanw"] = "ななっち";
 		shioriInfo["name"] = "Aosora";
+
+		//デバッグシステムを起動
+		//TODO: 必要に応じて
+		Debugger::Create();
 	}
 
 	Shiori::~Shiori() {
 		TextSystem::DestroyInstance();
+
+		//デバッグシステムを終了
+		Debugger::Destroy();
 	}
 
 	//基準設定とかファイル読み込みとか
@@ -62,7 +70,7 @@ namespace sakura {
 				errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_001);
 				errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_001);
 
-				scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string("ghost.asproj")), 0, 0, 0, 0)));
+				scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<SourceFilePath>(new SourceFilePath("ghost.asproj", scriptProjPath)), 0, 0, 0, 0)));
 				return;
 			}
 			LoadProjectFile(settingsStream, projectSettings);
@@ -246,7 +254,7 @@ namespace sakura {
 	std::shared_ptr<const ASTParseResult> Shiori::LoadExternalScriptFile(const std::string& fullPath, const std::string& label) {
 		std::ifstream loadStream(fullPath, std::ios_base::in);
 		std::string fileBody = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		return LoadScriptString(fileBody, label);
+		return LoadScriptString(fileBody, SourceFilePath(label, fullPath));
 	}
 
 	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptFile(const std::string& path) {
@@ -263,17 +271,17 @@ namespace sakura {
 			//ファイルがなければ打ち切る
 			auto* errorResult = new ASTParseResult();
 			errorResult->success = false;
-			errorResult->error.reset(new ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<std::string>(new std::string(path)), 0,0,0,0)));
+			errorResult->error.reset(new ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<SourceFilePath>(new SourceFilePath(path, fullPath)), 0,0,0,0)));
 			return std::shared_ptr<const ASTParseResult>(errorResult);
 		}
 
 		std::string fileBody = std::string(std::istreambuf_iterator<char>(loadStream), std::istreambuf_iterator<char>());
-		return LoadScriptString(fileBody, path);
+		return LoadScriptString(fileBody, SourceFilePath(path, fullPath));
 	}
 
-	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptString(const std::string& script, const std::string& name) {
+	std::shared_ptr<const ASTParseResult> Shiori::LoadScriptString(const std::string& script, const SourceFilePath& filePath) {
 		//解析
-		auto tokens = sakura::TokensParser::Parse(script, name.c_str());
+		auto tokens = sakura::TokensParser::Parse(script, filePath);
 		if (!tokens->success) {
 			//トークン解析でエラーなら打ち切る
 			auto* errorResult = new ASTParseResult();

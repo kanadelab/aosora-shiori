@@ -235,7 +235,7 @@ namespace sakura {
 		uint32_t GetClassId(const std::string& name);
 
 		//クラス名取得
-		std::string GetClassName(uint32_t typeId);
+		std::string GetClassTypeName(uint32_t typeId);
 
 		//ASTをインタプリタに渡して実行
 		ToStringFunctionCallResult Execute(const ConstASTNodeRef& node, bool toStringResult);
@@ -629,6 +629,13 @@ namespace sakura {
 		}
 	};
 
+	//出力用のコールスタック情報
+	struct CallStackInfo {
+		SourceCodeRange sourceRange;
+		std::string funcName;
+		bool hasSourceRange;
+	};
+
 	//スクリプト実行コンテキスト
 	class ScriptExecuteContext {
 	private:
@@ -652,6 +659,9 @@ namespace sakura {
 
 		ScriptValueRef GetSymbol(const std::string& name);
 		void SetSymbol(const std::string& name, const ScriptValueRef& value);
+
+		//スタックトレースの取得
+		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const std::string& currentFuncName);
 
 		//エラーオブジェクトのスロー
 		void ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err);

@@ -191,7 +191,7 @@ namespace sakura {
 	private:
 		TokensParseResult& result;
 		const std::string& document;
-		std::shared_ptr<const std::string> sourceFilePath;
+		std::shared_ptr<SourceFilePath> sourceFilePath;
 
 		bool hasError;
 		ScriptParseErrorData errorData;
@@ -253,10 +253,10 @@ namespace sakura {
 
 	public:
 
-		ScriptTokenParseContext(const std::string& doc, const std::string& sourceFilePath, TokensParseResult& parseResult) :
+		ScriptTokenParseContext(const std::string& doc, const SourceFilePath& sourceFilePath, TokensParseResult& parseResult) :
 			result(parseResult),
 			document(doc),
-			sourceFilePath(new std::string(sourceFilePath)),
+			sourceFilePath(new SourceFilePath(sourceFilePath)),
 			hasError(false),
 			charIndex(0),
 			lineIndex(0),
@@ -403,7 +403,7 @@ namespace sakura {
 	};
 
 	//トークンパースエントリポイント
-	std::shared_ptr<const TokensParseResult> TokensParser::Parse(const std::string& document, const std::string& filePath) {
+	std::shared_ptr<const TokensParseResult> TokensParser::Parse(const std::string& document, const SourceFilePath& filePath) {
 		std::shared_ptr<TokensParseResult> result(new TokensParseResult());
 		ScriptTokenParseContext parseContext(document, filePath, *result);
 

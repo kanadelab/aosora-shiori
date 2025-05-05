@@ -6,6 +6,7 @@
 #include "CoreLibrary/CoreLibrary.h"
 #include "CommonLibrary/CommonClasses.h"
 #include "Misc/Message.h"
+#include "Debugger/Debugger.h"
 
 namespace sakura {
 
@@ -103,6 +104,11 @@ namespace sakura {
 		//たとえばforやcatchのようなローカル変数を用意するものがあるので呼び出し側でブロックスコープをつくり、その中で変数をいれてから呼び出す
 
 		for (const ConstASTNodeRef& stmt : node.GetStatements()) {
+
+			//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
+			Debugger::NotifyASTExecute(node, executeContext);
+
+			//実行
 			ExecuteInternal(*stmt, executeContext);
 
 			//離脱要求があれば即時終了
@@ -1198,7 +1204,7 @@ namespace sakura {
 		}
 	}
 
-	std::string ScriptInterpreter::GetClassName(uint32_t typeId) {
+	std::string ScriptInterpreter::GetClassTypeName(uint32_t typeId) {
 		auto item = classIdMap.find(typeId);
 		if (item != classIdMap.end()) {
 			return item->second->GetMetadata().GetName();
@@ -1667,6 +1673,38 @@ namespace sakura {
 		interpreter.SetGlobalVariable(name, value);
 	}
 
+	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const std::string& currentFuncName) {
+		//現在実行中のスタックフレームは引数から位置を取得
+		std::vector<CallStackInfo> stackInfo;
+		{
+			CallStackInfo stackFrame;
+			stackFrame.hasSourceRange = true;
+			stackFrame.sourceRange = currentAstNode.GetSourceRange();
+			stackFrame.funcName = currentFuncName;
+			stackInfo.push_back(stackFrame);
+		}
+
+		//親以降は呼び出し時に格納されてる値を使う
+		const ScriptInterpreterStack* st = stack.GetParentStackFrame();
+		while (st != nullptr)
+		{
+			CallStackInfo stackFrame;
+			if (st->GetCallingASTNode() != nullptr) {
+				stackFrame.hasSourceRange = true;
+				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+			}
+			else {
+				stackFrame.hasSourceRange = false;
+			}
+			stackFrame.funcName = st->GetFunctionName();
+
+			stackInfo.push_back(stackFrame);
+			st = st->GetParentStackFrame();
+		}
+
+		return stackInfo;
+	}
+
 	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err) {
 
 		//エラーオブジェクトしかスローできないのでチェック
@@ -1678,36 +1716,7 @@ namespace sakura {
 
 		//コールスタック情報が未設定の場合にのみ設定する
 		if (!e->HasCallstackInfo()) {
-
-			//現在実行中のスタックフレームは引数から位置を取得
-			std::vector<RuntimeError::CallStackInfo> stackInfo;
-			{
-				RuntimeError::CallStackInfo stackFrame;
-				stackFrame.hasSourceRange = true;
-				stackFrame.sourceRange = throwAstNode.GetSourceRange();
-				stackFrame.funcName = funcName;
-				stackInfo.push_back(stackFrame);
-			}
-
-			//親以降は呼び出し時に格納されてる値を使う
-			const ScriptInterpreterStack* st = stack.GetParentStackFrame();
-			while (st != nullptr)
-			{
-				RuntimeError::CallStackInfo stackFrame;
-				if (st->GetCallingASTNode() != nullptr) {
-					stackFrame.hasSourceRange = true;
-					stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
-				}
-				else {
-					stackFrame.hasSourceRange = false;
-				}
-				stackFrame.funcName = st->GetFunctionName();
-
-				stackInfo.push_back(stackFrame);
-				st = st->GetParentStackFrame();
-			}
-
-			e->SetCallstackInfo(stackInfo);
+			e->SetCallstackInfo(MakeStackTrace(throwAstNode, funcName));
 		}
 		stack.Throw(e);
 	}

@@ -19,7 +19,7 @@ namespace sakura {
 
 	std::string ObjectBase::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
 		std::string result("[");
-		result.append(executeContext.GetInterpreter().GetClassName(GetInstanceTypeId()));
+		result.append(executeContext.GetInterpreter().GetClassTypeName(GetInstanceTypeId()));
 		result.append("]");
 		return result;
 	}

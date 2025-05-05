@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import {DebugSendProvider} from "./debugSendProvider";
 import {SendPreviewFunction} from './scriptPreview';
+import { DebugAdapterFactory } from './debugger';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -29,6 +30,19 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(vscode.languages.registerCodeLensProvider('*', new DebugSendProvider()));
+	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('aosora', new DebugAdapterFactory()));
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('extension.aosora-shiori.debugEditorContents', (resource: vscode.Uri) => {
+			console.log("OnDebug");
+			vscode.debug.startDebugging(undefined, {
+				type: 'aosora',
+				name: 'Aosora Debug',
+				request: 'launch'
+			})
+		})
+	);
+
 }
 
 // This method is called when your extension is deactivated

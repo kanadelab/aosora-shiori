@@ -52,7 +52,7 @@ namespace sakura {
 
 		//SHIORI内部用のファイルロード
 		std::shared_ptr<const ASTParseResult> LoadScriptFile(const std::string& path);
-		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const std::string& name);
+		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const SourceFilePath& filePath);
 
 		//ランタイムエラー処理
 		void HandleRuntimeError(const ObjectRef& err, ShioriResponse& response, bool isSaori);

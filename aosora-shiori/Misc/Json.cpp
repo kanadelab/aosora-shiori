@@ -11,8 +11,6 @@
 
 namespace sakura {
 
-	
-
 	//解析用正規表現
 	const std::regex JSON_NUMBER_PATTERN(R"(^\s*(\-?[0-9.]+))");
 	const std::regex JSON_STRING_PATTERN("^\\s*\"(([^\\\\\"]+|\\\\.)*)\"");
@@ -83,6 +81,7 @@ namespace sakura {
 			
 			//エスケープを解除
 			Replace(body, "\\\"", "\"");
+			Replace(body, "\\\\", "\\");
 			return std::shared_ptr<JsonString>(new JsonString(body));
 		}
 		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN)) {
@@ -231,8 +230,12 @@ namespace sakura {
 			case JsonTokenType::String:
 				result.push_back('"');
 				{
-					//ダブルクォーテーションのエスケープ処理
 					std::string body = std::static_pointer_cast<JsonString>(token)->GetString();
+
+					//連続エスケープを処理
+					Replace(body, "\\", "\\\\");
+
+					//ダブルクォーテーションのエスケープ処理
 					Replace(body, "\"", "\\\"");
 					result.append(body);
 				}
@@ -325,6 +328,55 @@ namespace sakura {
 		std::string serialized;
 		SerializeJson(deserialized.token, serialized);
 		printf("%s", serialized.c_str());
+	}
+
+	//JsonトークンをC++型に変換
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::string& value) {
+		if (token == nullptr || token->GetType() != JsonTokenType::String) {
+			return false;
+		}
+		value = static_cast<JsonString*>(token.get())->GetString();
+		return true;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, bool& value) {
+		if (token == nullptr || token->GetType() != JsonTokenType::Boolean) {
+			return false;
+		}
+		value = static_cast<JsonPrimitive*>(token.get())->GetBoolean();
+		return true;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, double& value) {
+		if (token == nullptr || token->GetType() != JsonTokenType::Number) {
+			return false;
+		}
+		value = static_cast<JsonPrimitive*>(token.get())->GetNumber();
+		return true;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, uint32_t& value) {
+		double d;
+		if (!As(token, d)) {
+			return false;
+		}
+		value = static_cast<uint32_t>(d);
+		return true;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonArray>& value) {
+		if (token == nullptr || token->GetType() != JsonTokenType::Array) {
+			return false;
+		}
+		value = std::static_pointer_cast<JsonArray>(token);
+		return true;
+	}
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonObject>& value) {
+		if (token == nullptr || token->GetType() != JsonTokenType::Object) {
+			return false;
+		}
+		value = std::static_pointer_cast<JsonObject>(token);
+		return true;
 	}
 
 }
