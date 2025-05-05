@@ -205,6 +205,7 @@ namespace sakura {
 		}
 	};
 
+	//ソースコードとしてパース
 	std::shared_ptr<const ASTParseResult> ASTParser::Parse(const std::shared_ptr<const TokensParseResult>& tokens) {
 		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
 		ASTParseContext parseContext(tokens->tokens, *parseResult);
@@ -228,6 +229,21 @@ namespace sakura {
 
 		parseResult->root = codeBlock;
 
+		return parseResult;
+	}
+
+	//式としてパース
+	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens) {
+		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
+		ASTParseContext parseContext(tokens->tokens, *parseResult);
+
+		auto expression = ParseASTExpression(parseContext, 0);
+		parseResult->success = !parseContext.HasError();
+
+		if (parseContext.HasError()) {
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken().sourceRange));
+		}
+		parseResult->root = expression;
 		return parseResult;
 	}
 

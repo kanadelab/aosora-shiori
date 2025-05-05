@@ -80,7 +80,11 @@ namespace sakura {
 		static ASTNodeRef ParseASTThrow(ASTParseContext& parseContext);
 
 	public:
+		//ソースコードとしてパース
 		static std::shared_ptr<const ASTParseResult> Parse(const std::shared_ptr<const TokensParseResult>& tokens);
+
+		//式としてパース
+		static std::shared_ptr<const ASTParseResult> ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens);
 	};
 
 }

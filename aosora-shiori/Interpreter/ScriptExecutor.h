@@ -240,6 +240,9 @@ namespace sakura {
 		//ASTをインタプリタに渡して実行
 		ToStringFunctionCallResult Execute(const ConstASTNodeRef& node, bool toStringResult);
 
+		//文字列をスクリプト式として評価
+		ScriptValueRef Eval(const std::string& expr);
+
 		//関数実行
 		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName = "");
 		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args);

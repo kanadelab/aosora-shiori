@@ -1237,6 +1237,24 @@ namespace sakura {
 		return result;
 	}
 
+	//文字列を式として評価
+	ScriptValueRef ScriptInterpreter::Eval(const std::string& expr) {
+
+		//TODO: とりあえずいけそう⋯というところまで。続きの実装を。
+
+		//その場で解析を行い、実行する		
+		auto tokens = TokensParser::Parse(expr, SourceFilePath("eval", "eval"));	//一時的なファイル名として入力しておく
+		auto ast = ASTParser::Parse(tokens);
+
+		ScriptInterpreterStack rootStack;
+		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
+		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
+		ScriptExecutor::ExecuteASTNode(*ast->root, executeContext);
+
+		//結果をかえす(失敗した場合とかはどうする？）
+		return nullptr;
+	}
+
 	ScriptInterpreter::ScriptInterpreter() :
 		scriptSteps(0),
 		limitScriptSteps(100 * 10000),	//100万ステップでエラーにしておく
