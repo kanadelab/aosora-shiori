@@ -1983,12 +1983,16 @@ namespace sakura {
 
 	//ResolveSymbol -> AssignSymbol
 	ASTNodeRef ASTNodeResolveSymbol::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		return ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode));
+		node->SetSourceRange(GetSourceRange());
+		return node;
 	}
 
 	//ResolveMember -> AssignMember
 	ASTNodeRef ASTNodeResolveMember::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		return ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode));
+		node->SetSourceRange(GetSourceRange());
+		return node;
 	}
 
 	

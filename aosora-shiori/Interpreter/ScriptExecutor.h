@@ -428,6 +428,7 @@ namespace sakura {
 		ScriptValueRef returnValue;
 		ObjectRef threwError;
 		const ASTNodeBase* callingAstNode;
+		Reference<BlockScope> callingBlockScope;
 
 		ScriptInterpreterStack* parent;
 		LeaveMode leaveMode;
@@ -449,6 +450,7 @@ namespace sakura {
 			returnValue(nullptr),
 			threwError(nullptr),
 			callingAstNode(nullptr),
+			callingBlockScope(nullptr),
 			parent(parent),
 			leaveMode(LeaveMode::None),
 			loopDepth(0),
@@ -463,6 +465,7 @@ namespace sakura {
 			returnValue(nullptr),
 			threwError(nullptr),
 			callingAstNode(nullptr),
+			callingBlockScope(nullptr),
 			parent(nullptr),
 			leaveMode(LeaveMode::None),
 			isTalkLineEnd(false)
@@ -589,10 +592,16 @@ namespace sakura {
 			return callingAstNode;
 		}
 
+		//スタックフレームのブロックスコープ
+		const Reference<BlockScope>& GetCallingBlockScope() const {
+			return callingBlockScope;
+		}
+
 		//子スタックフレームの作成
-		ScriptInterpreterStack CreateChildStackFrame(const ASTNodeBase* callingNode, const std::string& targetFunctionName) {
+		ScriptInterpreterStack CreateChildStackFrame(const ASTNodeBase* callingNode, const Reference<BlockScope>& callingScope, const std::string& targetFunctionName) {
 
 			//スタックに入る前に今実行しているノードを記録しておく(throwされたときにエラー表示するために）
+			callingBlockScope = callingScope;
 			callingAstNode = callingNode;
 			ScriptInterpreterStack childStack(this);
 			childStack.SetFunctionName(targetFunctionName);
@@ -635,6 +644,7 @@ namespace sakura {
 	//出力用のコールスタック情報
 	struct CallStackInfo {
 		SourceCodeRange sourceRange;
+		Reference<BlockScope> blockScope;
 		std::string funcName;
 		bool hasSourceRange;
 	};
@@ -664,16 +674,16 @@ namespace sakura {
 		void SetSymbol(const std::string& name, const ScriptValueRef& value);
 
 		//スタックトレースの取得
-		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const std::string& currentFuncName);
+		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& currentFuncName);
 
 		//エラーオブジェクトのスロー
-		void ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err);
+		void ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err);
 
 		//エラーのスローヘルパ
 		template<typename T>
-		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message) {
+		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
 			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
-			ThrowError(throwAstNode, GetStack().GetFunctionName(), err);
+			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err);
 			return err;
 		}
 

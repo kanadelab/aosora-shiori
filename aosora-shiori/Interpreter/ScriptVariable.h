@@ -156,6 +156,7 @@ namespace sakura {
 		bool success;
 	};
 
+
 	//スクリプトの値型
 	//ちょっとでかいけど、このままいく
 	class ScriptValue {

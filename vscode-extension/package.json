@@ -66,9 +66,9 @@
       {
         "type": "aosora",
         "languages": [
-          "aosora"
+          "aosora-shiori"
         ],
-        "label": "Aosora Debug",
+        "label": "Aosora Debugger",
         "configurationAttributes": {
           "launch": {}
         },

@@ -24,7 +24,7 @@ namespace sakura {
 		//無限ループ対策の実行ステップ制限
 		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
 			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
-				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"))->SetCanCatch(false);
+				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"), executeContext)->SetCanCatch(false);
 				return ScriptValue::Null;
 			}
 		}
@@ -106,7 +106,7 @@ namespace sakura {
 		for (const ConstASTNodeRef& stmt : node.GetStatements()) {
 
 			//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
-			Debugger::NotifyASTExecute(node, executeContext);
+			Debugger::NotifyASTExecute(*stmt.get(), executeContext);
 
 			//実行
 			ExecuteInternal(*stmt, executeContext);
@@ -886,14 +886,14 @@ namespace sakura {
 
 		//呼び出し不可時、エラーを生成する
 		if (!function->IsObject() || !function->GetObjectRef()->CanCall()) {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"));
+			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"), executeContext);
 			return ScriptValue::Null;
 		}
 
 		FunctionResponse response;
 		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext, &node);
 		if (response.IsThrew()) {
-			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), response.GetThrewError());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), response.GetThrewError());
 			return ScriptValue::Null;
 		}
 		else {
@@ -1064,10 +1064,10 @@ namespace sakura {
 		}
 		
 		if (r->IsObject()) {
-			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), r->GetObjectRef());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), r->GetObjectRef());
 		}
 		else {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。");
+			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。", executeContext);
 		}
 		
 		return ScriptValue::Null;
@@ -1424,7 +1424,7 @@ namespace sakura {
 
 	//実行コンテキストから新しいスタックフレームで関数を実行
 	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName) {
-		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, funcName);
+		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, executeContext.GetBlockScope(), funcName);
 
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
@@ -1463,7 +1463,7 @@ namespace sakura {
 			ScriptFunctionRef initFunc = scriptClassData.GetInitFunc();
 
 			//コンストラクタ用のスタックフレームとブロックスコープを作成して引数を登録
-			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, "init");
+			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, context.GetBlockScope(), "init");
 			Reference<BlockScope> initScope = context.GetInterpreter().CreateNativeObject<BlockScope>(context.GetBlockScope());
 
 			ScriptExecuteContext funcContext(*this, initStack, initScope);
@@ -1544,7 +1544,7 @@ namespace sakura {
 				nativeClass.GetInitFunc()(request, response);
 				
 				if (response.IsThrew()) {
-					context.ThrowError(callingNode, "init", response.GetThrewError());
+					context.ThrowError(callingNode, context.GetBlockScope(), "init", response.GetThrewError());
 					return nullptr;
 				}
 				else {
@@ -1561,7 +1561,7 @@ namespace sakura {
 				}
 			}
 			else {
-				context.ThrowRuntimeError<RuntimeError>(callingNode, "このクラスはインスタンス化できません。");
+				context.ThrowRuntimeError<RuntimeError>(callingNode, "このクラスはインスタンス化できません。", context);
 				return nullptr;
 			}
 		}
@@ -1691,7 +1691,7 @@ namespace sakura {
 		interpreter.SetGlobalVariable(name, value);
 	}
 
-	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const std::string& currentFuncName) {
+	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string & currentFuncName) {
 		//現在実行中のスタックフレームは引数から位置を取得
 		std::vector<CallStackInfo> stackInfo;
 		{
@@ -1699,6 +1699,7 @@ namespace sakura {
 			stackFrame.hasSourceRange = true;
 			stackFrame.sourceRange = currentAstNode.GetSourceRange();
 			stackFrame.funcName = currentFuncName;
+			stackFrame.blockScope = callingBlockScope;
 			stackInfo.push_back(stackFrame);
 		}
 
@@ -1710,6 +1711,7 @@ namespace sakura {
 			if (st->GetCallingASTNode() != nullptr) {
 				stackFrame.hasSourceRange = true;
 				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+				stackFrame.blockScope = st->GetCallingBlockScope();
 			}
 			else {
 				stackFrame.hasSourceRange = false;
@@ -1723,18 +1725,18 @@ namespace sakura {
 		return stackInfo;
 	}
 
-	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err) {
+	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err) {
 
 		//エラーオブジェクトしかスローできないのでチェック
 		RuntimeError* e = interpreter.InstanceAs<RuntimeError>(err);
 		if (e == nullptr) {
-			ThrowError(throwAstNode, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
+			ThrowError(throwAstNode, callingBlockScope, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
 			return;
 		}
 
 		//コールスタック情報が未設定の場合にのみ設定する
 		if (!e->HasCallstackInfo()) {
-			e->SetCallstackInfo(MakeStackTrace(throwAstNode, funcName));
+			e->SetCallstackInfo(MakeStackTrace(throwAstNode, callingBlockScope, funcName));
 		}
 		stack.Throw(e);
 	}

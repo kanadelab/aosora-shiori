@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import {z} from 'zod';
+import {number, z} from 'zod';
 import * as Net from 'net';
 
 //Aosora デバッガインターフェース
@@ -16,6 +16,7 @@ const DebuggerReceiveFormat = z.object({
 type DebuggerReceiveFormat = z.infer<typeof DebuggerReceiveFormat>;
 
 const StackFrame = z.object({
+	id: z.number(),
 	index: z.number(),
 	name: z.string(),
 	filename: z.string(),
@@ -35,6 +36,7 @@ const VariableScope = z.object({
 	scope: z.string(),
 	path: z.array(z.string())
 });
+
 export type VariableScope = z.infer<typeof VariableScope>;
 export const VARIABLE_SCOPE_GLOBAL = 'globals';
 export const VARIABLE_SCOPE_LOCAL = 'locals';
@@ -44,14 +46,26 @@ const VariableInformation = z.object({
 	key: z.string(),
 	primitiveType: z.string(),
 	objectType: z.string(),
+	objectHandle: z.number(),
 	value: z.any()
 });
 export type VariableInformation = z.infer<typeof VariableInformation>;
+
+const ScopeInformation = z.object({
+	name: z.string(),
+	handle: z.number()
+});
+export type ScopeInformation = z.infer<typeof ScopeInformation>;
 
 const VariableScopeResponse = z.object({
 	variables: z.array(VariableInformation)
 });
 export type VariableScopeResponse = z.infer<typeof VariableScopeResponse>;
+
+const EnumScopeResponse = z.object({
+	scopes: z.array(ScopeInformation)
+});
+export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 
 export class AosoraDebuggerInterface {
 
@@ -62,7 +76,7 @@ export class AosoraDebuggerInterface {
 	private breakInfo:BreakHitRequest|null;
 
 	//待機レスポンスリスト
-	private responseMap:Map<string, (body:any) => void>;
+	private responseMap:Map<string, (body:any, error: any) => void>;
 
 	public constructor(){
 		this.onClose = () => {};
@@ -104,7 +118,7 @@ export class AosoraDebuggerInterface {
 	}
 
 	//リクエストの送信
-	public Send(requestType:string, requestBody: {}, callback?: (response:any) => void ){
+	public Send(requestType:string, requestBody: {}, callback?: (response:any, error:any) => void ){
 		const request = {
 			type: requestType,
 			body: requestBody,
@@ -142,7 +156,14 @@ export class AosoraDebuggerInterface {
 			const callback = this.responseMap.get(req.responseId);
 			if(callback){
 				this.responseMap.delete(req.responseId);
-				callback(body);
+				callback(body, false);
+			}
+		}
+		else if(req.type == "error_response"){
+			const callback = this.responseMap.get(req.responseId);
+			if(callback){
+				this.responseMap.delete(req.responseId);
+				callback(null, true);
 			}
 		}
 	}
@@ -157,19 +178,60 @@ export class AosoraDebuggerInterface {
 	//-- エディタ向けインターフェース
 
 	//ブレークポイント設定（エディタ側都合でファイルごとに差し替えの形）
+
 	public SetBreakPoints(filename: string, lines: number[]){
-		return new Promise<void>((resolve) => {
+		return new Promise<void>((resolve, reject) => {
 			const requestBody = {
 				filename:  filename.replace("\\\\", "\\"),
 				lines
 			};
-			this.Send('set_breakpoints', requestBody, () => {resolve();} );
+			this.Send('set_breakpoints', requestBody, (_, e) => {!e ? resolve() : reject();} );
 		});
 	}
 
 	public RequestScope(scope: VariableScope) {
-		return new Promise<VariableInformation[]>((resolve) => {
-			this.Send('request_variable_scope', scope, (response) => {
+		return new Promise<VariableInformation[]>((resolve, reject) => {
+			this.Send('request_variable_scope', scope, (response, error) => {
+				if(error){
+					reject();
+				}
+
+				const parsedVariables = VariableScopeResponse.safeParse(response);
+				if(parsedVariables.success){
+					resolve(parsedVariables.data.variables);
+				}
+				else {
+					reject();
+				}
+
+			});
+		});
+	}
+
+	public RequestEnumScopes(stackIndex:number){
+		return new Promise<ScopeInformation[]>((resolve, reject) => {
+			this.Send('scopes',{stackIndex: stackIndex}, (response, error) => {
+				if(error){
+					reject();
+				}
+
+				const parsedScopes = EnumScopeResponse.safeParse(response);
+				if(parsedScopes.success){
+					resolve(parsedScopes.data.scopes);
+				}
+				else {
+					reject();
+				}
+			});
+		});
+	}
+
+	public RequestObject(handle:number){
+		return new Promise<VariableInformation[]>((resolve, reject) => {
+			this.Send('members', {handle: handle}, (response, error) => {
+				if(error){
+					reject();
+				}
 
 				const parsedVariables = VariableScopeResponse.safeParse(response);
 				if(parsedVariables.success){
@@ -186,6 +248,18 @@ export class AosoraDebuggerInterface {
 	//デバッグ続行
 	public Continue(){
 		this.Send("continue", {});
+	}
+
+	public StepIn(){
+		this.Send("stepin", {});
+	}
+
+	public StepOut(){
+		this.Send("stepout", {});
+	}
+
+	public StepOver(){
+		this.Send("stepover", {});
 	}
 
 	//切断

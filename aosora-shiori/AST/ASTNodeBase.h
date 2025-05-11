@@ -125,6 +125,9 @@ namespace sakura {
 		void SetSourceRange(const SourceCodeRange& range) {
 			sourceRange = range;
 		}
+		void SetSourceRange(const SourceCodeRange& begin, const SourceCodeRange& includedEnd) {
+			sourceRange.SetRange(begin, includedEnd);
+		}
 
 		const SourceCodeRange& GetSourceRange() const { return sourceRange; }
 

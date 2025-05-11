@@ -19,14 +19,17 @@
 //デバッグ通信系。
 namespace sakura {
 
+	//実行状態
 	enum class ExecutingState {
-		Execute,
-		Break
+		Execute,		//通常実行
+		StepOut,		//ステップアウト中
+		StepIn,			//ステップイン
+		StepOver,		//ステップオーバー
+		Break			//ブレーク
 	};
 
 	enum class ConnectionState {
 		Disconnected,
-		Listen,
 		Connected
 	};
 
@@ -167,9 +170,219 @@ namespace sakura {
 
 	};
 
+	//デバッグスナップショットのオブジェクトを外部から特定するためのハンドル変換器
+	//TODO: システム側のクラスやスコープ単位の情報など特殊なものをふくめて一意キーを発行する必要がある
+	class ScriptReferenceHandleManager {
+	private:
+		static const uint32_t HANDLE_BASE_OBJECTS = 1000;	//通常のハンドルのオフセット
+
+	public:
+		enum class MetadataType : uint32_t {
+			LocalVariables,			//スタックフレームローカル変数
+			ShioriRequest,			//SHIORI Request
+		};
+
+		enum class RefType {
+			Null,
+			Object,
+			Metadata
+		};
+
+		//メタデータ、64bitであること
+		struct Metadata {
+			MetadataType metadataType;
+			uint32_t stackIndex;
+		};
+
+		struct RefData {
+			RefType type;
+			ObjectRef objectRef;	//スクリプトオブジェクト参照
+			Metadata metadata;		//スクリプトオブジェクト以外のメタデータ参照
+
+			RefData(const ObjectRef& objRef) :
+				type(RefType::Object),
+				objectRef(objRef)
+			{ }
+
+			RefData(const Metadata& meta):
+				type(RefType::Metadata),
+				metadata(meta)
+			{ }
+
+			RefData():
+				type(RefType::Null)
+			{ }
+		};
+
+	private:
+		//NOTE: GCに対して抵抗できないので注意。ブレークセッション中はGCは起動しないつもりで⋯
+		std::map<uint32_t, RefData> refMap;
+		std::map<const void*, uint32_t> addressCache;
+		std::map<uint64_t, uint32_t> metadataCache;
+
+	private:
+		//ハンドルの払い出し
+		uint32_t GenerateHandle() {
+			const uint32_t handle = static_cast<uint32_t>(refMap.size()) + HANDLE_BASE_OBJECTS;
+		}
+
+	public:
+		//ハンドルの予約ベース
+		//結局可変で必要になるのでメタ情報を格納しないといけない
+		static const uint32_t HANDLE_NULL = 0;		//null
+		static const uint32_t HANDLE_LOCAL_VARIABLES = 1;
+		static const uint32_t HANDLE_SHIORI_REQUEST = 2;
+
+		//ハンドルに変換
+		uint32_t From(const ObjectRef& ref) {
+
+			//同じオブジェクトに対して別のハンドルを発行しないようにキャッシュ情報を先に検索
+			auto cache = addressCache.find(ref.Get());
+			if (cache != addressCache.end()) {
+				return cache->second;
+			}
+
+			//ハンドルの発行
+			const uint32_t handle = static_cast<uint32_t>(refMap.size()) + HANDLE_BASE_OBJECTS;
+
+			//参照先の格納
+			refMap.insert(decltype(refMap)::value_type(handle, ref));
+			addressCache.insert(decltype(addressCache)::value_type(ref.Get(), handle));
+			return handle;
+		}
+
+		//メタデータをハンドルに変換
+		uint32_t From(const Metadata& meta) {
+			const uint64_t metaVal = *reinterpret_cast<const uint64_t*>(&meta);	//64bitにつめこむ
+
+			//同じオブジェクトに対して別のハンドルを発行しないようにチェック
+			auto cache = metadataCache.find(metaVal);
+			if (cache != metadataCache.end()) {
+				return cache->second;
+			}
+
+			//ハンドルの発行
+			const uint32_t handle = static_cast<uint32_t>(refMap.size()) + HANDLE_BASE_OBJECTS;
+
+			//参照先の格納
+			refMap.insert(decltype(refMap)::value_type(handle, meta));
+			metadataCache.insert(decltype(metadataCache)::value_type(metaVal, handle));
+			return handle;
+		}
+
+		//ハンドルから変換
+		RefData To(uint32_t handle) {
+			if (handle == HANDLE_NULL) {
+				return RefData();
+			}
+
+			auto it = refMap.find(handle);
+			if (it != refMap.end()) {
+				return it->second;
+			}
+			else {
+				return RefData();
+			}
+		}
+
+		//クリア
+		void Clear() {
+			refMap.clear();
+		}
+	};
+
+	//ブレークセッション
+	//ブレーク状態の開始から終了までの情報を持つもの
+	class BreakSession {
+	private:
+		ScriptReferenceHandleManager handleManager;
+		const ASTNodeBase& breakingNode;				//次実行されるノード
+		ScriptExecuteContext& executeContext;
+
+	public:
+		BreakSession(const ASTNodeBase& breakingNode, ScriptExecuteContext& executeContext):
+			breakingNode(breakingNode),
+			executeContext(executeContext)
+		{ }
+
+		uint32_t ObjectToHandle(const ObjectRef& ref) {
+			return handleManager.From(ref);
+		}
+
+		uint32_t MetadataToHandle(const ScriptReferenceHandleManager::Metadata& meta) {
+			return handleManager.From(meta);
+		}
+
+		ScriptReferenceHandleManager::RefData HandleToObject(uint32_t handle) {
+			return handleManager.To(handle);
+		}
+
+		ScriptExecuteContext& GetContext() { return executeContext; }
+		const ASTNodeBase& GetBreakASTNode() { return breakingNode; }
+
+	};
+
 	//デバッグ通信系
 	//TODO: ソケット通信系とデバッグ処理系をきりはなしたほうがいいかも
 	class DebugIO {
+	private:
+		//ブレーク中に実行するコマンド
+		class IBreakingCommand {
+		public:
+			virtual ExecutingState Execute(BreakSession& breakSession) = 0;
+		};
+
+		//実行再開コマンド
+		class ExecuteStateCommand : public IBreakingCommand {
+		private:
+			ExecutingState nextState;
+		public:
+			ExecuteStateCommand(ExecutingState state):
+				nextState(state)
+			{ }
+
+			virtual ExecutingState Execute(BreakSession&) override {
+				return nextState;
+			}
+		};
+
+		//オブジェクト展開コマンド
+		class MembersRequestCommand : public IBreakingCommand {
+		private:
+			uint32_t handle;
+			std::string requestId;
+
+		public:
+			MembersRequestCommand(uint32_t handle, const std::string& requestId) :
+				handle(handle),
+				requestId(requestId)
+			{}
+
+			virtual ExecutingState Execute(BreakSession& breakSession) override {
+				instance->SendResponse(instance->RequestMembers(handle, breakSession), requestId);
+				return ExecutingState::Break;
+			}
+		};
+
+		//スコープ展開コマンド
+		class ScopesRequestCommand : public IBreakingCommand {
+		private:
+			uint32_t stackIndex;
+			std::string requestId;
+
+		public:
+			ScopesRequestCommand(uint32_t stackIndex, const std::string& requestId):
+				stackIndex(stackIndex),
+				requestId(requestId)
+			{ }
+
+			virtual ExecutingState Execute(BreakSession& breakSession) override {
+				instance->SendResponse(instance->RequestScopes(stackIndex, breakSession), requestId);
+				return ExecutingState::Break;
+			}
+
+		};
+
 	private:
 		static DebugIO* instance;
 
@@ -178,6 +391,7 @@ namespace sakura {
 		std::shared_ptr<std::thread> sendThread;
 		std::shared_ptr<std::thread> recvThread;
 		ExecutingState executingState;
+		ConnectionState connectionState;
 		SOCKET clientSocket;
 		CriticalSection connectionLock;
 
@@ -185,20 +399,35 @@ namespace sakura {
 		std::list<std::shared_ptr<JsonObject>> sendQueue;
 		CriticalSection sendQueueLock;
 
+		//ブレーク中のコマンドキュー
+		std::list<std::shared_ptr<IBreakingCommand>> breakingCommandQueue;
+		CriticalSection breakingCommandQueueLock;
+
 		//ブレークポイント
 		BreakPointCollection breakPoints;
-		SyncEvent breakingEvent;
 
-		//現在ブレーク中の位置
+		//最後にブレークした位置
 		std::string lastBreakFullPath;
 		uint32_t lastBreakLineIndex;
-		ScriptExecuteContext* breakingContext;
+		size_t lastBreakStackLevel;
+
+		//最後にAST通過した位置
+		std::string lastPassFullPath;
+		uint32_t lastPassLineIndex;
+		size_t lastPassStackLevel;
 
 	private:
 		void ListenThread();
 		void SendThread();
 		void RecvThread();
 		void ClearState();
+
+		void SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
+
+		void AddBreakingCommand(IBreakingCommand* command) {
+			LockScope ls(breakingCommandQueueLock);
+			breakingCommandQueue.push_back(std::shared_ptr<IBreakingCommand>(command));
+		}
 
 	public:
 		//AST実行時の通知およびトラップ
@@ -210,7 +439,11 @@ namespace sakura {
 		static DebugIO* Get() { return instance; }
 
 		void Send(const std::shared_ptr<JsonObject>& sendObj);
-		JsonObjectRef RequestScopes(const JsonObjectRef& request);
+		void SendResponse(const std::shared_ptr<JsonObject>& responseBody, const std::string& requestId);
+
+		JsonObjectRef RequestScopes(const std::string& scopeType, uint32_t stackIndex, BreakSession& breakSession);	//TODO: こちらは削除
+		JsonObjectRef RequestMembers(uint32_t handle, BreakSession& breakSession);
+		JsonObjectRef RequestScopes(uint32_t stackIndex, BreakSession& breakSession);
 
 		DebugIO();
 		~DebugIO();
@@ -224,7 +457,7 @@ namespace sakura {
 	DebugIO::DebugIO()
 	{
 		executingState = ExecutingState::Execute;
-		breakingContext = nullptr;
+		connectionState = ConnectionState::Disconnected;
 
 		WSADATA wsaData;
 
@@ -254,8 +487,12 @@ namespace sakura {
 		breakPoints.ClearBreakPoint();
 		lastBreakFullPath = "";
 		lastBreakLineIndex = 0;
+		lastBreakStackLevel = 0;
+		lastPassFullPath = "";
+		lastPassLineIndex = 0;
+		lastPassStackLevel = 0;
 		executingState = ExecutingState::Execute;
-		breakingContext = nullptr;
+		connectionState = ConnectionState::Disconnected;
 	}
 
 	void DebugIO::ListenThread()
@@ -280,6 +517,7 @@ namespace sakura {
 		hints.ai_protocol = IPPROTO_TCP;
 		hints.ai_flags = AI_PASSIVE;
 
+		//ローカル向けに開く
 		if (getaddrinfo("127.0.0.1", "27016", &hints, &result) != 0) {
 			assert(false);
 			return;
@@ -292,6 +530,7 @@ namespace sakura {
 			return;
 		}
 
+		//TODO: 重複で開こうとするとここで失敗するので、うまく失敗させる流れをつくりたい
 		if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
 			int err = WSAGetLastError();
 			assert(false);
@@ -318,6 +557,9 @@ namespace sakura {
 		//クライアントは１個でいいのでlistenソケットをクローズ
 		closesocket(listenSocket);
 
+		//ステートを接続状態に
+		connectionState = ConnectionState::Connected;
+
 		//送受信スレッドを開始
 		sendThread.reset(new std::thread(
 			[this](){SendThread();}
@@ -333,77 +575,140 @@ namespace sakura {
 	//ASTノード実行時
 	void DebugIO::NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 
-		//ブレークポイントに引っかかるかを検証
-		if (breakPoints.QueryBreakPoint(node.GetSourceRange().GetSourceFileFullPath(), node.GetSourceRange().GetBeginLineIndex() )) {
+		bool isBreak = false;
 
-			const std::string fullPath = node.GetSourceRange().GetSourceFileFullPath();
-			const uint32_t line = node.GetSourceRange().GetBeginLineIndex();
+		//エディタスタックレベルの確認
+		auto stackLevel = executeContext.MakeStackTrace(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
+		const std::string fullPath = node.GetSourceRange().GetSourceFileFullPath();
+		const uint32_t line = node.GetSourceRange().GetBeginLineIndex();
 
-			//同じ位置では連続で停止しない
-			if (fullPath == lastBreakFullPath && line == lastBreakLineIndex) {
-				return;
+		if (lastPassLineIndex != line || stackLevel != lastPassStackLevel || lastPassFullPath != fullPath) {
+
+			//異なる行にきていればブレークの検証対象
+			lastPassFullPath = fullPath;
+			lastPassLineIndex = line;
+			lastPassStackLevel = stackLevel;
+
+			//ブレークポイントに引っかかるかを検証
+			if (breakPoints.QueryBreakPoint(node.GetSourceRange().GetSourceFileFullPath(), node.GetSourceRange().GetBeginLineIndex())) {
+				isBreak = true;
 			}
+			else {
 
+				//ステップオーバー等のヒットの可能性があるので実行形式を検証
+				if (executingState == ExecutingState::StepIn) {
+					//同じ位置では連続で停止しない
+					if (fullPath != lastBreakFullPath || line != lastBreakLineIndex) {
+						//ステップインなら無条件に停止
+						isBreak = true;
+					}
+				}
+				else if (executingState == ExecutingState::StepOut) {
+					//ステップアウトならスタックレベルが戻っていれば
+					if (stackLevel < lastBreakStackLevel) {
+						isBreak = true;
+					}
+				}
+				else if (executingState == ExecutingState::StepOver) {
+					//ステップオーバーなら同階層以前なら
+					if (stackLevel <= lastBreakStackLevel) {
+						isBreak = true;
+					}
+				}
+			}
+		}
+
+		if (isBreak) {
+
+			//ブレーク位置を記憶
 			lastBreakFullPath = fullPath;
 			lastBreakLineIndex = line;
+			lastBreakStackLevel = stackLevel;
 
-			//ブレークポイントに引っかかったことを通知
-			auto data = JsonSerializer::MakeObject();
-			data->Add("type", JsonSerializer::From("break"));
+			//ブレークセッションを作成
+			BreakSession breakSession(node, executeContext);
 
-			auto body = JsonSerializer::MakeObject();
-			data->Add("body", body);
-			data->Add("responseId", JsonSerializer::From(""));
-			
-			body->Add("filename", JsonSerializer::From(node.GetSourceRange().GetSourceFileFullPath()));
-			body->Add("line", JsonSerializer::From(node.GetSourceRange().GetBeginLineIndex()));
-			
+			//ブレーク情報を送る
+			SendBreakInformation(node, executeContext);
 
-			//コールスタックの収集
-			auto stackArray = JsonSerializer::MakeArray();
-			auto stackFrame = executeContext.MakeStackTrace(node, executeContext.GetStack().GetFunctionName());
-			uint32_t stackLevel = 0;
-			for (auto& frame : stackFrame) {
-				if (!frame.hasSourceRange) {
-					continue;	//スクリプトのスタックフレームのみ
+			//続行系の指示やその他情報要求系の指示を受ける
+			while (connectionState == ConnectionState::Connected) {
+				std::shared_ptr<IBreakingCommand> command;
+				{
+					LockScope ls(breakingCommandQueueLock);
+					if (!breakingCommandQueue.empty()) {
+						command = *breakingCommandQueue.begin();
+						breakingCommandQueue.pop_front();
+					}
 				}
 
-				//行番号等を格納
-				auto f = JsonSerializer::MakeObject();
-				f->Add("index", JsonSerializer::From(stackLevel));
-				f->Add("name", JsonSerializer::From(frame.funcName));
-				f->Add("filename", JsonSerializer::From(frame.sourceRange.GetSourceFileFullPath()));
-				f->Add("line", JsonSerializer::From(frame.sourceRange.GetBeginLineIndex()));
-				stackArray->Add(f);
-				stackLevel++;
+				if (command != nullptr) {
+					//コマンドを実行する
+					ExecutingState nextState = command->Execute(breakSession);
+					executingState = nextState;
+
+					//続行指示のためブレークして実行中断
+					if (executingState != ExecutingState::Break) {
+						break;
+					}
+				}
+				else {
+					//TODO: 必要に応じてい停止する仕組みが必要そう
+					Sleep(0);
+				}
 			}
-
-			body->Add("stackTrace", stackArray);
-
-			Send(data);
-
-			//ブレーク停止中はスレッドをそこで止める
-			executingState = ExecutingState::Break;
-			breakingContext = &executeContext;
-			breakingEvent.Wait();
-			breakingContext = nullptr;
-			executingState = ExecutingState::Execute;
-		}
-		else {
-			//通過位置を記憶
-			const std::string fullPath = node.GetSourceRange().GetSourceFileFullPath();
-			const uint32_t line = node.GetSourceRange().GetBeginLineIndex();
-
-			lastBreakFullPath = fullPath;
-			lastBreakLineIndex = line;
 		}
 	}
 
-	JsonObjectRef MakeVariableInfo(const std::string& name, const ScriptValueRef& value, ScriptInterpreter& interpreter) {
+	void DebugIO::SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
+		//ブレークポイントに引っかかったことを通知
+		auto data = JsonSerializer::MakeObject();
+		data->Add("type", JsonSerializer::From("break"));
+
+		auto body = JsonSerializer::MakeObject();
+		data->Add("body", body);
+		data->Add("responseId", JsonSerializer::From(""));
+
+		body->Add("filename", JsonSerializer::From(node.GetSourceRange().GetSourceFileFullPath()));
+		body->Add("line", JsonSerializer::From(node.GetSourceRange().GetBeginLineIndex()));
+
+
+		//コールスタックの収集
+		auto stackArray = JsonSerializer::MakeArray();
+		auto stackFrame = executeContext.MakeStackTrace(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName());
+		uint32_t stackLevel = 0;
+		uint32_t nativeStackLevel = 0;
+		for (auto& frame : stackFrame) {
+			if (!frame.hasSourceRange) {
+				nativeStackLevel++;	//純粋な数を数える
+				continue;	//スクリプトのスタックフレームのみ
+			}
+
+			//行番号等を格納
+			auto f = JsonSerializer::MakeObject();
+			f->Add("id", JsonSerializer::From(nativeStackLevel));
+			f->Add("index", JsonSerializer::From(stackLevel));
+			f->Add("name", JsonSerializer::From(frame.funcName));
+			f->Add("filename", JsonSerializer::From(frame.sourceRange.GetSourceFileFullPath()));
+			f->Add("line", JsonSerializer::From(frame.sourceRange.GetBeginLineIndex()));
+			stackArray->Add(f);
+			stackLevel++;
+			nativeStackLevel++;
+		}
+
+		body->Add("stackTrace", stackArray);
+
+		Send(data);
+	}
+
+	JsonObjectRef MakeVariableInfo(const std::string& name, const ScriptValueRef& value, BreakSession& breakSession) {
+		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
+
 		auto variableInfo = JsonSerializer::MakeObject();
 		variableInfo->Add("key", JsonSerializer::From(name));
 		std::string primitiveType;
 		std::string objectType;
+		uint32_t objectHandle = ScriptReferenceHandleManager::HANDLE_NULL;
 
 		switch (value->GetValueType()) {
 		case ScriptValueType::Number:
@@ -426,74 +731,209 @@ namespace sakura {
 		case ScriptValueType::Object:
 			primitiveType = "object";
 			objectType = interpreter.GetClassTypeName(value->GetObjectRef()->GetInstanceTypeId());
+			objectHandle = breakSession.ObjectToHandle(value->GetObjectRef());
 			variableInfo->Add("value", JsonSerializer::MakeNull());
+
+			//TODO: とりあえずオブジェクトは分解しているけれど、分解すべきでないものあるように思える
+			//たとえばまだないけど日付と時刻のような?
+
+			break;
 		}
 
 		variableInfo->Add("primitiveType", JsonSerializer::From(primitiveType));
 		variableInfo->Add("objectType", JsonSerializer::From(objectType));
+		variableInfo->Add("objectHandle", JsonSerializer::From(objectHandle));
 		return variableInfo;
 	}
 
-	JsonArrayRef EnumLocalVariables(ScriptExecuteContext& context) {
-		ScriptInterpreterStack& stackFrame = context.GetStack();
+	JsonArrayRef EnumLocalVariables(uint32_t stackIndex, BreakSession& breakSession) {
+		auto stackTrace = breakSession.GetContext().MakeStackTrace(breakSession.GetBreakASTNode(), breakSession.GetContext().GetBlockScope(), breakSession.GetContext().GetStack().GetFunctionName());
 
-		//TODO: ここでブロックスコープが取得できるものの、スタックフレームには紐づいてないので追跡手段が必要。
 		//デバッグ情報のような形でもいいのかも
 		std::set<std::string> addedSet;
 		JsonArrayRef result = JsonSerializer::MakeArray();
-
-		Reference<BlockScope> scope = context.GetBlockScope();
-		while (scope != nullptr) {
-			for (auto& kvp : scope->GetLocalVariableCollection()) {
-				if (!addedSet.contains(kvp.first)) {
-					result->Add(MakeVariableInfo(kvp.first, kvp.second, context.GetInterpreter()));
-					addedSet.insert(kvp.first);
-				}
+		uint32_t nativeStackLevel = 0;
+		for (auto& frame : stackTrace) {
+			if (!frame.hasSourceRange) {
+				nativeStackLevel++;	//純粋な数を数える
+				continue;	//スクリプトのスタックフレームのみ
 			}
-			scope = scope->GetParentScope();
+
+			if (stackIndex == nativeStackLevel) {
+				//一致するスタックフレームの情報を送る
+				Reference<BlockScope> scope = frame.blockScope;
+				while (scope != nullptr) {
+					for (auto& kvp : scope->GetLocalVariableCollection()) {
+						if (!addedSet.contains(kvp.first)) {
+							result->Add(MakeVariableInfo(kvp.first, kvp.second, breakSession));
+							addedSet.insert(kvp.first);
+						}
+					}
+					scope = scope->GetParentScope();
+				}
+				break;
+			}
+			
+			nativeStackLevel++;
 		}
+
+		
 
 		return result;
 	}
 
-	JsonArrayRef EnumShioriRequests(ScriptExecuteContext& context) {
+	JsonArrayRef EnumShioriRequests(BreakSession& breakSession) {
 		//TODO: nullチェックを
-		auto shioriVariable = context.GetInterpreter().GetGlobalVariable("Shiori");
-		ScriptObject* shioriObj = context.GetInterpreter().InstanceAs<ScriptObject>(shioriVariable);
-		
-		auto referenceVariable = shioriObj->RawGet("Reference");
-		ScriptArray* referenceArray = context.GetInterpreter().InstanceAs<ScriptArray>(referenceVariable);
+		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
+		auto shioriVariable = interpreter.GetGlobalVariable("Shiori");
+		ScriptObject* shioriObj = interpreter.InstanceAs<ScriptObject>(shioriVariable);
 
-		//Referenceを優先で収集
+		auto referenceVariable = shioriObj->RawGet("Reference");
+		ScriptArray* referenceArray = interpreter.InstanceAs<ScriptArray>(referenceVariable);
+
+		//Referenceを優先で収集（多分１番必要なので）
 		std::set<std::string> addedSet;
 		JsonArrayRef result = JsonSerializer::MakeArray();
 		for (size_t i = 0; i < referenceArray->Count(); i++) {
 			std::string key = std::string("Reference") + std::to_string(i);
 			auto elem = referenceArray->At(i);
-			result->Add(MakeVariableInfo(key, elem, context.GetInterpreter()));
+			result->Add(MakeVariableInfo(key, elem, breakSession));
 			addedSet.insert(key);
 		}
 
 		//そのあと把握してないヘッダを取り込む
 		auto headersVariable = shioriObj->RawGet("Headers");
-		ScriptObject* headersObj = context.GetInterpreter().InstanceAs<ScriptObject>(headersVariable);
+		ScriptObject* headersObj = interpreter.InstanceAs<ScriptObject>(headersVariable);
 		for (auto kvp : headersObj->GetInternalCollection()) {
+			//Referenceは重複なのでパス
 			if (!addedSet.contains(kvp.first)) {
-				result->Add(MakeVariableInfo(kvp.first, kvp.second, context.GetInterpreter()));
+				result->Add(MakeVariableInfo(kvp.first, kvp.second, breakSession));
 			}
 		}
 
 		return result;
 	}
 
+	//ScriptObjectのメンバ列挙
+	JsonArrayRef EnumMembers(ScriptObject& object, BreakSession& breakSession) {
+
+		//TODO: 辞書順か何かにするか？
+		auto result = JsonSerializer::MakeArray();
+		for (auto item : object.GetInternalCollection()) {
+			result->Add(MakeVariableInfo(item.first, item.second, breakSession));
+		}
+		return result;
+	}
+
+	//ScriptArrayのメンバ列挙
+	JsonArrayRef EnumMembers(ScriptArray& object, BreakSession& breakSession) {
+		auto result = JsonSerializer::MakeArray();
+		for (size_t i = 0; i < object.Count(); i++) {
+			result->Add(MakeVariableInfo(std::to_string(i), object.At(i), breakSession));
+		}
+		return result;
+	}
+
+	//スクリプトオブジェクトタイプごとのメンバ列挙
+	JsonArrayRef EnumMembers(uint32_t objectHandle, BreakSession& breakSession) {
+
+		//オブジェクトを復元
+		auto ref = breakSession.HandleToObject(objectHandle);
+		if (ref.type == ScriptReferenceHandleManager::RefType::Metadata) {
+			//メタデータの場合は特殊
+			if (ref.metadata.metadataType == ScriptReferenceHandleManager::MetadataType::ShioriRequest) {
+				return EnumShioriRequests(breakSession);
+			}
+			else if (ref.metadata.metadataType == ScriptReferenceHandleManager::MetadataType::LocalVariables) {
+				return EnumLocalVariables(ref.metadata.stackIndex, breakSession);
+			}
+		}
+
+		if (ref.type != ScriptReferenceHandleManager::RefType::Object) {
+			assert(false);
+			return JsonSerializer::MakeArray();
+		}
+
+		auto obj = ref.objectRef;
+		if (obj == nullptr) {
+			//おかしい
+			assert(false);
+			return JsonSerializer::MakeArray();
+		}
+
+		//TODO: オブジェクトのデータ型によってそれぞれ分解
+		//const uint32_t typeId = obj->GetInstanceTypeId();
+
+		//if(typeId == breakSession.GetContext().GetInterpreter().GetClassId()
+		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
+
+		//もうちょっと良い分岐の仕方はあるだろうけどとりあえず
+		{
+			ScriptObject* inst = interpreter.InstanceAs<ScriptObject>(obj);
+			if (inst != nullptr) {
+				return EnumMembers(*inst, breakSession);
+			}
+		}
+
+		{
+			ScriptArray* inst = interpreter.InstanceAs<ScriptArray>(obj);
+			if (inst != nullptr) {
+				return EnumMembers(*inst, breakSession);
+			}
+		}
+
+		//対応する型がない: 本来展開できないものについてはハンドルを発行しないはず⋯。
+		assert(false);
+		return JsonSerializer::MakeArray();
+	}
+
+	JsonArrayRef EnumScopes(uint32_t stackLevel, BreakSession& breakSession) {
+
+		auto result = JsonSerializer::MakeArray();
+
+		//Scopes
+		{
+			auto obj = JsonSerializer::MakeObject();
+			ScriptReferenceHandleManager::Metadata meta;
+			meta.metadataType = ScriptReferenceHandleManager::MetadataType::LocalVariables;
+			meta.stackIndex = stackLevel;
+
+			const uint32_t handle = breakSession.MetadataToHandle(meta);
+			obj->Add("handle", JsonSerializer::From(handle));
+			obj->Add("name", JsonSerializer::From("ローカル変数"));
+			result->Add(obj);
+		}
+
+		//SHIORI Reference
+		{
+			auto obj = JsonSerializer::MakeObject();
+			ScriptReferenceHandleManager::Metadata meta;
+			meta.metadataType = ScriptReferenceHandleManager::MetadataType::ShioriRequest;
+			meta.stackIndex = 0;	//スタック関係ないはず
+
+			const uint32_t handle = breakSession.MetadataToHandle(meta);
+			obj->Add("handle", JsonSerializer::From(handle));
+			obj->Add("name", JsonSerializer::From("SHIORI Request"));
+			result->Add(obj);
+		}
+
+		return result;
+	}
+
+	
+
 	void DebugIO::NotifyRequest(const JsonObject& json) {
 		std::string requestType;
+		std::string requestId;
 
 		if (!JsonSerializer::As(json.Get("type"), requestType)) {
 			//対応なし
 			assert(false);
 			return;
 		}
+
+		//ID情報があれば収集（レスポンス時に起因となったIDを指定して返すため）
+		JsonSerializer::As(json.Get("id"), requestId);
 
 		//リクエストボディオブジェクトを取得
 		JsonObjectRef body;
@@ -538,47 +978,92 @@ namespace sakura {
 			else {
 				breakPoints.SetBreakPoints(filename, nullptr, 0);
 			}
+			return;
 		}
 		else if (requestType == "continue") {
 			//続行指示
-			breakingEvent.Raise();
+			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::Execute));
+			return;
 		}
-		else if (requestType == "request_variable_scope") {
-			//スコープ情報
-			JsonObjectRef response = JsonSerializer::MakeObject();
-			response->Add("type", JsonSerializer::From("response"));
-			response->Add("responseId", json.Get("id"));
-			response->Add("body", RequestScopes(body));
-			Send(response);
+		else if (requestType == "stepin") {
+			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepIn));
+			return;
+		}
+		else if (requestType == "stepover") {
+			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepOver));
+			return;
+		}
+		else if (requestType == "stepout") {
+			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepOut));
+			return;
+		}
+		else if (requestType == "members") {
+			//メンバの展開
+			//TODO: スコープは通信で受け取るのではなく、あらかじめscopesリクエストで払い出したメタデータのハンドルを使用する形になる
+			uint32_t handle;
+			if (JsonSerializer::As(body->Get("handle"), handle)) {
+				AddBreakingCommand(new MembersRequestCommand(handle, requestId));
+				return;
+			}
+		}
+		else if (requestType == "scopes") {
+			uint32_t stackIndex;
+			if (JsonSerializer::As(body->Get("stackIndex"), stackIndex)) {
+				AddBreakingCommand(new ScopesRequestCommand(stackIndex, requestId));
+				return;
+			}
 		}
 
-
-		//このほか、ステップインやオーバー、ウォッチが考えられる
+		//returnされなかった場合は処理できなかったものとして扱う、エラーレスポンスとして返す
+		{
+			auto responseData = JsonSerializer::MakeObject();
+			responseData->Add("type", JsonSerializer::From("error_response"));
+			responseData->Add("responseId", JsonSerializer::From(requestId));
+			Send(responseData);
+		}
 	}
 
-	JsonObjectRef DebugIO::RequestScopes(const JsonObjectRef& body) {
+	JsonObjectRef DebugIO::RequestScopes(const std::string& scopeType, uint32_t stackIndex, BreakSession& breakSession) {
 
-		std::string scopeName;
 		JsonObjectRef responseBody = JsonSerializer::MakeObject();
-		if (JsonSerializer::As(body->Get("scope"), scopeName)) {
-			if (scopeName == "shiori_request") {
-				responseBody->Add("variables", EnumShioriRequests(*breakingContext));
-			}
-			else if (scopeName == "locals") {
-				responseBody->Add("variables", EnumLocalVariables(*breakingContext));
-			}
-			else {
-				//把握してないリクエスト
-				assert(false);
-				responseBody->Add("variables", JsonSerializer::MakeArray());
-			}
+		if (scopeType == "shiori_request") {
+			responseBody->Add("variables", EnumShioriRequests(breakSession));
 		}
+		else if (scopeType == "locals") {
+			responseBody->Add("variables", EnumLocalVariables(stackIndex,breakSession));
+		}
+		else {
+			//把握してないリクエスト
+			assert(false);
+			responseBody->Add("variables", JsonSerializer::MakeArray());
+		}
+		return responseBody;
+	}
+
+	JsonObjectRef DebugIO::RequestMembers(uint32_t handle, BreakSession& breakSession) {
+
+		JsonObjectRef responseBody = JsonSerializer::MakeObject();
+		responseBody->Add("variables", EnumMembers(handle, breakSession));
+		return responseBody;
+	}
+
+	JsonObjectRef DebugIO::RequestScopes(uint32_t stackIndex, BreakSession& breakSession) {
+		auto responseBody = JsonSerializer::MakeObject();
+		responseBody->Add("scopes", EnumScopes(stackIndex, breakSession));
 		return responseBody;
 	}
 
 	void DebugIO::Send(const std::shared_ptr<JsonObject>& obj) {
 		LockScope ls(sendQueueLock);
 		sendQueue.push_back(obj);
+	}
+
+	void DebugIO::SendResponse(const std::shared_ptr<JsonObject>& body, const std::string& requestId) {
+		auto responseData = JsonSerializer::MakeObject();
+		responseData->Add("type", JsonSerializer::From("response"));
+		responseData->Add("responseId", JsonSerializer::From(requestId));
+		responseData->Add("body", body);
+		Send(responseData);
 	}
 
 	void DebugIO::SendThread()
@@ -667,14 +1152,7 @@ namespace sakura {
 			clientSocket = INVALID_SOCKET;	//TODO: ここも終了指示の方法を排他制御つきでやること
 
 			//ブレーク中なら再開
-			//TODO: 排他制御周辺は要確認
-			if (executingState == ExecutingState::Break) {
-				ClearState();
-				breakingEvent.Raise();
-			}
-			else {
-				ClearState();
-			}
+			ClearState();
 
 			sendThread->join();
 			listenThread->join();
@@ -687,6 +1165,7 @@ namespace sakura {
 			SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
 		}
 	}
+
 
 	//デバッグフック
 	void Debugger::NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {

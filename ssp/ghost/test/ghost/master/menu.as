@@ -4,9 +4,9 @@
 
 talk MainMenu {
 	\s[4]なーあにっと。
-	
+
 	\![*]\q[何か喋って,ランダムトーク]
-	\![*]\q[喋り間隔変更,OnChagneTalkInterval]
+	\![*]\q[喋り間隔変更,FirstTalk]
 	\![*]\q[呼ばれ方を変える,OnChangeUserName]
 	\![*]\q[かいものリスト,OnItemList]
 	
