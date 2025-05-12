@@ -254,7 +254,7 @@ namespace sakura {
 		}
 
 		//必要秒数を超えていればトークを発生
-		if (canCallRandomTalk && interval > 0.0 && seconds > interval) {
+		if (canCallRandomTalk && interval > 0.0 && seconds >= interval) {
 			//呼び出しを実行したかどうかを返す
 			return CallRandomTalk(interpreter, response);
 		}
