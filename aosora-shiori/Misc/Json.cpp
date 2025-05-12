@@ -82,6 +82,7 @@ namespace sakura {
 			std::string body = match[1].str();
 			
 			//エスケープを解除
+			Replace(body, "\\\\", "\\");
 			Replace(body, "\\\"", "\"");
 			return std::shared_ptr<JsonString>(new JsonString(body));
 		}
@@ -234,6 +235,7 @@ namespace sakura {
 					//ダブルクォーテーションのエスケープ処理
 					std::string body = std::static_pointer_cast<JsonString>(token)->GetString();
 					Replace(body, "\"", "\\\"");
+					Replace(body, "\\", "\\\\");
 					result.append(body);
 				}
 				result.push_back('"');
