@@ -66,6 +66,34 @@ namespace sakura {
 	void SerializeArray(const std::shared_ptr<JsonArray>& token, std::string& result);
 	void SerializeObject(const std::shared_ptr<JsonObject>& token, std::string& result);
 
+	//エスケープの追加
+	inline void AddEscape(std::string& str) {
+		for (size_t i = 0; i < str.size(); i++) {
+			switch (str[i]) {
+			case '"':
+			case '\\':
+			case '\n':
+			case '\r':
+			case '\t':
+				//エスケープを挿入
+				str.insert(i, 1, '\\');
+				i++;
+				break;
+			}
+		}
+	}
+
+	//エスケープの除去
+	inline void RemoveEscape(std::string& str) {
+		size_t pos = 0;
+		size_t offset = 0;
+
+		while (offset < str.size() && (pos = str.find('\\', offset)) != std::string::npos) {
+			str.erase(pos, 1);
+			offset = pos + 1;	//エスケープの次の文字は無視
+		}
+	}
+
 	std::shared_ptr<JsonTokenBase> DeserializeToken(JsonParseContext& parseContext) {
 
 		std::string_view str = parseContext.GetCurrent();
@@ -83,8 +111,7 @@ namespace sakura {
 			std::string body = match[1].str();
 			
 			//エスケープを解除
-			Replace(body, "\\\\", "\\");
-			Replace(body, "\\\"", "\"");
+			RemoveEscape(body);
 			return std::shared_ptr<JsonString>(new JsonString(body));
 		}
 		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN, TOKEN_MATCH_FLAGS)) {
@@ -235,8 +262,7 @@ namespace sakura {
 				{
 					//ダブルクォーテーションのエスケープ処理
 					std::string body = std::static_pointer_cast<JsonString>(token)->GetString();
-					Replace(body, "\"", "\\\"");
-					Replace(body, "\\", "\\\\");
+					AddEscape(body);
 					result.append(body);
 				}
 				result.push_back('"');
