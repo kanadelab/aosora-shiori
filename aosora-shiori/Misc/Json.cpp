@@ -11,8 +11,6 @@
 
 namespace sakura {
 
-	
-
 	//解析用正規表現
 	const std::regex JSON_NUMBER_PATTERN(R"(^\s*(\-?[0-9.]+))");
 	const std::regex JSON_STRING_PATTERN("^\\s*\"(([^\\\\\"]+|\\\\.)*)\"");
@@ -25,6 +23,9 @@ namespace sakura {
 	const std::regex JSON_ARRAY_END_PATTERN(R"(^\s*\])");
 	const std::regex JSON_OBJECT_COMMA_PATTERN(R"(^\s*\,)");
 	const std::regex JSON_OBJECT_COLON_PATTERN(R"(^\s*\:)");
+
+	//先頭にだけマッチさせ不要な処理を行わないよう明示的に指定するフラグ
+	const auto TOKEN_MATCH_FLAGS = std::regex_constants::match_continuous | std::regex_constants::format_first_only | std::regex_constants::format_no_copy;
 	
 	class JsonParseContext {
 	private:
@@ -70,13 +71,13 @@ namespace sakura {
 		std::string_view str = parseContext.GetCurrent();
 		std::match_results<std::string_view::const_iterator> match;
 
-		if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NUMBER_PATTERN)) {
+		if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NUMBER_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//数値
 			double v = std::stod(match[1].str());
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(v));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_STRING_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_STRING_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//文字列
 			parseContext.Offset(match.length());
 			std::string body = match[1].str();
@@ -86,26 +87,26 @@ namespace sakura {
 			Replace(body, "\\\"", "\"");
 			return std::shared_ptr<JsonString>(new JsonString(body));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//true
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(true));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_FALSE_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_FALSE_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//false
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(false));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NULL_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NULL_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//null
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive());
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_ARRAY_BEGIN_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_ARRAY_BEGIN_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return DeserializeArray(parseContext);
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_OBJECT_BEGIN_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_OBJECT_BEGIN_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return DeserializeObject(parseContext);
 		}
@@ -127,7 +128,7 @@ namespace sakura {
 
 		//からっぽの場合
 		std::match_results<std::string_view::const_iterator> match;
-		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN)) {
+		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return result;
 		}
@@ -139,11 +140,11 @@ namespace sakura {
 			result->Add(token);
 
 			//カンマもしくは終端
-			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN)) {
+			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				return result;
 			}
-			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN)) {
+			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				continue;
 			}
@@ -162,7 +163,7 @@ namespace sakura {
 		std::match_results<std::string_view::const_iterator> match;
 
 		//からっぽの場合
-		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN)) {
+		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return result;
 		}
@@ -183,7 +184,7 @@ namespace sakura {
 			}
 
 			//カンマ
-			if (!std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COLON_PATTERN)) {
+			if (!std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COLON_PATTERN, TOKEN_MATCH_FLAGS)) {
 				//カンマじゃないとエラー
 				parseContext.Error();
 				return nullptr;
@@ -200,11 +201,11 @@ namespace sakura {
 			//内容を追加
 			result->Add(std::static_pointer_cast<JsonString>(key)->GetString(), value);
 
-			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN)) {
+			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				return result;
 			}
-			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN)) {
+			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				continue;
 			}

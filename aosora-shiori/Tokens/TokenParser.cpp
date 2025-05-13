@@ -736,7 +736,7 @@ namespace sakura {
 			//話者指定、行末まで通常行扱い
 			{
 				std::match_results<std::string_view::const_iterator> match;
-				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_TALK_SCOPE_PATTERN, std::regex_constants::match_continuous | std::regex_constants::format_first_only | std::regex_constants::format_no_copy)) {
+				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_TALK_SCOPE_PATTERN, TOKEN_MATCH_FLAGS)) {
 
 					if (match[1].length() > 0) {
 						//話者指定付き
