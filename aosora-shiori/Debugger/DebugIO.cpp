@@ -85,7 +85,7 @@ namespace sakura {
 	};
 
 
-	//ブレークポイント類
+	//ブレークポイント管理
 	class BreakPointManager {
 	private:
 		//TODO: 重複追加を考慮すべきだろうか
@@ -319,6 +319,7 @@ namespace sakura {
 
 	};
 
+	//接続管理
 	class DebugConnection {
 	private:
 		static DebugConnection* instance;
@@ -342,11 +343,13 @@ namespace sakura {
 		ConnectionStateCallback connectionStateCallback;
 
 		//接続
-		bool isConnected;
-		bool isClosing;
+		std::atomic<bool> isConnected;
+		std::atomic<bool> isClosing;
+		std::atomic<bool> isStartupFailed;
 		SOCKET clientSocket;
 		SOCKET listenSocket;
 		CriticalSection connectionLock;
+		CriticalSection threadLock;
 
 	public:
 
@@ -355,6 +358,7 @@ namespace sakura {
 			connectionStateCallback(connectionStateCallback),
 			isConnected(false),
 			isClosing(false),
+			isStartupFailed(false),
 			clientSocket(INVALID_SOCKET),
 			listenSocket(INVALID_SOCKET)
 		{
@@ -426,23 +430,30 @@ namespace sakura {
 			//ローカル向けに開く
 			if (getaddrinfo("127.0.0.1", "27016", &hints, &result) != 0) {
 				assert(false);
+				isStartupFailed = true;
 				return;
 			}
 			
-			listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-			if (listenSocket == INVALID_SOCKET) {
-				assert(false);
-				freeaddrinfo(result);
-				return;
-			}
+			{
+				LockScope ls(connectionLock);
 
-			//TODO: 重複で開こうとするとここで失敗するので、うまく失敗させる流れをつくりたい
-			if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
-				int err = WSAGetLastError();
-				assert(false);
-				freeaddrinfo(result);
-				closesocket(listenSocket);
-				return;
+				listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+				if (listenSocket == INVALID_SOCKET) {
+					assert(false);
+					freeaddrinfo(result);
+					isStartupFailed = true;
+					return;
+				}
+
+				//重複で開こうとするとここで失敗する
+				if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
+					int err = WSAGetLastError();
+					assert(false);
+					freeaddrinfo(result);
+					closesocket(listenSocket);
+					isStartupFailed = true;
+					return;
+				}
 			}
 
 			freeaddrinfo(result);
@@ -450,35 +461,73 @@ namespace sakura {
 			//リッスン
 			if (listen(listenSocket, SOMAXCONN) != 0) {
 				closesocket(listenSocket);
+				isStartupFailed = true;
 				return;
 			}
 
 			//accept
-			clientSocket = accept(listenSocket, nullptr, nullptr);
-			if (clientSocket == INVALID_SOCKET) {
-				closesocket(listenSocket);
-				return;
+			while(!isClosing) {
+				auto acceptedSocket = accept(listenSocket, nullptr, nullptr);
+				if (acceptedSocket == INVALID_SOCKET) {
+					auto errorCode = WSAGetLastError();
+					if (errorCode != WSAECONNRESET) {
+						//相手側のエラーなど再リッスンでよさそうなものは続行
+						continue;
+					}
+
+					//終了要求
+					if(isClosing)
+					{
+						return;
+					}
+
+					//失敗
+					{
+						LockScope lc(connectionLock);
+						closesocket(listenSocket);
+						listenSocket = INVALID_SOCKET;
+					}
+					isStartupFailed = true;
+					return;
+				}
+
+				{
+					LockScope lc(connectionLock);
+					clientSocket = acceptedSocket;
+
+					//クライアントは1個でいいのでリッスンをやめる
+					closesocket(listenSocket);
+					listenSocket = INVALID_SOCKET;
+				}
+
+				//正常系として続行
+				break;
 			}
 
-			//クライアントは１個でいいのでlistenソケットをクローズ
-			closesocket(listenSocket);
+			{
+				LockScope lc(threadLock);
+				if (isClosing) {
+					return;
+				}
 
-			//ステートを接続状態に
-			isConnected = true;
-			connectionStateCallback(true);
+				//ステートを接続状態に
+				isConnected = true;
+				connectionStateCallback(true);
 
-			//送受信スレッドを開始
-			sendThread.reset(new std::thread(&DebugConnection::CallSendThread));
-			recvThread.reset(new std::thread(&DebugConnection::CallRecvThread));
 
-			SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
-			SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
+				//送受信スレッドを開始
+				sendThread.reset(new std::thread(&DebugConnection::CallSendThread));
+				recvThread.reset(new std::thread(&DebugConnection::CallRecvThread));
+
+				SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
+				SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
+			}
 		}
 
 		void SendThread()
 		{
 			//送信ループ
-			while (clientSocket != INVALID_SOCKET) {
+			while (!isClosing) {
 
 				std::shared_ptr<JsonObject> sendObject = nullptr;
 				{
@@ -494,9 +543,22 @@ namespace sakura {
 					//文字列にシリアライズしてそのまま送信
 					const std::string sendStr = JsonSerializer::Serialize(sendObject);
 					if (send(clientSocket, sendStr.c_str(), sendStr.size(), 0) == SOCKET_ERROR) {
+
+						//終了要求
+						if (isClosing)
+						{
+							break;
+						}
+
 						//送信失敗
-						int errorCode = WSAGetLastError();
-						assert(false);
+						{
+							//接続を閉じる、recvスレッドを失敗させて再接続待ちに遷移
+							LockScope ls(connectionLock);
+							if (clientSocket != INVALID_SOCKET) {
+								closesocket(clientSocket);
+								clientSocket = INVALID_SOCKET;
+							}
+						}
 						break;
 					}
 				}
@@ -514,9 +576,16 @@ namespace sakura {
 			int recvBufferSize = 1024;
 			char* buffer = static_cast<char*>(malloc(recvBufferSize));
 
-			while (true) {
+			while (!isClosing) {
 				//受信処理
 				const int size = recv(clientSocket, (buffer), recvBufferSize, 0);
+
+				//終了要求
+				if (isClosing)
+				{
+					break;
+				}
+
 				if (size > 0) {
 					//受信成功
 
@@ -552,21 +621,38 @@ namespace sakura {
 			//最終的なバッファの削除
 			free(buffer);
 
+			//切断処理
 			{
 				LockScope ls(connectionLock);
+				if (clientSocket != INVALID_SOCKET)
+				{
+					closesocket(clientSocket);
+					clientSocket = INVALID_SOCKET;	//TODO: ここも終了指示の方法を排他制御つきでやること
+				}
+			}
 
-				//切断処理
-				closesocket(clientSocket);
-				clientSocket = INVALID_SOCKET;	//TODO: ここも終了指示の方法を排他制御つきでやること
+			//ブレーク中なら再開
+			connectionStateCallback(false);
+			isConnected = false;
 
-				//ブレーク中なら再開
-				connectionStateCallback(false);
+			{
+				LockScope ls(threadLock);
+				if (isClosing) {
+					//終了に流れていく場合はなにもしない
+					return;
+				}
 
-				sendThread->join();
-				listenThread->join();
+				//送信スレッドの終了をまつ
+				if (sendThread->joinable()) {
+					sendThread->join();
+				}
 
-				//リッスンに戻す
-				//TODO: 繰り返すとキャプチャのチェーンが長くなりそうなのが気になる。キャプチャなしで開始する方法をけんとうすべきかも
+				//リッスンスレッドも念の為待つ
+				if (listenThread->joinable()) {
+					listenThread->join();
+				}
+
+				//リッスンスレッドからやり直す
 				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
 				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
 			}
@@ -580,9 +666,13 @@ namespace sakura {
 
 		void Start()
 		{
-			//リッスンスレッド起動
-			listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
-			SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+			{
+				LockScope ls(connectionLock);
+
+				//リッスンスレッド起動
+				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
+				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+			}
 		}
 
 		void Disconnect()
@@ -590,24 +680,31 @@ namespace sakura {
 			//終了状態を指示、スレッドの停止をまつ
 			isClosing = true;
 
-			//TODO: 並列制御
-			//ソケットを閉じて待機を失敗させる
-			if (clientSocket != INVALID_SOCKET) {
-				closesocket(clientSocket);
-			}
-			if (listenSocket != INVALID_SOCKET) {
-				closesocket(listenSocket);
+			{
+				LockScope ls(connectionLock);
+
+				//ソケットを閉じる
+				if (clientSocket != INVALID_SOCKET) {
+					closesocket(clientSocket);
+				}
+				if (listenSocket != INVALID_SOCKET) {
+					closesocket(listenSocket);
+				}
 			}
 
-			//スレッド待機
-			if (listenThread->joinable()) {
-				listenThread->join();
-			}
-			if (sendThread->joinable()) {
-				sendThread->join();
-			}
-			if (recvThread->joinable()) {
-				recvThread->join();
+			{
+				LockScope ls(threadLock);
+
+				//スレッド待機
+				if (listenThread->joinable()) {
+					listenThread->join();
+				}
+				if (sendThread->joinable()) {
+					sendThread->join();
+				}
+				if (recvThread->joinable()) {
+					recvThread->join();
+				}
 			}
 		}
 	};
