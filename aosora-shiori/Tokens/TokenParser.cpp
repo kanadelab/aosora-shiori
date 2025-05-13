@@ -170,6 +170,9 @@ namespace sakura {
 	const std::regex TOKEN_SYMBOL_PATTERN(R"((^[^0-9\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\<\=\>\?\^\`\{\}\[\]\|\~\\:;\s][^\!\"\#\$\%\&\'\(\)\*\+\,\-\.\/\<\=\>\?\^\`\{\}\[\]\|\~\\:;\s]*))");
 	const std::regex TOKEN_TALK_SCOPE_PATTERN(R"(^(\d*)(\:{1,2}))");
 
+	//先頭にだけマッチさせ不要な処理を行わないよう明示的に指定するフラグ
+	const auto TOKEN_MATCH_FLAGS = std::regex_constants::match_continuous | std::regex_constants::format_first_only | std::regex_constants::format_no_copy;
+
 	//解析ブロックの終了条件
 	const uint32_t BLOCK_END_FLAG_BLOCK_BRACKET = 1u << 0;			// }
 	const uint32_t BLOCK_END_FLAG_BRACKET = 1u << 1;				// )
@@ -493,7 +496,7 @@ namespace sakura {
 			//数値
 			{
 				std::match_results<std::string_view::const_iterator> match;
-				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, JSON_NUMBER_PATTERN)) {
+				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, JSON_NUMBER_PATTERN, TOKEN_MATCH_FLAGS)) {
 					parseContext.PushToken(match[1].str().size(), ScriptTokenType::Number);
 					continue;
 				}
@@ -551,7 +554,7 @@ namespace sakura {
 			std::string symbol = "";
 			{
 				std::match_results<std::string_view::const_iterator> match;
-				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN)) {
+				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN, TOKEN_MATCH_FLAGS)) {
 					symbol = match[1].str();
 					
 					//シンボルの先頭にマッチしてない場合は無効
@@ -598,7 +601,7 @@ namespace sakura {
 
 						//シンボルを確認
 						std::match_results<std::string_view::const_iterator> match;
-						if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN)) {
+						if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_SYMBOL_PATTERN, TOKEN_MATCH_FLAGS)) {
 							parseContext.PushToken(match[1].str().size(), ScriptTokenType::Symbol);
 						}
 						else {
@@ -733,7 +736,7 @@ namespace sakura {
 			//話者指定、行末まで通常行扱い
 			{
 				std::match_results<std::string_view::const_iterator> match;
-				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_TALK_SCOPE_PATTERN)) {
+				if (std::regex_search(parseContext.GetCurrent().begin(), parseContext.GetCurrent().end(), match, TOKEN_TALK_SCOPE_PATTERN, TOKEN_MATCH_FLAGS)) {
 
 					if (match[1].length() > 0) {
 						//話者指定付き

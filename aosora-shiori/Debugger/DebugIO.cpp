@@ -11,6 +11,7 @@
 #include <string>
 #include <map>
 #include <set>
+#include <atomic>
 #include "CoreLibrary/CoreLibrary.h"
 #include "Debugger/DebugIO.h"
 #include "Misc/Json.h"
@@ -26,11 +27,6 @@ namespace sakura {
 		StepIn,			//ステップイン
 		StepOver,		//ステップオーバー
 		Break			//ブレーク
-	};
-
-	enum class ConnectionState {
-		Disconnected,
-		Connected
 	};
 
 	//クリティカルセクションロック
@@ -88,8 +84,9 @@ namespace sakura {
 		}
 	};
 
+
 	//ブレークポイント類
-	class BreakPointCollection {
+	class BreakPointManager {
 	private:
 		//TODO: 重複追加を考慮すべきだろうか
 		std::map<std::string, std::set<uint32_t>> breakPoints;
@@ -322,10 +319,306 @@ namespace sakura {
 
 	};
 
-	//デバッグ通信系
-	//TODO: ソケット通信系とデバッグ処理系をきりはなしたほうがいいかも
-	class DebugIO {
+	class DebugConnection {
 	private:
+		static DebugConnection* instance;
+
+	public:
+		using ReceiveCallback = void (*)(JsonObject&);
+		using ConnectionStateCallback = void (*)(bool isConnected);
+
+	private:
+		//スレッド
+		std::shared_ptr<std::thread> listenThread;
+		std::shared_ptr<std::thread> sendThread;
+		std::shared_ptr<std::thread> recvThread;
+
+		//送信キュー
+		std::list<std::shared_ptr<JsonObject>> sendQueue;
+		CriticalSection sendQueueLock;
+
+		//受信コールバック
+		ReceiveCallback receiveCallback;
+		ConnectionStateCallback connectionStateCallback;
+
+		//接続
+		bool isConnected;
+		bool isClosing;
+		SOCKET clientSocket;
+		SOCKET listenSocket;
+		CriticalSection connectionLock;
+
+	public:
+
+		DebugConnection(ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback):
+			receiveCallback(receiveCallback),
+			connectionStateCallback(connectionStateCallback),
+			isConnected(false),
+			isClosing(false),
+			clientSocket(INVALID_SOCKET),
+			listenSocket(INVALID_SOCKET)
+		{
+			assert(receiveCallback != nullptr);
+			assert(connectionStateCallback != nullptr);
+
+			//通信系の起動
+			WSADATA wsaData;
+			if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+				//起動失敗
+				assert(false);
+			}
+		}
+
+		~DebugConnection()
+		{
+			Disconnect();
+			WSACleanup();
+		}
+
+		static void Create(ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback)
+		{
+			assert(instance == nullptr);
+			if (instance == nullptr) {
+				instance = new DebugConnection(receiveCallback, connectionStateCallback);
+			}
+		}
+
+		static void Destroy()
+		{
+			assert(instance != nullptr);
+			if (instance != nullptr) {
+				delete instance;
+				instance = nullptr;
+			}
+		}
+
+		static DebugConnection* GetInstance() { return instance; }
+
+		static void CallListenThread() { instance->ListenThread(); }
+		static void CallSendThread() { instance->SendThread(); }
+		static void CallRecvThread() { instance->RecvThread(); }
+
+		//接続中かどうかを取得
+		bool IsConnected() const { return isConnected; }
+
+		void ListenThread()
+		{
+			//前のスレッドが残ってたら待機
+			if (recvThread != nullptr && recvThread->joinable()) {
+				recvThread->join();
+				recvThread = nullptr;
+			}
+
+			if (sendThread != nullptr && sendThread->joinable()) {
+				sendThread->join();
+				recvThread = nullptr;
+			}
+
+			addrinfo hints;
+			addrinfo* result = nullptr;
+			memset(&hints, 0, sizeof(hints));
+
+			hints.ai_family = AF_INET;
+			hints.ai_socktype = SOCK_STREAM;
+			hints.ai_protocol = IPPROTO_TCP;
+			hints.ai_flags = AI_PASSIVE;
+
+			//ローカル向けに開く
+			if (getaddrinfo("127.0.0.1", "27016", &hints, &result) != 0) {
+				assert(false);
+				return;
+			}
+			
+			listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+			if (listenSocket == INVALID_SOCKET) {
+				assert(false);
+				freeaddrinfo(result);
+				return;
+			}
+
+			//TODO: 重複で開こうとするとここで失敗するので、うまく失敗させる流れをつくりたい
+			if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
+				int err = WSAGetLastError();
+				assert(false);
+				freeaddrinfo(result);
+				closesocket(listenSocket);
+				return;
+			}
+
+			freeaddrinfo(result);
+
+			//リッスン
+			if (listen(listenSocket, SOMAXCONN) != 0) {
+				closesocket(listenSocket);
+				return;
+			}
+
+			//accept
+			clientSocket = accept(listenSocket, nullptr, nullptr);
+			if (clientSocket == INVALID_SOCKET) {
+				closesocket(listenSocket);
+				return;
+			}
+
+			//クライアントは１個でいいのでlistenソケットをクローズ
+			closesocket(listenSocket);
+
+			//ステートを接続状態に
+			isConnected = true;
+			connectionStateCallback(true);
+
+			//送受信スレッドを開始
+			sendThread.reset(new std::thread(&DebugConnection::CallSendThread));
+			recvThread.reset(new std::thread(&DebugConnection::CallRecvThread));
+
+			SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
+			SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
+		}
+
+		void SendThread()
+		{
+			//送信ループ
+			while (clientSocket != INVALID_SOCKET) {
+
+				std::shared_ptr<JsonObject> sendObject = nullptr;
+				{
+					//キューからいっことりだす
+					LockScope ls(sendQueueLock);
+					if (!sendQueue.empty()) {
+						sendObject = *sendQueue.begin();
+						sendQueue.pop_front();
+					}
+				}
+
+				if (sendObject != nullptr) {
+					//文字列にシリアライズしてそのまま送信
+					const std::string sendStr = JsonSerializer::Serialize(sendObject);
+					if (send(clientSocket, sendStr.c_str(), sendStr.size(), 0) == SOCKET_ERROR) {
+						//送信失敗
+						int errorCode = WSAGetLastError();
+						assert(false);
+						break;
+					}
+				}
+				else {
+					//送信することがなかったのでCPUを休める
+					//TODO: イベントで待つなど負荷下げる対応をいれたい?
+					Sleep(1);
+				}
+			}
+		}
+
+		void RecvThread()
+		{
+			//バッファサイズ: 足りなくなったら増やすようにしていく
+			int recvBufferSize = 1024;
+			char* buffer = static_cast<char*>(malloc(recvBufferSize));
+
+			while (true) {
+				//受信処理
+				const int size = recv(clientSocket, (buffer), recvBufferSize, 0);
+				if (size > 0) {
+					//受信成功
+
+					//Jsonデシリアライズ
+					JsonDeserializeResult deserializeResult = JsonSerializer::Deserialize(std::string(buffer, size));
+
+					//デシリアライズに成功していたら処理に回す、失敗していたらそのフォーマットは想定してないので捨てる
+					if (deserializeResult.success && deserializeResult.token->GetType() == JsonTokenType::Object) {
+						receiveCallback(*static_cast<JsonObject*>(deserializeResult.token.get()));
+					}
+				}
+				else if (size == 0) {
+					//切断
+					break;
+				}
+				else {
+					//受信失敗
+					int errorCode = WSAGetLastError();
+					if (errorCode == WSAEMSGSIZE) {
+						//サイズ不足なのでサイズを倍にして再試行する
+						recvBufferSize *= 2;
+						free(buffer);
+						buffer = static_cast<char*>(malloc(recvBufferSize));
+					}
+					else {
+						//切断？
+						assert(false);
+						break;
+					}
+				}
+			}
+
+			//最終的なバッファの削除
+			free(buffer);
+
+			{
+				LockScope ls(connectionLock);
+
+				//切断処理
+				closesocket(clientSocket);
+				clientSocket = INVALID_SOCKET;	//TODO: ここも終了指示の方法を排他制御つきでやること
+
+				//ブレーク中なら再開
+				connectionStateCallback(false);
+
+				sendThread->join();
+				listenThread->join();
+
+				//リッスンに戻す
+				//TODO: 繰り返すとキャプチャのチェーンが長くなりそうなのが気になる。キャプチャなしで開始する方法をけんとうすべきかも
+				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
+				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+			}
+		}
+
+		//送信キューにオブジェクトを積む
+		void Send(const std::shared_ptr<JsonObject>& sendObj) {
+			LockScope ls(sendQueueLock);
+			sendQueue.push_back(sendObj);
+		}
+
+		void Start()
+		{
+			//リッスンスレッド起動
+			listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
+			SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+		}
+
+		void Disconnect()
+		{
+			//終了状態を指示、スレッドの停止をまつ
+			isClosing = true;
+
+			//TODO: 並列制御
+			//ソケットを閉じて待機を失敗させる
+			if (clientSocket != INVALID_SOCKET) {
+				closesocket(clientSocket);
+			}
+			if (listenSocket != INVALID_SOCKET) {
+				closesocket(listenSocket);
+			}
+
+			//スレッド待機
+			if (listenThread->joinable()) {
+				listenThread->join();
+			}
+			if (sendThread->joinable()) {
+				sendThread->join();
+			}
+			if (recvThread->joinable()) {
+				recvThread->join();
+			}
+		}
+	};
+
+	//Aosoraデバッガ本体
+	class DebugSystem {
+	private:
+		static DebugSystem* instance;
+
+	private:
+#pragma region DebugCommands
 		//ブレーク中に実行するコマンド
 		class IBreakingCommand {
 		public:
@@ -337,9 +630,10 @@ namespace sakura {
 		private:
 			ExecutingState nextState;
 		public:
-			ExecuteStateCommand(ExecutingState state):
+			ExecuteStateCommand(ExecutingState state) :
 				nextState(state)
-			{ }
+			{
+			}
 
 			virtual ExecutingState Execute(BreakSession&) override {
 				return nextState;
@@ -356,7 +650,8 @@ namespace sakura {
 			MembersRequestCommand(uint32_t handle, const std::string& requestId) :
 				handle(handle),
 				requestId(requestId)
-			{}
+			{
+			}
 
 			virtual ExecutingState Execute(BreakSession& breakSession) override {
 				instance->SendResponse(instance->RequestMembers(handle, breakSession), requestId);
@@ -371,40 +666,31 @@ namespace sakura {
 			std::string requestId;
 
 		public:
-			ScopesRequestCommand(uint32_t stackIndex, const std::string& requestId):
+			ScopesRequestCommand(uint32_t stackIndex, const std::string& requestId) :
 				stackIndex(stackIndex),
 				requestId(requestId)
-			{ }
+			{
+			}
 
 			virtual ExecutingState Execute(BreakSession& breakSession) override {
 				instance->SendResponse(instance->RequestScopes(stackIndex, breakSession), requestId);
 				return ExecutingState::Break;
 			}
-
 		};
+#pragma endregion
 
 	private:
-		static DebugIO* instance;
 
-	private:
-		std::shared_ptr<std::thread> listenThread;
-		std::shared_ptr<std::thread> sendThread;
-		std::shared_ptr<std::thread> recvThread;
+		//実行状態
 		ExecutingState executingState;
-		ConnectionState connectionState;
-		SOCKET clientSocket;
-		CriticalSection connectionLock;
-
-		//送信キュー
-		std::list<std::shared_ptr<JsonObject>> sendQueue;
-		CriticalSection sendQueueLock;
+		bool isConnected;
 
 		//ブレーク中のコマンドキュー
 		std::list<std::shared_ptr<IBreakingCommand>> breakingCommandQueue;
 		CriticalSection breakingCommandQueueLock;
 
 		//ブレークポイント
-		BreakPointCollection breakPoints;
+		BreakPointManager breakPoints;
 
 		//最後にブレークした位置
 		std::string lastBreakFullPath;
@@ -416,12 +702,88 @@ namespace sakura {
 		uint32_t lastPassLineIndex;
 		size_t lastPassStackLevel;
 
-	private:
-		void ListenThread();
-		void SendThread();
-		void RecvThread();
-		void ClearState();
+	public:
+		static void Create()
+		{
+			assert(instance != nullptr);
+			if (instance == nullptr) {
+				instance = new DebugSystem();
+			}
+		}
 
+		static void Destroy()
+		{
+			assert(instance != nullptr);
+			if (instance != nullptr) {
+				delete instance;
+				instance = nullptr;
+			}
+		}
+
+		static DebugSystem* GetInstance() { return instance; }
+
+	private:
+		DebugSystem() :
+			executingState(ExecutingState::Execute),
+			isConnected(false)
+		{
+			//同時に通信系を起動する
+			DebugConnection::Create(&DebugSystem::OnNotifyReceive, &DebugSystem::OnNotifyConnectionState);
+			DebugConnection::GetInstance()->Start();
+		}
+
+		~DebugSystem()
+		{
+			//通信系を止める
+			DebugConnection::Destroy();
+		}
+
+
+		//通信系からの受信コールバック
+		static void OnNotifyReceive(JsonObject& json) {
+			GetInstance()->Recv(json);
+		}
+
+		//通信系からの接続状態コールバック
+		static void OnNotifyConnectionState(bool connected) {
+			if (GetInstance()->isConnected != connected) {
+				GetInstance()->isConnected = connected;
+				if (!connected) {
+					//切断時、ブレークポイント等のステートをすべてリセットする
+					GetInstance()->ClearState();
+				}
+			}
+		}
+
+		void Recv(const JsonObject& jsonObject);
+
+		void Send(const std::shared_ptr<JsonObject>& obj) {
+			DebugConnection::GetInstance()->Send(obj);
+		}
+
+		void SendResponse(const std::shared_ptr<JsonObject>& body, const std::string& requestId) {
+			auto responseData = JsonSerializer::MakeObject();
+			responseData->Add("type", JsonSerializer::From("response"));
+			responseData->Add("responseId", JsonSerializer::From(requestId));
+			responseData->Add("body", body);
+			Send(responseData);
+		}
+
+		void ClearState()
+		{
+			breakPoints.ClearBreakPoint();
+			lastBreakFullPath = "";
+			lastBreakLineIndex = 0;
+			lastBreakStackLevel = 0;
+			lastPassFullPath = "";
+			lastPassLineIndex = 0;
+			lastPassStackLevel = 0;
+			executingState = ExecutingState::Execute;
+		}
+
+	public:
+
+		void NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 		void SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 
 		void AddBreakingCommand(IBreakingCommand* command) {
@@ -429,151 +791,16 @@ namespace sakura {
 			breakingCommandQueue.push_back(std::shared_ptr<IBreakingCommand>(command));
 		}
 
-	public:
-		//AST実行時の通知およびトラップ
-		void NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
-		void NotifyRequest(const JsonObject& jsonObject);
-		
-		static void Create() { assert(instance == nullptr); if (instance == nullptr) { instance = new DebugIO(); } }
-		static void Destroy() { assert(instance != nullptr); if (instance != nullptr) { delete instance; instance = nullptr; } }
-		static DebugIO* Get() { return instance; }
-
-		void Send(const std::shared_ptr<JsonObject>& sendObj);
-		void SendResponse(const std::shared_ptr<JsonObject>& responseBody, const std::string& requestId);
-
-		JsonObjectRef RequestScopes(const std::string& scopeType, uint32_t stackIndex, BreakSession& breakSession);	//TODO: こちらは削除
 		JsonObjectRef RequestMembers(uint32_t handle, BreakSession& breakSession);
 		JsonObjectRef RequestScopes(uint32_t stackIndex, BreakSession& breakSession);
-
-		DebugIO();
-		~DebugIO();
 	};
 
-	DebugIO* DebugIO::instance = nullptr;
+	DebugConnection* DebugConnection::instance = nullptr;
+	DebugSystem* DebugSystem::instance = nullptr;
 
-	
-
-
-	DebugIO::DebugIO()
-	{
-		executingState = ExecutingState::Execute;
-		connectionState = ConnectionState::Disconnected;
-
-		WSADATA wsaData;
-
-		//通信系の起動
-		int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-		if (result != 0) {
-			assert(false);
-			return;
-		}
-
-		//リッスンスレッド起動
-		listenThread.reset(new std::thread(
-			[this]() {ListenThread();}
-		));
-		SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
-	}
-
-	DebugIO::~DebugIO()
-	{
-		//終了処理
-		WSACleanup();
-	}
-
-	void DebugIO::ClearState()
-	{
-		//ステートフルな内容をクリアする
-		breakPoints.ClearBreakPoint();
-		lastBreakFullPath = "";
-		lastBreakLineIndex = 0;
-		lastBreakStackLevel = 0;
-		lastPassFullPath = "";
-		lastPassLineIndex = 0;
-		lastPassStackLevel = 0;
-		executingState = ExecutingState::Execute;
-		connectionState = ConnectionState::Disconnected;
-	}
-
-	void DebugIO::ListenThread()
-	{
-		//前のスレッドが残ってたら待機
-		if (recvThread != nullptr && recvThread->joinable()) {
-			recvThread->join();
-			recvThread = nullptr;
-		}
-
-		if (sendThread != nullptr && sendThread->joinable()) {
-			sendThread->join();
-			recvThread = nullptr;
-		}
-
-		addrinfo hints;
-		addrinfo* result = nullptr;
-		memset(&hints, 0, sizeof(hints));
-
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
-		hints.ai_flags = AI_PASSIVE;
-
-		//ローカル向けに開く
-		if (getaddrinfo("127.0.0.1", "27016", &hints, &result) != 0) {
-			assert(false);
-			return;
-		}
-
-		SOCKET listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-		if (listenSocket == INVALID_SOCKET) {
-			assert(false);
-			freeaddrinfo(result);
-			return;
-		}
-
-		//TODO: 重複で開こうとするとここで失敗するので、うまく失敗させる流れをつくりたい
-		if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
-			int err = WSAGetLastError();
-			assert(false);
-			freeaddrinfo(result);
-			closesocket(listenSocket);
-			return;
-		}
-
-		freeaddrinfo(result);
-
-		//リッスン
-		if (listen(listenSocket, SOMAXCONN) != 0) {
-			closesocket(listenSocket);
-			return;
-		}
-
-		//accept
-		clientSocket = accept(listenSocket, nullptr, nullptr);
-		if (clientSocket == INVALID_SOCKET) {
-			closesocket(listenSocket);
-			return;
-		}
-
-		//クライアントは１個でいいのでlistenソケットをクローズ
-		closesocket(listenSocket);
-
-		//ステートを接続状態に
-		connectionState = ConnectionState::Connected;
-
-		//送受信スレッドを開始
-		sendThread.reset(new std::thread(
-			[this](){SendThread();}
-		));
-		
-		recvThread.reset(new std::thread(
-			[this](){RecvThread();}
-		));
-		SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
-		SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
-	}
 
 	//ASTノード実行時
-	void DebugIO::NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
+	void DebugSystem::NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 
 		bool isBreak = false;
 
@@ -611,6 +838,7 @@ namespace sakura {
 				}
 				else if (executingState == ExecutingState::StepOver) {
 					//ステップオーバーなら同階層以前なら
+					//TODO: ジャンプの場合ステップイン扱いになるがステップオーバーで引っ掛けたい
 					if (stackLevel <= lastBreakStackLevel) {
 						isBreak = true;
 					}
@@ -632,7 +860,7 @@ namespace sakura {
 			SendBreakInformation(node, executeContext);
 
 			//続行系の指示やその他情報要求系の指示を受ける
-			while (connectionState == ConnectionState::Connected) {
+			while (isConnected) {
 				std::shared_ptr<IBreakingCommand> command;
 				{
 					LockScope ls(breakingCommandQueueLock);
@@ -654,13 +882,14 @@ namespace sakura {
 				}
 				else {
 					//TODO: 必要に応じてい停止する仕組みが必要そう
-					Sleep(0);
+					Sleep(1);
 				}
 			}
 		}
 	}
 
-	void DebugIO::SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
+	//ブレーク位置などの情報を送信
+	void DebugSystem::SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 		//ブレークポイントに引っかかったことを通知
 		auto data = JsonSerializer::MakeObject();
 		data->Add("type", JsonSerializer::From("break"));
@@ -671,7 +900,6 @@ namespace sakura {
 
 		body->Add("filename", JsonSerializer::From(node.GetSourceRange().GetSourceFileFullPath()));
 		body->Add("line", JsonSerializer::From(node.GetSourceRange().GetBeginLineIndex()));
-
 
 		//コールスタックの収集
 		auto stackArray = JsonSerializer::MakeArray();
@@ -701,6 +929,7 @@ namespace sakura {
 		Send(data);
 	}
 
+	//変数情報の整形
 	JsonObjectRef MakeVariableInfo(const std::string& name, const ScriptValueRef& value, BreakSession& breakSession) {
 		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
 
@@ -746,6 +975,7 @@ namespace sakura {
 		return variableInfo;
 	}
 
+	//ローカル変数の列挙
 	JsonArrayRef EnumLocalVariables(uint32_t stackIndex, BreakSession& breakSession) {
 		auto stackTrace = breakSession.GetContext().MakeStackTrace(breakSession.GetBreakASTNode(), breakSession.GetContext().GetBlockScope(), breakSession.GetContext().GetStack().GetFunctionName());
 
@@ -777,13 +1007,12 @@ namespace sakura {
 			nativeStackLevel++;
 		}
 
-		
-
 		return result;
 	}
 
+	//SHIORI Requestを送信
 	JsonArrayRef EnumShioriRequests(BreakSession& breakSession) {
-		//TODO: nullチェックを
+		//TODO: それぞれオブジェクト自体が書き換えられていた場合は進行できないのでチェックをいれること
 		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
 		auto shioriVariable = interpreter.GetGlobalVariable("Shiori");
 		ScriptObject* shioriObj = interpreter.InstanceAs<ScriptObject>(shioriVariable);
@@ -861,13 +1090,8 @@ namespace sakura {
 			return JsonSerializer::MakeArray();
 		}
 
-		//TODO: オブジェクトのデータ型によってそれぞれ分解
-		//const uint32_t typeId = obj->GetInstanceTypeId();
-
-		//if(typeId == breakSession.GetContext().GetInterpreter().GetClassId()
-		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
-
 		//もうちょっと良い分岐の仕方はあるだろうけどとりあえず
+		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
 		{
 			ScriptObject* inst = interpreter.InstanceAs<ScriptObject>(obj);
 			if (inst != nullptr) {
@@ -887,6 +1111,7 @@ namespace sakura {
 		return JsonSerializer::MakeArray();
 	}
 
+	//スコープ情報の列挙
 	JsonArrayRef EnumScopes(uint32_t stackLevel, BreakSession& breakSession) {
 
 		auto result = JsonSerializer::MakeArray();
@@ -920,22 +1145,22 @@ namespace sakura {
 		return result;
 	}
 
-	
-
-	void DebugIO::NotifyRequest(const JsonObject& json) {
+	//リクエスト受信
+	void DebugSystem::Recv(const JsonObject& json) {
 		std::string requestType;
 		std::string requestId;
 
+		// "type" にリクエストの種別が格納されている
 		if (!JsonSerializer::As(json.Get("type"), requestType)) {
 			//対応なし
 			assert(false);
 			return;
 		}
 
-		//ID情報があれば収集（レスポンス時に起因となったIDを指定して返すため）
+		// "id" はレスポンスを返すリクエストに埋め込むために使う
 		JsonSerializer::As(json.Get("id"), requestId);
 
-		//リクエストボディオブジェクトを取得
+		// "body" にリクエスト本体がリクエストごとの任意フォーマットで格納される
 		JsonObjectRef body;
 		if (!JsonSerializer::As(json.Get("body"), body)) {
 			assert(false);
@@ -1023,163 +1248,34 @@ namespace sakura {
 		}
 	}
 
-	JsonObjectRef DebugIO::RequestScopes(const std::string& scopeType, uint32_t stackIndex, BreakSession& breakSession) {
-
-		JsonObjectRef responseBody = JsonSerializer::MakeObject();
-		if (scopeType == "shiori_request") {
-			responseBody->Add("variables", EnumShioriRequests(breakSession));
-		}
-		else if (scopeType == "locals") {
-			responseBody->Add("variables", EnumLocalVariables(stackIndex,breakSession));
-		}
-		else {
-			//把握してないリクエスト
-			assert(false);
-			responseBody->Add("variables", JsonSerializer::MakeArray());
-		}
-		return responseBody;
-	}
-
-	JsonObjectRef DebugIO::RequestMembers(uint32_t handle, BreakSession& breakSession) {
+	//受信指定オブジェクトのメンバを列挙する
+	JsonObjectRef DebugSystem::RequestMembers(uint32_t handle, BreakSession& breakSession) {
 
 		JsonObjectRef responseBody = JsonSerializer::MakeObject();
 		responseBody->Add("variables", EnumMembers(handle, breakSession));
 		return responseBody;
 	}
 
-	JsonObjectRef DebugIO::RequestScopes(uint32_t stackIndex, BreakSession& breakSession) {
+	//スコープの列挙を返す
+	JsonObjectRef DebugSystem::RequestScopes(uint32_t stackIndex, BreakSession& breakSession) {
 		auto responseBody = JsonSerializer::MakeObject();
 		responseBody->Add("scopes", EnumScopes(stackIndex, breakSession));
 		return responseBody;
 	}
 
-	void DebugIO::Send(const std::shared_ptr<JsonObject>& obj) {
-		LockScope ls(sendQueueLock);
-		sendQueue.push_back(obj);
-	}
-
-	void DebugIO::SendResponse(const std::shared_ptr<JsonObject>& body, const std::string& requestId) {
-		auto responseData = JsonSerializer::MakeObject();
-		responseData->Add("type", JsonSerializer::From("response"));
-		responseData->Add("responseId", JsonSerializer::From(requestId));
-		responseData->Add("body", body);
-		Send(responseData);
-	}
-
-	void DebugIO::SendThread()
-	{
-		//送信ループ
-		while (clientSocket != INVALID_SOCKET) {
-			
-			std::shared_ptr<JsonObject> sendObject = nullptr;
-			{
-				//キューからいっことりだす
-				LockScope ls(sendQueueLock);
-				if (!sendQueue.empty()) {
-					sendObject = *sendQueue.begin();
-					sendQueue.pop_front();
-				}
-			}
-
-			if (sendObject != nullptr) {
-				//文字列にシリアライズしてそのまま送信
-				const std::string sendStr = JsonSerializer::Serialize(sendObject);
-				if (send(clientSocket, sendStr.c_str(), sendStr.size(), 0) == SOCKET_ERROR) {
-					//送信失敗
-					int errorCode = WSAGetLastError();
-					assert(false);
-					break;
-				}
-			}
-			else {
-				//送信することがなかったのでCPUを休める
-				//TODO: イベントで待つなど負荷下げる対応をいれたい?
-				Sleep(1);
-			}
-		}
-	}
-
-	//受信スレッド側
-	void DebugIO::RecvThread()
-	{
-		//バッファサイズ: 足りなくなったら増やすようにしていく
-		int recvBufferSize = 1024;
-		char* buffer = static_cast<char*>(malloc(recvBufferSize));
-
-		while (true) {
-			//受信処理
-			const int size = recv(clientSocket, (buffer), recvBufferSize, 0);
-			if (size > 0) {
-				//受信成功
-
-				//Jsonデシリアライズ
-				JsonDeserializeResult deserializeResult = JsonSerializer::Deserialize(std::string(buffer, size));
-
-				//デシリアライズに成功していたら処理に回す、失敗していたらそのフォーマットは想定してないので捨てる
-				if (deserializeResult.success && deserializeResult.token->GetType() == JsonTokenType::Object) {
-					NotifyRequest(*static_cast<JsonObject*>(deserializeResult.token.get()));
-				}
-			}
-			else if (size == 0) {
-				//切断
-				break;
-			}
-			else {
-				//受信失敗
-				int errorCode = WSAGetLastError();
-				if (errorCode == WSAEMSGSIZE) {
-					//サイズ不足なのでサイズを倍にして再試行する
-					recvBufferSize *= 2;
-					free(buffer);
-					buffer = static_cast<char*>(malloc(recvBufferSize));
-				}
-				else {
-					//切断？
-					assert(false);
-					break;
-				}
-			}
-		}
-
-		//最終的なバッファの削除
-		free(buffer);
-
-		{
-			LockScope ls(connectionLock);
-
-			//切断処理
-			closesocket(clientSocket);
-			clientSocket = INVALID_SOCKET;	//TODO: ここも終了指示の方法を排他制御つきでやること
-
-			//ブレーク中なら再開
-			ClearState();
-
-			sendThread->join();
-			listenThread->join();
-
-			//リッスンに戻す
-			//TODO: 繰り返すとキャプチャのチェーンが長くなりそうなのが気になる。キャプチャなしで開始する方法をけんとうすべきかも
-			listenThread.reset(new std::thread(
-				[this]() {ListenThread(); }
-			));
-			SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
-		}
-	}
-
-
 	//デバッグフック
 	void Debugger::NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
-		if (DebugIO::Get() != nullptr) {
+		if (DebugSystem::GetInstance() != nullptr) {
 			//ブレークポイント要求に対して反応する想定
-			DebugIO::Get()->NotifyASTExecute(executingNode, executeContext);
+			DebugSystem::GetInstance()->NotifyASTExecute(executingNode, executeContext);
 		}
 	}
 
 	void Debugger::Create() {
-		DebugIO::Create();
+		DebugSystem::Create();
 	}
 
 	void Debugger::Destroy() {
-		DebugIO::Destroy();
+		DebugSystem::Destroy();
 	}
 }

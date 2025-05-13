@@ -31,17 +31,6 @@ const BreakHitRequest = z.object({
 });
 type BreakHitRequest = z.infer<typeof BreakHitRequest>;
 
-const VariableScope = z.object({
-	stackId: z.number(),		//スタックフレームのID
-	scope: z.string(),
-	path: z.array(z.string())
-});
-
-export type VariableScope = z.infer<typeof VariableScope>;
-export const VARIABLE_SCOPE_GLOBAL = 'globals';
-export const VARIABLE_SCOPE_LOCAL = 'locals';
-export const VARIABLE_SCOPE_SHIORI_REQUEST = 'shiori_request';
-
 const VariableInformation = z.object({
 	key: z.string(),
 	primitiveType: z.string(),
@@ -186,25 +175,6 @@ export class AosoraDebuggerInterface {
 				lines
 			};
 			this.Send('set_breakpoints', requestBody, (_, e) => {!e ? resolve() : reject();} );
-		});
-	}
-
-	public RequestScope(scope: VariableScope) {
-		return new Promise<VariableInformation[]>((resolve, reject) => {
-			this.Send('request_variable_scope', scope, (response, error) => {
-				if(error){
-					reject();
-				}
-
-				const parsedVariables = VariableScopeResponse.safeParse(response);
-				if(parsedVariables.success){
-					resolve(parsedVariables.data.variables);
-				}
-				else {
-					reject();
-				}
-
-			});
 		});
 	}
 

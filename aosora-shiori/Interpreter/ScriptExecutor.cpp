@@ -1098,6 +1098,9 @@ namespace sakura {
 
 	ScriptValueRef ScriptExecutor::ExecuteTalkSetSpeaker(const ASTNodeTalkSetSpeaker& node, ScriptExecuteContext& executeContext) {
 
+		//トークの先頭部分の指定があればそれを行ってから話者指定に入る
+		executeContext.GetStack().AppendTalkHeadIfNeed(executeContext.GetInterpreter());
+
 		//話者指定を作成
 		if (node.GetSpeakerIndex() == ASTNodeTalkSetSpeaker::SPEAKER_INDEX_SWITCH) {
 			executeContext.GetStack().SwitchTalkSpeakerIndex(executeContext.GetInterpreter());
@@ -1898,16 +1901,25 @@ namespace sakura {
 		}
 	}
 
+	//必要があればトークの先頭部分をTalkBuilderから設定
+	void ScriptInterpreterStack::AppendTalkHeadIfNeed(ScriptInterpreter& interpreter) {
+		if (talkBody.empty()) {
+			//最初のトーク内容を設定
+			const std::string talkHead = TalkBuilder::GetScriptHead(interpreter);
+			if (!talkHead.empty()) {
+				talkBody = TalkStringCombiner::CombineTalk(talkBody, talkHead, interpreter, &speakedCache, false);
+			}
+		}
+	}
+
 	//トーク内容を追加
 	void ScriptInterpreterStack::AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter) {
 
+		//先頭トークを追加
+		AppendTalkHeadIfNeed(interpreter);
+
 		//話者指定があるかをチェック
 		auto firstSpeaker = TalkStringCombiner::FetchFirstSpeaker(str);
-
-		if (talkBody.empty()) {
-			//最初のトーク内容を設定
-			talkBody = TalkBuilder::GetScriptHead(interpreter);
-		}
 
 		if (speakedCache.lastSpeakerIndex == TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT) {
 
@@ -1918,9 +1930,6 @@ namespace sakura {
 				speakedCache.usedSpeaker.insert(0);
 			}
 		}
-
-		//追加先がスコープ指定で開始しているかをチェック
-		auto scopeChange = TalkStringCombiner::FetchFirstSpeaker(str);
 
 		//改行要求
 		if (isTalkLineEnd) {
@@ -1945,11 +1954,6 @@ namespace sakura {
 
 	//話者を指定
 	void ScriptInterpreterStack::SetTalkSpeakerIndex(int32_t speakerIndex, ScriptInterpreter& interpreter) {
-
-		if (talkBody.empty()) {
-			//最初のトーク内容を設定
-			talkBody = TalkBuilder::GetScriptHead(interpreter);
-		}
 
 		if (speakedCache.lastSpeakerIndex != speakerIndex) {
 

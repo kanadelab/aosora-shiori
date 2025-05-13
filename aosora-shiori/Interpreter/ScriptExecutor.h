@@ -608,6 +608,9 @@ namespace sakura {
 			return childStack;
 		}
 
+		//TalkBuilderで設定されたTalkHeaderを必要に応じて追加
+		void AppendTalkHeadIfNeed(ScriptInterpreter& interpreter);
+
 		//トーク内容を追加
 		void AppendTalkBody(const std::string& str, ScriptInterpreter& interpreter);
 

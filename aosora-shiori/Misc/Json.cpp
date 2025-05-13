@@ -23,6 +23,9 @@ namespace sakura {
 	const std::regex JSON_ARRAY_END_PATTERN(R"(^\s*\])");
 	const std::regex JSON_OBJECT_COMMA_PATTERN(R"(^\s*\,)");
 	const std::regex JSON_OBJECT_COLON_PATTERN(R"(^\s*\:)");
+
+	//先頭にだけマッチさせ不要な処理を行わないよう明示的に指定するフラグ
+	const auto TOKEN_MATCH_FLAGS = std::regex_constants::match_continuous | std::regex_constants::format_first_only | std::regex_constants::format_no_copy;
 	
 	class JsonParseContext {
 	private:
@@ -63,47 +66,74 @@ namespace sakura {
 	void SerializeArray(const std::shared_ptr<JsonArray>& token, std::string& result);
 	void SerializeObject(const std::shared_ptr<JsonObject>& token, std::string& result);
 
+	//エスケープの追加
+	inline void AddEscape(std::string& str) {
+		for (size_t i = 0; i < str.size(); i++) {
+			switch (str[i]) {
+			case '"':
+			case '\\':
+			case '\n':
+			case '\r':
+			case '\t':
+				//エスケープを挿入
+				str.insert(i, 1, '\\');
+				i++;
+				break;
+			}
+		}
+	}
+
+	//エスケープの除去
+	inline void RemoveEscape(std::string& str) {
+		size_t pos = 0;
+		size_t offset = 0;
+
+		while (offset < str.size() && (pos = str.find('\\', offset)) != std::string::npos) {
+			str.erase(pos, 1);
+			offset = pos + 1;	//エスケープの次の文字は無視
+		}
+	}
+
 	std::shared_ptr<JsonTokenBase> DeserializeToken(JsonParseContext& parseContext) {
 
 		std::string_view str = parseContext.GetCurrent();
 		std::match_results<std::string_view::const_iterator> match;
 
-		if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NUMBER_PATTERN)) {
+		if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NUMBER_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//数値
 			double v = std::stod(match[1].str());
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(v));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_STRING_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_STRING_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//文字列
 			parseContext.Offset(match.length());
 			std::string body = match[1].str();
 			
 			//エスケープを解除
-			Replace(body, "\\\"", "\"");
-			Replace(body, "\\\\", "\\");
+			RemoveEscape(body);
 			return std::shared_ptr<JsonString>(new JsonString(body));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_TRUE_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//true
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(true));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_FALSE_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_FALSE_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//false
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(false));
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NULL_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_NULL_PATTERN, TOKEN_MATCH_FLAGS)) {
 			//null
 			parseContext.Offset(match.length());
 			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive());
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_ARRAY_BEGIN_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_ARRAY_BEGIN_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return DeserializeArray(parseContext);
 		}
-		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_OBJECT_BEGIN_PATTERN)) {
+		else if (std::regex_search(str.cbegin(), str.cend(), match, JSON_OBJECT_BEGIN_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return DeserializeObject(parseContext);
 		}
@@ -125,7 +155,7 @@ namespace sakura {
 
 		//からっぽの場合
 		std::match_results<std::string_view::const_iterator> match;
-		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN)) {
+		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return result;
 		}
@@ -137,11 +167,11 @@ namespace sakura {
 			result->Add(token);
 
 			//カンマもしくは終端
-			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN)) {
+			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_ARRAY_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				return result;
 			}
-			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN)) {
+			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				continue;
 			}
@@ -160,7 +190,7 @@ namespace sakura {
 		std::match_results<std::string_view::const_iterator> match;
 
 		//からっぽの場合
-		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN)) {
+		if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 			parseContext.Offset(match.length());
 			return result;
 		}
@@ -181,7 +211,7 @@ namespace sakura {
 			}
 
 			//カンマ
-			if (!std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COLON_PATTERN)) {
+			if (!std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COLON_PATTERN, TOKEN_MATCH_FLAGS)) {
 				//カンマじゃないとエラー
 				parseContext.Error();
 				return nullptr;
@@ -198,11 +228,11 @@ namespace sakura {
 			//内容を追加
 			result->Add(std::static_pointer_cast<JsonString>(key)->GetString(), value);
 
-			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN)) {
+			if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_END_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				return result;
 			}
-			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN)) {
+			else if (std::regex_search(parseContext.GetCurrent().cbegin(), parseContext.GetCurrent().cend(), match, JSON_OBJECT_COMMA_PATTERN, TOKEN_MATCH_FLAGS)) {
 				parseContext.Offset(match.length());
 				continue;
 			}
@@ -230,13 +260,9 @@ namespace sakura {
 			case JsonTokenType::String:
 				result.push_back('"');
 				{
-					std::string body = std::static_pointer_cast<JsonString>(token)->GetString();
-
-					//連続エスケープを処理
-					Replace(body, "\\", "\\\\");
-
 					//ダブルクォーテーションのエスケープ処理
-					Replace(body, "\"", "\\\"");
+					std::string body = std::static_pointer_cast<JsonString>(token)->GetString();
+					AddEscape(body);
 					result.append(body);
 				}
 				result.push_back('"');
@@ -328,55 +354,6 @@ namespace sakura {
 		std::string serialized;
 		SerializeJson(deserialized.token, serialized);
 		printf("%s", serialized.c_str());
-	}
-
-	//JsonトークンをC++型に変換
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::string& value) {
-		if (token == nullptr || token->GetType() != JsonTokenType::String) {
-			return false;
-		}
-		value = static_cast<JsonString*>(token.get())->GetString();
-		return true;
-	}
-
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, bool& value) {
-		if (token == nullptr || token->GetType() != JsonTokenType::Boolean) {
-			return false;
-		}
-		value = static_cast<JsonPrimitive*>(token.get())->GetBoolean();
-		return true;
-	}
-
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, double& value) {
-		if (token == nullptr || token->GetType() != JsonTokenType::Number) {
-			return false;
-		}
-		value = static_cast<JsonPrimitive*>(token.get())->GetNumber();
-		return true;
-	}
-
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, uint32_t& value) {
-		double d;
-		if (!As(token, d)) {
-			return false;
-		}
-		value = static_cast<uint32_t>(d);
-		return true;
-	}
-
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonArray>& value) {
-		if (token == nullptr || token->GetType() != JsonTokenType::Array) {
-			return false;
-		}
-		value = std::static_pointer_cast<JsonArray>(token);
-		return true;
-	}
-	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonObject>& value) {
-		if (token == nullptr || token->GetType() != JsonTokenType::Object) {
-			return false;
-		}
-		value = std::static_pointer_cast<JsonObject>(token);
-		return true;
 	}
 
 }
