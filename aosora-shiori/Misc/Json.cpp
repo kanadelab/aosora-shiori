@@ -346,6 +346,55 @@ namespace sakura {
 		return result;
 	}
 
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::string& value) {
+		if (token->GetType() == JsonTokenType::String) {
+			value = std::static_pointer_cast<JsonString>(token)->GetString();
+			return true;
+		}
+		return false;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, bool& value) {
+		if (token->GetType() == JsonTokenType::Boolean) {
+			value = std::static_pointer_cast<JsonPrimitive>(token)->GetBoolean();
+			return true;
+		}
+		return false;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, double& value) {
+		if (token->GetType() == JsonTokenType::Number) {
+			value = std::static_pointer_cast<JsonPrimitive>(token)->GetNumber();
+			return true;
+		}
+		return false;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, uint32_t& value) {
+		if (token->GetType() == JsonTokenType::Number) {
+			number v = std::static_pointer_cast<JsonPrimitive>(token)->GetNumber();
+			value = static_cast<uint32_t>(v);
+			return true;
+		}
+		return false;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonArray>& value) {
+		if (token->GetType() == JsonTokenType::Array) {
+			value = std::static_pointer_cast<JsonArray>(token);
+			return true;
+		}
+		return false;
+	}
+
+	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonObject>& value) {
+		if (token->GetType() == JsonTokenType::Boolean) {
+			value = std::static_pointer_cast<JsonObject>(token);
+			return true;
+		}
+		return false;
+	}
+
 	//てすと
 	void JsonTest() {
 		const std::string json = R"({"test": "test"})";
