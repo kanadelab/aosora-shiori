@@ -141,7 +141,7 @@ namespace sakura {
 
 			//フォーマット指定が有効なものだけくっつける
 			if (item.isFormatExpression) {
-				auto str = v->ToStringWithFunctionCall(executeContext);
+				auto str = v->ToStringWithFunctionCall(executeContext, &node);
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
@@ -893,7 +893,7 @@ namespace sakura {
 		FunctionResponse response;
 		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext, &node);
 		if (response.IsThrew()) {
-			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), response.GetThrewError());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), response.GetThrewError(), executeContext);
 			return ScriptValue::Null;
 		}
 		else {
@@ -1064,7 +1064,7 @@ namespace sakura {
 		}
 		
 		if (r->IsObject()) {
-			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), r->GetObjectRef());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), r->GetObjectRef(), executeContext);
 		}
 		else {
 			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。", executeContext);
@@ -1154,7 +1154,7 @@ namespace sakura {
 			else {
 
 				//関数の出力に貼り付ける
-				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
+				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext, &node);
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
@@ -1547,7 +1547,7 @@ namespace sakura {
 				nativeClass.GetInitFunc()(request, response);
 				
 				if (response.IsThrew()) {
-					context.ThrowError(callingNode, context.GetBlockScope(), "init", response.GetThrewError());
+					context.ThrowError(callingNode, context.GetBlockScope(), "init", response.GetThrewError(), context);
 					return nullptr;
 				}
 				else {
@@ -1728,12 +1728,12 @@ namespace sakura {
 		return stackInfo;
 	}
 
-	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err) {
+	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err, ScriptExecuteContext& executeContext) {
 
 		//エラーオブジェクトしかスローできないのでチェック
 		RuntimeError* e = interpreter.InstanceAs<RuntimeError>(err);
 		if (e == nullptr) {
-			ThrowError(throwAstNode, callingBlockScope, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
+			ThrowError(throwAstNode, callingBlockScope, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"), executeContext);
 			return;
 		}
 
@@ -1741,6 +1741,10 @@ namespace sakura {
 		if (!e->HasCallstackInfo()) {
 			e->SetCallstackInfo(MakeStackTrace(throwAstNode, callingBlockScope, funcName));
 		}
+
+		//この時点でデバッガに例外を通知する
+		Debugger::NotifyError(*e, throwAstNode, executeContext);
+
 		stack.Throw(e);
 	}
 

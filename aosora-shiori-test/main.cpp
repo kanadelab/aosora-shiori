@@ -3,6 +3,7 @@
 #include "Misc/Utility.h"
 #include "Misc/Json.h"
 #include "Misc/Message.h"
+#include "Debugger/Debugger.h"
 
 #include <regex>
 #include <fstream>
@@ -38,13 +39,17 @@ std::string readFile(const char* filename)
 
 int main() {
 
+	/*
 	std::string sourceCode = readFile(R"(D:\extract\GhostMasquerade7\nise_shako\ghost\master\dict-aiev.as)");
 
 	std::string sourceCode2 = R"(
-	
+
 		print("！".length);
 
 )";
 
 	sakura::Execute(sourceCode);
+	*/
+
+	sakura::Debugger::Bootstrap();
 }

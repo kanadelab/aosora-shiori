@@ -38,7 +38,10 @@ namespace sakura {
 	class Debugger {
 	public:
 		static void NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
+		static void NotifyError(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
 		static void Create();
 		static void Destroy();
+		static void Bootstrap();
+		static bool IsConnected();
 	};
 }

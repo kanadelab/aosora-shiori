@@ -669,7 +669,7 @@ namespace sakura {
 			}
 		}
 
-		ghostErrorGuide += std::string() + "\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "]\\_?\\n" + firstTrace + "\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "]\\_?\\n" + "\\_?" + err->GetMessage() + "\\_?" + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "]\\_?\\n" + trace;
+		ghostErrorGuide += std::string() + "\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "]\\_?\\n" + firstTrace + "\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "]\\_?\\n" + "\\_?" + err->GetErrorMessage() + "\\_?" + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "]\\_?\\n" + trace;
 		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
 		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
 
@@ -703,7 +703,7 @@ namespace sakura {
 			}
 		}
 
-		scriptErrorLog += std::string() + "[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "] " + firstTrace + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "] " + err->GetMessage() + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "] " + trace;
+		scriptErrorLog += std::string() + "[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "] " + firstTrace + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "] " + err->GetErrorMessage() + " [" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "] " + trace;
 		return scriptErrorLog;
 	}
 }

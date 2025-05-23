@@ -441,6 +441,7 @@ namespace sakura {
 		TalkStringCombiner::SpeakedSpeakers speakedCache;
 		std::string talkBody;
 		bool isTalkLineEnd;
+		bool isTalkJump;
 
 		//このスタック位置の関数名
 		std::string funcName;
@@ -455,7 +456,8 @@ namespace sakura {
 			leaveMode(LeaveMode::None),
 			loopDepth(0),
 			loopMode(LoopMode::Normal),
-			isTalkLineEnd(false)
+			isTalkLineEnd(false),
+			isTalkJump(false)
 		{
 			speakedCache.lastSpeakerIndex = TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT;
 		}
@@ -468,7 +470,8 @@ namespace sakura {
 			callingBlockScope(nullptr),
 			parent(nullptr),
 			leaveMode(LeaveMode::None),
-			isTalkLineEnd(false)
+			isTalkLineEnd(false),
+			isTalkJump(false)
 		{
 			speakedCache.lastSpeakerIndex = TalkStringCombiner::TALK_SPEAKER_INDEX_DEFAULT;
 		}
@@ -624,6 +627,13 @@ namespace sakura {
 			isTalkLineEnd = true;
 		}
 
+		//フレームがトークジャンプによって呼び出されているか
+		void SetTalkJump(bool isJump) {
+			isTalkJump = isJump;
+		}
+
+		bool IsTalkJump() const { return isTalkJump; }
+
 		//話者交替タグ
 		void SwitchTalkSpeakerIndex(ScriptInterpreter& interpreter) {
 			//0と1の間で変更
@@ -680,13 +690,13 @@ namespace sakura {
 		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& currentFuncName);
 
 		//エラーオブジェクトのスロー
-		void ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err);
+		void ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err, ScriptExecuteContext& executeContext);
 
 		//エラーのスローヘルパ
 		template<typename T>
 		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
 			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
-			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err);
+			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err, context);
 			return err;
 		}
 

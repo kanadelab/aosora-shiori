@@ -26,14 +26,41 @@ class AosoraDebugSession extends DebugSession {
 			this.sendEvent(new TerminatedEvent());
 		};
 
-		this.debugInterface.onBreak = () => {
-			this.sendEvent(new StoppedEvent('Breakpoint', 1));
+		this.debugInterface.onBreak = (errorMessage:string|null) => {
+			const ev = new StoppedEvent('Breakpoint', 1, errorMessage ?? undefined);
+			if(!errorMessage){
+				ev.body.reason = 'breakpoint';
+			}
+			else {
+				ev.body.reason = 'exception';
+			}
+			
+			this.sendEvent(ev);
 		};
 	}
 
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
 
 		//TODO: この辺でセットアップ
+		response.body = {
+			//supportsExceptionOptions: true,
+			//supportsExceptionFilterOptions: true,
+			supportsExceptionInfoRequest: true,
+			exceptionBreakpointFilters: [
+				{
+					label: "すべてのエラー",
+					description: "実行時にエラーが発生したとき、キャッチされるかどうかにかかわらず実行中断します。",
+					filter: "all",
+					default: false
+				},
+				{
+					label: "キャッチされなかったエラー",
+					description: "実行時にエラーが発生したとき、キャッチされなかった場合に実行中断します。",
+					filter: "uncaught",
+					default: true
+				}
+			]
+		};
 
 		this.sendResponse(response);
 
@@ -45,6 +72,22 @@ class AosoraDebugSession extends DebugSession {
 	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: any) {
 		console.log("test");
 		this.debugInterface.Connect();
+		this.sendResponse(response);
+	}
+
+	//例外ブレークポイント
+	protected async setExceptionBreakPointsRequest(response: DebugProtocol.SetExceptionBreakpointsResponse, args: DebugProtocol.SetExceptionBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
+		this.debugInterface.SetExceptionBreakPoints(args.filters);
+		this.sendResponse(response);
+	}
+
+	protected exceptionInfoRequest(response: DebugProtocol.ExceptionInfoResponse, args: DebugProtocol.ExceptionInfoArguments, request?: DebugProtocol.Request): void {
+		const breakInfo = this.debugInterface.GetBreakInfo();
+		response.body = {
+			breakMode: 'unhandled',
+			exceptionId: breakInfo?.errorType ?? '',
+			description: breakInfo?.errorMessage ?? ''
+		};
 		this.sendResponse(response);
 	}
 
@@ -131,19 +174,6 @@ class AosoraDebugSession extends DebugSession {
 	//変数情報リクエスト
 	protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments, request?: DebugProtocol.Request): Promise<void> {
 
-		//TODO: スコープにもハンドルを発行しないと行けない関係上、ここできめるとまずそう
-		/*
-		response.body = {
-			scopes: [
-				//new Scope("SHIORI Request", this.variableHandles.create({ path: [], scope: VARIABLE_SCOPE_SHIORI_REQUEST, stackId: 0 }), false),
-				//new Scope("ローカル変数", this.variableHandles.create({ path: [], scope: VARIABLE_SCOPE_LOCAL, stackId: args.frameId }), false)
-				new Scope("SHIORI Request", 2, false),
-				new Scope("ローカル変数", 1, false)
-			]
-		};
-		this.sendResponse(response);
-		*/
-
 		const scopes = await this.debugInterface.RequestEnumScopes(args.frameId);
 		response.body = {
 			scopes: scopes.map(o => new Scope(o.name, o.handle))
@@ -192,17 +222,6 @@ class AosoraDebugSession extends DebugSession {
 				variablesReference: -1
 			};
 		}
-		
-		/*
-		else if (v.value ?? null === null) {
-			return {
-				name: v.key,
-				value: 'null',
-				type: 'null',
-				variablesReference: 0,
-			};
-		}
-			*/
 		else {
 			return {
 				name: v.key,

@@ -310,7 +310,7 @@ namespace sakura {
 		}
 
 		//文字列として評価する、デリゲートも呼び出して戻り値を評価する
-		std::string ToStringWithFunctionCall(ScriptExecuteContext& executeContext);
+		std::string ToStringWithFunctionCall(ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode);
 		ToStringFunctionCallResult ToStringWithFunctionCall(ScriptInterpreter& interpreter);
 
 		//インデックス数値として評価する（主に内部向け）

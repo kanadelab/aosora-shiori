@@ -388,7 +388,7 @@ namespace sakura {
 	}
 
 	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::shared_ptr<JsonObject>& value) {
-		if (token->GetType() == JsonTokenType::Boolean) {
+		if (token->GetType() == JsonTokenType::Object) {
 			value = std::static_pointer_cast<JsonObject>(token);
 			return true;
 		}

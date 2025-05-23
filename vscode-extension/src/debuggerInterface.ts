@@ -27,7 +27,9 @@ type StackFrame = z.infer<typeof StackFrame>;
 const BreakHitRequest = z.object({
 	filename: z.string(),
 	line: z.number(),
-	stackTrace: z.array(StackFrame)
+	stackTrace: z.array(StackFrame),
+	errorMessage: z.nullable(z.string()),
+	errorType: z.nullable(z.string())
 });
 type BreakHitRequest = z.infer<typeof BreakHitRequest>;
 
@@ -59,7 +61,7 @@ export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 export class AosoraDebuggerInterface {
 
 	public onClose:() => void;
-	public onBreak:(filename:string, line:number) => void;
+	public onBreak:(errorMessage: string|null) => void;
 
 	private socketClient:Net.Socket|null;
 	private breakInfo:BreakHitRequest|null;
@@ -161,13 +163,12 @@ export class AosoraDebuggerInterface {
 	private RecvBreak(request: BreakHitRequest){
 		console.log("break!");
 		this.breakInfo = request;
-		this.onBreak(this.breakInfo.filename, this.breakInfo.line);
+		this.onBreak(this.breakInfo.errorMessage);
 	}
 
 	//-- エディタ向けインターフェース
 
 	//ブレークポイント設定（エディタ側都合でファイルごとに差し替えの形）
-
 	public SetBreakPoints(filename: string, lines: number[]){
 		return new Promise<void>((resolve, reject) => {
 			const requestBody = {
@@ -175,6 +176,16 @@ export class AosoraDebuggerInterface {
 				lines
 			};
 			this.Send('set_breakpoints', requestBody, (_, e) => {!e ? resolve() : reject();} );
+		});
+	}
+
+	//例外ブレークポイント設定
+	public SetExceptionBreakPoints(exceptions: string[]){
+		return new Promise<void>((resolve, reject) => {
+			const requestBody = {
+				filters: exceptions
+			};
+			this.Send('set_exception_breakpoint', requestBody, (_, e) => {!e ? resolve() : reject();} );
 		});
 	}
 

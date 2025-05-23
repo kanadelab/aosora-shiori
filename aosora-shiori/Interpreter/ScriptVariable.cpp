@@ -185,7 +185,7 @@ namespace sakura {
 		return ScriptValueRef(new ScriptValue(interpreter.CreateObject()));
 	}
 
-	std::string ScriptValue::ToStringWithFunctionCall(ScriptExecuteContext& executeContext) {
+	std::string ScriptValue::ToStringWithFunctionCall(ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode) {
 
 		if (IsObject()) {
 			//もしオブジェクトなら呼び出し可能かどうかを評価、可能なら引数なしで呼んだ結果を返す
@@ -193,7 +193,7 @@ namespace sakura {
 			if (objRef->CanCall()) {
 				std::vector<ScriptValueRef> args;
 				FunctionResponse res;
-				executeContext.GetInterpreter().CallFunction(*this, res, args, executeContext, nullptr);
+				executeContext.GetInterpreter().CallFunction(*this, res, args, executeContext, callingAstNode);
 
 				if (res.IsThrew()) {
 					//例外がスローされていればエラーで打ち切る
@@ -202,7 +202,7 @@ namespace sakura {
 				}
 
 				if (res.GetReturnValue() != nullptr) {
-					return res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
+					return res.GetReturnValue()->ToStringWithFunctionCall(executeContext, callingAstNode);
 				}
 			}
 
@@ -222,7 +222,7 @@ namespace sakura {
 		ScriptExecuteContext executeContext(interpreter, rootStack, rootBlock);
 
 		//例外が出ている場合も考慮する
-		std::string str = ToStringWithFunctionCall(executeContext);
+		std::string str = ToStringWithFunctionCall(executeContext, nullptr);
 		ToStringFunctionCallResult result;
 		if (executeContext.GetStack().IsThrew()) {
 			result.error = executeContext.GetStack().GetThrewError();

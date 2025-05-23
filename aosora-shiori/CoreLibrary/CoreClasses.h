@@ -256,7 +256,7 @@ namespace sakura {
 		}
 
 		//メッセージ取得
-		const std::string& GetMessage() const {
+		const std::string& GetErrorMessage() const {
 			return message;
 		}
 
