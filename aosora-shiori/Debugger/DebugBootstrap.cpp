@@ -1,12 +1,13 @@
 ﻿
 #include <cassert>
-#include <Windows.h>
+#include <windows.h>
 #include <CommCtrl.h>
 #include "Debugger/DebugIO.h"
 
 namespace sakura
 {
-
+	//デバッグブートストラップウインドウ
+	//SSPを起動してからAosoraデバッガが接続してくるまで待機するたための、接続待ちを案内するウインドウ
 	class DebugBootstrapWindow
 	{
 	private:
@@ -30,9 +31,6 @@ namespace sakura
 			{
 				PAINTSTRUCT ps;
 				HDC hdc = BeginPaint(hwnd, &ps);
-
-				// All painting occurs here, between BeginPaint and EndPaint.
-
 				FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
 				DrawTextW(hdc, L"Aosora Debuggerの接続を待機しています...", -1, &ps.rcPaint, 0);
 
@@ -41,15 +39,32 @@ namespace sakura
 			}
 			case WM_COMMAND:
 			{
-				if (hwnd == instance->hCancelButton) {
-					//キャンセル
-				}
-				else if (hwnd == instance->hExitButton) {
+				if ((HWND)lParam == instance->hCancelButton) {
 					//強制終了
+					Debugger::TerminateProcess();
 				}
+				/*
+				else if ((HWND)lParam == instance->hExitButton) {
+					//強制終了
+					exit(0);
+				}
+				*/
+			}
+			case WM_CLOSE:
+			{
+				DestroyWindow(hwnd);
 			}
 			default:
 				return DefWindowProc(hwnd, uMsg, wParam, lParam);
+		}
+	}
+
+	void ProcessMessage(HWND hWnd)
+	{
+		MSG msg;
+		if (PeekMessage(&msg, hWnd, 0, 0, PM_REMOVE) != 0) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
 		}
 	}
 
@@ -77,45 +92,53 @@ namespace sakura
 		ShowWindow(hWnd, TRUE);
 		assert(hWnd != 0);
 
-		HWND hwndButton = CreateWindowW(WC_BUTTONW, L"キャンセル", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 30, 100, 30, hWnd, NULL, wc.hInstance, NULL);
-		HWND hwndButton2 = CreateWindowW(WC_BUTTONW, L"強制終了", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 120, 30, 100, 30, hWnd, NULL, wc.hInstance, NULL);
+		HWND hwndButton = CreateWindowW(WC_BUTTONW, L"強制終了", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 30, 100, 30, hWnd, NULL, wc.hInstance, NULL);
+		//HWND hwndButton2 = CreateWindowW(WC_BUTTONW, L"強制終了", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 120, 30, 100, 30, hWnd, NULL, wc.hInstance, NULL);
 
 		instance->hWnd = hWnd;
 		instance->hCancelButton = hwndButton;
-		instance->hExitButton = hwndButton2;
+		//instance->hExitButton = hwndButton2;
 		bool isConnected = false;
 
 		//メッセージループ
 		while (true) {
-			MSG msg;
-			if (PeekMessage(&msg, hWnd, 0, 0, PM_REMOVE) != 0) {
-				GetMessage(&msg, hWnd, 0, 0);
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-
-				// WM_DESTROY だったら終わり
-				if (msg.message == WM_DESTROY) {
-					break;
-				}
-			}
+			ProcessMessage(hWnd);
 
 			//接続できたらウインドウを閉じる
 			if (!isConnected && Debugger::IsConnected()) {
 				isConnected = true;
-				CloseWindow(hWnd);
+				DestroyWindow(hWnd);
 			}
 
-			//TODO: ループ離脱
+			if (!IsWindow(hWnd)) {
+				//ウインドウがしんだら抜ける
+				break;
+			}
 		}
 
 		delete instance;
 		instance = nullptr;
 	}
 
-	void Debugger::Bootstrap() {
-		//HWND hwnd = ::Bootstrap();
-		bool connected = false;
-		sakura::DebugBootstrapWindow::Run();
+	void Debugger::Bootstrap() {	
+#if 0
+		//指定の環境変数が設定されていれば機動隊気に入る
+		const char* bootstrapEnv = getenv("AOSORA_DEBUG_BOOTSTRAP");
+		bool enableDebugBootstrap = false;
+		if (bootstrapEnv != nullptr) {
+			if (strcmp(bootstrapEnv, "0") != 0) {
+				_putenv_s("AOSORA_DEBUG_BOOTSTRAP", "0");
+				enableDebugBootstrap = true;
+			}
+		}
+#else
+		bool enableDebugBootstrap = true;
+#endif
+		
+		if (enableDebugBootstrap) {
+			Debugger::SetDebugBootstrapped(true);
+			sakura::DebugBootstrapWindow::Run();
+		}
 
 	}
 }

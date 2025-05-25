@@ -1,34 +1,73 @@
-#include <vector>
+ï»¿#include <vector>
+#include <string_view>
+#include <string>
+#include "Windows.h"
 #include "Debugger/DebuggerUtility.h"
-#include "string_view"
+#pragma comment(lib, "Bcrypt.lib")
 
 namespace sakura {
 
-	//óMƒf[ƒ^ƒoƒbƒtƒ@
-	//’ÊMƒvƒƒgƒRƒ‹‚É]‚Á‚Äƒf[ƒ^‚ğƒoƒbƒtƒ@ƒŠƒ“ƒO•Ø‚èo‚µ‚ğs‚¤
-	//‚½‚¾A‚·‚×‚Ä‚ÌƒŠƒNƒGƒXƒg‚ğ‘—‚è‚Á‚Ï‚È‚µ‚Å‚Í‚È‚­‚¿‚á‚ñ‚ÆƒŒƒXƒ|ƒ“ƒX‚ğ•Ô‚·‚æ‚¤‚É‚·‚é‚È‚ç•s—v‚»‚¤‚È‹C‚à‚·‚éB
+	std::string MD5Hash(const std::string& fileBody)
+	{
+		BCRYPT_ALG_HANDLE hAlg = nullptr;
+		BCRYPT_HASH_HANDLE hHash = nullptr;
+		DWORD cbData = 0;
+		DWORD cbHash = 0;
+		DWORD cbHashObject = 0;
+		PBYTE pbHashObject = nullptr;
+		PBYTE pbHash = nullptr;
+
+		BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_MD5_ALGORITHM, nullptr, 0);
+		BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&cbHashObject, sizeof(DWORD), &cbData, 0);
+		BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&cbHash, sizeof(DWORD), &cbData, 0);
+
+		pbHash = (PBYTE)malloc(cbHash);
+		pbHashObject = (PBYTE)malloc(cbHashObject);
+
+		BCryptCreateHash(hAlg, &hHash, pbHashObject, cbHashObject, nullptr, 0, 0);
+		BCryptHashData(hHash, (const PBYTE)fileBody.c_str(), fileBody.size(), 0);
+		BCryptFinishHash(hHash, pbHash, cbHash, 0);
+
+		//TODO: é›‘ãªã®ã§ã‚‚ã†ã¡ã‚‡ã£ã¨ã¡ã‚ƒã‚“ã¨ã™ã‚‹
+		char resultStr[64] = {};
+		for (size_t i = 0; i < cbHash; i++) {
+			snprintf(resultStr + i * 2, 64 - (i * 2), "%02x", pbHash[i]);
+		}
+		std::string result = resultStr;
+
+		BCryptCloseAlgorithmProvider(hAlg, 0);
+		BCryptDestroyHash(hHash);
+		free(pbHash);
+		free(pbHashObject);
+
+		return result;
+	}
+
+	//å—ä¿¡ãƒ‡ãƒ¼ã‚¿ãƒãƒƒãƒ•ã‚¡
+	//é€šä¿¡ãƒ—ãƒ­ãƒˆã‚³ãƒ«ã«å¾“ã£ã¦ãƒ‡ãƒ¼ã‚¿ã‚’ãƒãƒƒãƒ•ã‚¡ãƒªãƒ³ã‚°ï¼†åˆ‡ã‚Šå‡ºã—ã‚’è¡Œã†
+	//ãŸã ã€ã™ã¹ã¦ã®ãƒªã‚¯ã‚¨ã‚¹ãƒˆã‚’é€ã‚Šã£ã±ãªã—ã§ã¯ãªãã¡ã‚ƒã‚“ã¨ãƒ¬ã‚¹ãƒãƒ³ã‚¹ã‚’è¿”ã™ã‚ˆã†ã«ã™ã‚‹ãªã‚‰ä¸è¦ãã†ãªæ°—ã‚‚ã™ã‚‹ã€‚
 	class ReceivedDataBuffer {
 	private:
 		std::vector<uint8_t> internalBuffer;
 
 	public:
 
-		//óMƒf[ƒ^‚Ì“Š“ü
+		//å—ä¿¡ãƒ‡ãƒ¼ã‚¿ã®æŠ•å…¥
 		void AddReceivedData(const uint8_t* data, size_t size)
 		{
-			//––”ö‚Éƒf[ƒ^‚ğ‘}“ü
+			//æœ«å°¾ã«ãƒ‡ãƒ¼ã‚¿ã‚’æŒ¿å…¥
 			size_t currentSize = internalBuffer.size();
 			internalBuffer.resize(currentSize + size);
 			memcpy(&internalBuffer[currentSize], data, size);
 		}
 
-		//óMƒf[ƒ^‚Ìæ“¾
+		//å—ä¿¡ãƒ‡ãƒ¼ã‚¿ã®å–å¾—
 		bool ReadReceivedString(std::string_view& receivedString)
 		{
-			//‹æØ‚è‚Ì0ƒoƒCƒg‚ğŒŸõ
+			//åŒºåˆ‡ã‚Šã®0ãƒã‚¤ãƒˆã‚’æ¤œç´¢
 			void* addr = std::memchr(&internalBuffer[0], 0, internalBuffer.size());
 			if (addr != nullptr) {
-				//”ÍˆÍ‚ğØ‚èo‚·
+				//ç¯„å›²ã‚’åˆ‡ã‚Šå‡ºã™
 				const size_t size = reinterpret_cast<const uint8_t*>(addr) - &internalBuffer[0];
 				receivedString = std::string_view(reinterpret_cast<const char*>(&internalBuffer[0]), size);
 				return true;
@@ -38,21 +77,32 @@ namespace sakura {
 			}
 		}
 
-		//óMƒf[ƒ^‚Ìíœ
-		//ReadReceivedString‚ÅóM‚µ‚½ string_view ‚ğ•Ô‹p‚·‚éŒ`‚Åƒoƒbƒtƒ@‚ğƒVƒtƒg‚µ‚Ü‚·
+		//å—ä¿¡ãƒ‡ãƒ¼ã‚¿ã®å‰Šé™¤
+		//ReadReceivedStringã§å—ä¿¡ã—ãŸ string_view ã‚’è¿”å´ã™ã‚‹å½¢ã§ãƒãƒƒãƒ•ã‚¡ã‚’ã‚·ãƒ•ãƒˆã—ã¾ã™
 		void RemoveReceivedData(const std::string_view& receivedString)
 		{
-			//‚·‚×‚Ä‚Ì—Ìˆæ‚ğíœ‚·‚éê‡‚Í“¯‚¶ƒxƒNƒ^‚ğƒoƒbƒtƒ@‚Æ‚µ‚Äg‚¤
+			//ã™ã¹ã¦ã®é ˜åŸŸã‚’å‰Šé™¤ã™ã‚‹å ´åˆã¯åŒã˜ãƒ™ã‚¯ã‚¿ã‚’ãƒãƒƒãƒ•ã‚¡ã¨ã—ã¦ä½¿ã†
 			if (receivedString.size() + 1 == internalBuffer.size()) {
 				internalBuffer.clear();
 				return;
 			}
 
-			//‚ ‚½‚ç‚µ‚¢—Ìˆæ‚ğ‚Æ‚è‚È‚¨‚µ‚ÄƒVƒtƒg
+			//ã‚ãŸã‚‰ã—ã„é ˜åŸŸã‚’ã¨ã‚ŠãªãŠã—ã¦ã‚·ãƒ•ãƒˆ
 			std::vector<uint8_t> newBuffer;
 			newBuffer.resize(internalBuffer.size() - (receivedString.size() + 1));
 			memcpy(&newBuffer[0], &internalBuffer[receivedString.size() + 1], newBuffer.size());
 			internalBuffer = std::move(newBuffer);
 		}
 	};
+
+	
+	void LoadedSourceManager::AddSource(const std::string& body, const std::string& fullName)
+	{
+		LoadedSource source;
+		source.md5 = MD5Hash(body);
+		source.fullName = fullName;
+		loadedSources.push_back(source);
+	}
+
+	
 }

@@ -105,11 +105,11 @@ namespace sakura {
 			sourceFullPath(fullpath) {
 		}
 
-		const std::string& GetFileName() {
+		const std::string& GetFileName() const{
 			return sourceName;
 		}
 
-		const std::string& GetFullPath() {
+		const std::string& GetFullPath() const{
 			return sourceFullPath;
 		}
 	};
@@ -231,6 +231,11 @@ namespace sakura {
 		//コンソール出力用のエラーを報告
 		std::string MakeConsoleErrorString() const {
 			return "ERROR: " + GetPosition().ToString() + " [" + GetData().errorCode + "] " + GetData().message;
+		}
+
+		//デバッガ出力用(位置データを別でもつ)のエラーメッセージ作成
+		std::string MakeDebuggerErrorString() const {
+			return "[" + GetData().errorCode + "] " + GetData().message;
 		}
 	};
 

@@ -144,6 +144,16 @@ namespace sakura {
 			std::string indentSpace(indent * 2, ' ');
 			printf("%s[%s] %s\n", indentSpace.c_str(), DebugName(), DebugToString().c_str());
 		}
+
+		//再帰的にノードを全部取得
+		void GetChildrenRecursive(std::vector<ConstASTNodeRef>& node) const {
+			size_t beginIndex = node.size();
+			GetChildren(node);
+			//さらに子をたどる
+			for (size_t i = beginIndex; i < node.size(); i++) {
+				node[i]->GetChildrenRecursive(node);
+			}
+		}
 	};
 
 	//スクリプト関数

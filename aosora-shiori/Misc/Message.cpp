@@ -84,6 +84,7 @@ namespace sakura {
 
 			.Register("AOSORA_BALLOON_CLOSE", "閉じる")
 			.Register("AOSORA_BALLOON_RELOAD", "ゴーストを再読み込み")
+			.Register("AOSORA_RELOAD_DEBUGGER_HINT", "(デバッグツールからゴーストを再起動できます)")
 
 			.Register("AOSORA_BUILTIN_ERROR_001", "1リクエスト内の実行処理数が制限を超えました。無限ループになってませんか？")
 			.Register("AOSORA_BUILTIN_ERROR_002", "関数またはトークではないため、関数呼び出しができません。")

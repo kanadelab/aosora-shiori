@@ -16,6 +16,9 @@ namespace sakura {
 		ConstASTNodeRef root;
 		std::map<std::string, ScriptClassRef> classMap;
 
+		//デバッグツールに提供するブレーク可能な行インデックスの一覧
+		std::vector<uint32_t> breakableLines;
+
 		//パースエラー: 発生時、その場で解析を打ち切るのでエラーは必ず１個だけ
 		std::shared_ptr<ScriptParseError> error;
 	};

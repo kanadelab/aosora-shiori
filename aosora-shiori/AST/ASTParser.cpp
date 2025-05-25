@@ -1,4 +1,5 @@
-﻿#include "Misc/Utility.h"
+﻿#include <set>
+#include "Misc/Utility.h"
 #include "Tokens/Tokens.h"
 #include "AST/ASTNodeBase.h"
 #include "AST/ASTNodes.h"
@@ -228,6 +229,31 @@ namespace sakura {
 		}
 
 		parseResult->root = codeBlock;
+
+		//パースした結果からブレーク可能な行を作成
+		std::vector<ConstASTNodeRef> allNodes;
+		std::vector<ConstASTNodeRef> breakableNodes;
+		std::set<uint32_t> breakableLinesSet;
+		parseResult->root->GetChildren(allNodes);
+
+		//ブレークできるのはコードブロックの子として認識しているノードなので、それらをまとめて取得する
+		for (size_t i = 0; i < allNodes.size(); i++) {
+			if (allNodes[i]->GetType() == ASTNodeType::CodeBlock) {
+				allNodes[i]->GetChildren(breakableNodes);
+			}
+		}
+
+		//行数にまとめる
+		for (size_t i = 0; i < breakableNodes.size(); i++) {
+			breakableLinesSet.insert(breakableNodes[i]->GetSourceRange().GetBeginLineIndex());
+		}
+
+		//ソートしたうえで配列として持つ
+		parseResult->breakableLines.reserve(breakableLinesSet.size());
+		for (auto it = breakableLinesSet.begin(); it != breakableLinesSet.end(); it++) {
+			parseResult->breakableLines.push_back(*it);
+		}
+		std::sort(parseResult->breakableLines.begin(), parseResult->breakableLines.end());
 
 		return parseResult;
 	}

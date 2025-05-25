@@ -65,19 +65,25 @@
     "debuggers": [
       {
         "type": "aosora",
-        "languages": [
-          "aosora-shiori"
-        ],
+        "languages": ["aosora-shiori"],
         "label": "Aosora Debugger",
-        "configurationAttributes": {
-          "launch": {}
-        },
         "initialConfigurations": [
           {
             "type": "aosora",
             "request": "launch"
           }
-        ]
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch.",
+                "default": true
+              }
+            }
+          }
+        }
       }
     ]
   },

@@ -14,6 +14,7 @@
 #include <atomic>
 #include "CoreLibrary/CoreLibrary.h"
 #include "Debugger/DebugIO.h"
+#include "Debugger/DebuggerUtility.h"
 #include "Misc/Json.h"
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -154,7 +155,13 @@ namespace sakura {
 		bool QueryBreakPoint(const std::string& filename, uint32_t line) {
 			LockScope ls(lockObj);
 
-			auto fileHit = breakPoints.find(filename);
+			//WARN: 暫定:ドライブレターを統一する
+			std::string filename2 = filename;
+			if (filename2.size() > 0) {
+				filename2[0] = toupper(filename2[0]);
+			}
+
+			auto fileHit = breakPoints.find(filename2);
 			if (fileHit == breakPoints.end()) {
 				return false;
 			}
@@ -523,11 +530,12 @@ namespace sakura {
 				break;
 			}
 
+			if (isClosing) {
+				return;
+			}
+
 			{
 				LockScope lc(threadLock);
-				if (isClosing) {
-					return;
-				}
 
 				//ステートを接続状態に
 				isConnected = true;
@@ -561,7 +569,8 @@ namespace sakura {
 				if (sendObject != nullptr) {
 					//文字列にシリアライズしてそのまま送信
 					const std::string sendStr = JsonSerializer::Serialize(sendObject);
-					if (send(clientSocket, sendStr.c_str(), sendStr.size(), 0) == SOCKET_ERROR) {
+					//末尾\0まで送信する
+					if (send(clientSocket, sendStr.c_str(), sendStr.size()+1, 0) == SOCKET_ERROR) {
 
 						//終了要求
 						if (isClosing)
@@ -607,17 +616,27 @@ namespace sakura {
 
 				if (size > 0) {
 					//受信成功
+					size_t offset = 0;
+					while (offset < size) {
+						//複数同時に届く可能性があるので分離
+						const char* ptr = static_cast<const char*>(memchr(buffer + offset, 0, size - offset));
+						const size_t index = ptr - buffer;
+						if (ptr == nullptr) {
+							//終端がない
+							assert(false);
+							break;
+						}
 
-					//Jsonデシリアライズ
-					//TODO: この時点で適切に分離する必要がある。２個届いたりするので適切に分割するなどのバッファリングが必要か。
-					std::string src(buffer, size);
-					JsonDeserializeResult deserializeResult = JsonSerializer::Deserialize(src);
+						std::string src(buffer + offset, index - offset);
+						JsonDeserializeResult deserializeResult = JsonSerializer::Deserialize(src);
 
-					//デシリアライズに成功していたら処理に回す、失敗していたらそのフォーマットは想定してないので捨てる
-					assert(deserializeResult.success);
-					assert(deserializeResult.token->GetType() == JsonTokenType::Object);
-					if (deserializeResult.success && deserializeResult.token->GetType() == JsonTokenType::Object) {
-						receiveCallback(*static_cast<JsonObject*>(deserializeResult.token.get()));
+						//デシリアライズに成功していたら処理に回す、失敗していたらそのフォーマットは想定してないので捨てる
+						assert(deserializeResult.success);
+						assert(deserializeResult.token->GetType() == JsonTokenType::Object);
+						if (deserializeResult.success && deserializeResult.token->GetType() == JsonTokenType::Object) {
+							receiveCallback(*static_cast<JsonObject*>(deserializeResult.token.get()));
+						}
+						offset = index + 1;
 					}
 				}
 				else if (size == 0) {
@@ -662,12 +681,13 @@ namespace sakura {
 			connectionStateCallback(false);
 			isConnected = false;
 
+			if (isClosing) {
+				//終了に流れていく場合はなにもしない
+				return;
+			}
+
 			{
-				LockScope ls(threadLock);
-				if (isClosing) {
-					//終了に流れていく場合はなにもしない
-					return;
-				}
+				LockScope ls(threadLock);	
 
 				//送信スレッドの終了をまつ
 				if (sendThread->joinable()) {
@@ -723,13 +743,13 @@ namespace sakura {
 				LockScope ls(threadLock);
 
 				//スレッド待機
-				if (listenThread->joinable()) {
+				if (listenThread && listenThread->joinable()) {
 					listenThread->join();
 				}
-				if (sendThread->joinable()) {
+				if (sendThread && sendThread->joinable()) {
 					sendThread->join();
 				}
-				if (recvThread->joinable()) {
+				if (recvThread && recvThread->joinable()) {
 					recvThread->join();
 				}
 			}
@@ -814,6 +834,8 @@ namespace sakura {
 		//実行状態
 		ExecutingState executingState;
 		bool isConnected;
+		std::atomic<bool> isSetupCompleted;
+		std::atomic<bool> isDebugBootstrapped;
 
 		//ブレーク中のコマンドキュー
 		std::list<std::shared_ptr<IBreakingCommand>> breakingCommandQueue;
@@ -821,6 +843,9 @@ namespace sakura {
 
 		//ブレークポイント
 		BreakPointManager breakPoints;
+
+		//ファイル
+		LoadedSourceManager loadedSources;
 
 		//最後にブレークした位置
 		std::string lastBreakFullPath;
@@ -855,7 +880,9 @@ namespace sakura {
 	private:
 		DebugSystem() :
 			executingState(ExecutingState::Execute),
-			isConnected(false)
+			isConnected(false),
+			isSetupCompleted(false),
+			isDebugBootstrapped(false)
 		{
 			//同時に通信系を起動する
 			DebugConnection::Create(&DebugSystem::OnNotifyReceive, &DebugSystem::OnNotifyConnectionState);
@@ -878,8 +905,15 @@ namespace sakura {
 			if (GetInstance()->isConnected != connected) {
 				GetInstance()->isConnected = connected;
 				if (!connected) {
+					//デバッガから直接起動されているとき、切断されたらゴーストを強制的に停止させる
+					if (GetInstance()->isDebugBootstrapped) {
+						Debugger::TerminateProcess();
+					}
 					//切断時、ブレークポイント等のステートをすべてリセットする
 					GetInstance()->ClearState();
+				}
+				else {
+					GetInstance()->NotifyLog("aosora debugger", false);
 				}
 			}
 		}
@@ -907,8 +941,17 @@ namespace sakura {
 			Send(responseData);
 		}
 
+		void SendRequest(const std::shared_ptr<JsonObject>& body, const std::string& requestType) {
+			auto requestData = JsonSerializer::MakeObject();
+			requestData->Add("type", JsonSerializer::From(requestType));
+			requestData->Add("body", body);
+			requestData->Add("responseId", JsonSerializer::From(""));
+			Send(requestData);
+		}
+
 		void ClearState()
 		{
+			isSetupCompleted = false;
 			breakPoints.ClearBreakPoint();
 			lastBreakFullPath = "";
 			lastBreakLineIndex = 0;
@@ -920,10 +963,16 @@ namespace sakura {
 		}
 
 	public:
+		//外側向けには設定完了を接続完了とする
+		bool IsConnected() const { return isSetupCompleted; }
 
-		bool IsConnected() const { return isConnected; }
 		void NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 		void NotifyThrowExceotion(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
+		void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName);
+		void NotifyLog(const std::string& log, bool isError);
+		void NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError);
+		void NotifyLog(const std::string& log, const SourceCodeRange& sourceCodeRange, bool isError);
+		void NotifyScriptReturned();
 
 		void Break(const std::string& filepath, uint32_t line, size_t stackLevel, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo);
 		void SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo);
@@ -932,6 +981,9 @@ namespace sakura {
 			LockScope ls(breakingCommandQueueLock);
 			breakingCommandQueue.push_back(std::shared_ptr<IBreakingCommand>(command));
 		}
+
+		bool IsDebugBootstrapped() { return isDebugBootstrapped; }
+		void SetDebugBootstrapped(bool isBootstrapped) { isDebugBootstrapped = isBootstrapped; }
 
 		JsonObjectRef RequestMembers(uint32_t handle, BreakSession& breakSession);
 		JsonObjectRef RequestScopes(uint32_t stackIndex, BreakSession& breakSession);
@@ -1008,6 +1060,35 @@ namespace sakura {
 			info.errorType = executeContext.GetInterpreter().GetClassTypeName(runtimeError.GetInstanceTypeId());
 			Break(fullPath, line, stackLevel, executingNode, executeContext, &info);
 		}
+	}
+
+	void DebugSystem::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName) {
+		loadedSources.AddSource(fileBody, fullName);
+	}
+
+	void DebugSystem::NotifyLog(const std::string& log, bool isError) {
+		auto requestBody = JsonSerializer::MakeObject();
+		requestBody->Add("message", JsonSerializer::From(log));
+		requestBody->Add("isError", JsonSerializer::From(isError));
+		SendRequest(requestBody, "message");
+	}
+
+	void DebugSystem::NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError) {
+		NotifyLog(log, node.GetSourceRange(), isError);
+	}
+
+	void DebugSystem::NotifyLog(const std::string& log, const SourceCodeRange& sourceCodeRange, bool isError) {
+		auto requestBody = JsonSerializer::MakeObject();
+		requestBody->Add("message", JsonSerializer::From(log));
+		requestBody->Add("isError", JsonSerializer::From(isError));
+		requestBody->Add("filepath", JsonSerializer::From(sourceCodeRange.GetSourceFileFullPath()));
+		requestBody->Add("line", JsonSerializer::From(sourceCodeRange.GetBeginLineIndex() + 1));
+		SendRequest(requestBody, "message");
+	}
+
+	void DebugSystem::NotifyScriptReturned() {
+		//ステップイン等を解除する
+		executingState = ExecutingState::Execute;
 	}
 
 	void DebugSystem::Break(const std::string& fullPath, uint32_t line, size_t stackLevel, const ASTNodeBase& node, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo) {
@@ -1396,26 +1477,32 @@ namespace sakura {
 					}
 				}
 				breakPoints.SetRuntimeErrorBreaks(breakAll, breakUncaught);
+
+				//例外ブレークポイントの設定は有無にかかわらず呼び出され、この時点でセットアップ完了といえる
+				isSetupCompleted = true;
 				SendResponse(requestId);
 				return;
 			}
 		}
 		else if (requestType == "continue") {
 			//続行指示
-			//TODO: すべてのリクエストがなんらかのレスポンスを非同期で返すべきか少し気になる
 			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::Execute));
+			SendResponse(requestId);
 			return;
 		}
 		else if (requestType == "stepin") {
 			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepIn));
+			SendResponse(requestId);
 			return;
 		}
 		else if (requestType == "stepover") {
 			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepOver));
+			SendResponse(requestId);
 			return;
 		}
 		else if (requestType == "stepout") {
 			AddBreakingCommand(new ExecuteStateCommand(ExecutingState::StepOut));
+			SendResponse(requestId);
 			return;
 		}
 		else if (requestType == "members") {
@@ -1433,6 +1520,20 @@ namespace sakura {
 				AddBreakingCommand(new ScopesRequestCommand(stackIndex, requestId));
 				return;
 			}
+		}
+		else if (requestType == "loaded_sources") {
+			auto responseData = JsonSerializer::MakeObject();
+			auto files = JsonSerializer::MakeArray();
+			for (size_t i = 0; i < loadedSources.GetLoadedSourceCount(); i++) {
+				auto fileRecord = JsonSerializer::MakeObject();
+				const auto& loadedFile = loadedSources.GetLoadedSource(i);
+				fileRecord->Add("path", JsonSerializer::From(loadedFile.fullName));
+				fileRecord->Add("md5", JsonSerializer::From(loadedFile.md5));
+				files->Add(fileRecord);
+			}
+			responseData->Add("files", files);
+			SendResponse(responseData, requestId);
+			return;
 		}
 
 		//returnされなかった場合は処理できなかったものとして扱う、エラーレスポンスとして返す
@@ -1473,6 +1574,49 @@ namespace sakura {
 		}
 	}
 
+	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyScriptFileLoaded(fileBody, fullName);
+		}
+	}
+
+	void Debugger::NotifyLog(const std::string& log, bool isError) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyLog(log, isError);
+		}
+	}
+
+	void Debugger::NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyLog(log, node, isError);
+		}
+	}
+
+	void Debugger::NotifyLog(const std::string& log, const SourceCodeRange& sourceCodeRange, bool isError) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyLog(log, sourceCodeRange, isError);
+		}
+	}
+
+	void Debugger::NotifyEventReturned() {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyScriptReturned();
+		}
+	}
+
+	void Debugger::SetDebugBootstrapped(bool isBootstrapped) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->SetDebugBootstrapped(isBootstrapped);
+		}
+	}
+
+	bool Debugger::IsDebugBootstrapped() {
+		if (DebugSystem::GetInstance() != nullptr) {
+			return DebugSystem::GetInstance()->IsDebugBootstrapped();
+		}
+		return false;
+	}
+
 	void Debugger::Create() {
 		DebugSystem::Create();
 	}
@@ -1481,10 +1625,20 @@ namespace sakura {
 		DebugSystem::Destroy();
 	}
 
+	bool Debugger::IsCreated() {
+		return (DebugSystem::GetInstance() != nullptr);
+	}
+
 	bool Debugger::IsConnected() {
 		if (DebugSystem::GetInstance() != nullptr) {
 			return DebugSystem::GetInstance()->IsConnected();
 		}
 		return false;
+	}
+
+	void Debugger::TerminateProcess() {
+		//プロセス強制停止
+		HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, GetCurrentProcessId());
+		::TerminateProcess(hProcess, 0);
 	}
 }

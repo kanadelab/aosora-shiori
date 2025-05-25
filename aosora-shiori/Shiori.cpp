@@ -23,17 +23,15 @@ namespace sakura {
 		shioriInfo["craftman"] = "kanadelab";
 		shioriInfo["craftmanw"] = "ななっち";
 		shioriInfo["name"] = "Aosora";
-
-		//デバッグシステムを起動
-		//TODO: 必要に応じて
-		Debugger::Create();
 	}
 
 	Shiori::~Shiori() {
 		TextSystem::DestroyInstance();
 
-		//デバッグシステムを終了
-		Debugger::Destroy();
+		if (Debugger::IsCreated()) {
+			//デバッグシステムを終了
+			Debugger::Destroy();
+		}
 	}
 
 	//基準設定とかファイル読み込みとか
@@ -91,6 +89,11 @@ namespace sakura {
 			interpreter.SetLimitScriptSteps(projectSettings.limitScriptSteps);
 		}
 
+		//デバッグが有効ならデバッグシステムを起動する
+		if (projectSettings.enableDebug) {
+			Debugger::Create();
+		}
+
 		//デバッグモードが有効ならデバッグ出力のストリームを開く
 		if (projectSettings.enableDebug && projectSettings.enableDebugLog && !projectSettings.debugOutputFilename.empty()) {
 			interpreter.OpenDebugOutputStream(projectSettings.debugOutputFilename);
@@ -111,8 +114,19 @@ namespace sakura {
 			}
 		}
 
+		//デバッグブートストラップはここで処理する
+		Debugger::Bootstrap();
+
 		//エラーが発生していたら以降の処理を打ち切る
 		if (!scriptLoadErrors.empty()) {
+
+			//デバッガが接続していたらエラーの内容をデバッガに流す
+			if (Debugger::IsConnected()) {
+				Debugger::NotifyLog("Aosoraの読み込み時にエラーが発生したためゴーストが正しく起動できませんでした。");
+				for (const auto& err : scriptLoadErrors) {
+					Debugger::NotifyLog(err.MakeDebuggerErrorString(), err.GetPosition(), true);
+				}
+			}
 			return;
 		}
 
@@ -290,12 +304,18 @@ namespace sakura {
 			return std::shared_ptr<const ASTParseResult>(errorResult);
 		}
 
+		//デバッグシステムに読み込み通知
+		Debugger::NotifyScriptFileLoaded(script, filePath.GetFullPath());
+
 		auto ast = sakura::ASTParser::Parse(tokens);
 		return ast;
 	}
 
 	void Shiori::Request(const ShioriRequest& request, ShioriResponse& response) {
 		RequestInternal(request, response);
+
+		//デバッガに戻ったことを通知
+		Debugger::NotifyEventReturned();
 
 		//不要なオブジェクトを開放
 		interpreter.CollectObjects();
@@ -525,7 +545,12 @@ namespace sakura {
 		}
 
 		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
-		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") +  ",OnAosoraRequestReload]";
+		if (!Debugger::IsDebugBootstrapped()) {
+			errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
+		}
+		else {
+			errorGuide += std::string() + "\\n" + TextSystem::Find("AOSORA_RELOAD_DEBUGGER_HINT");
+		}
 		return errorGuide;
 	}
 
@@ -557,7 +582,12 @@ namespace sakura {
 		errorGuide += std::string() + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_4") + "]\\_?\\n\\_?" + err.GetPosition().ToString() + "\\_?\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_5") + "]\\_?\\n\\_?" + err.GetData().errorCode + ": " + err.GetData().message + "\\_?\\n\\n\\_?[" + TextSystem::Find("AOSORA_BOOT_ERROR_6") + "]\\_?\\n\\_?" + err.GetData().hint + "\\_?";
 		errorGuide += std::string() + "\\n\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BOOT_ERROR_3") + ",OnAosoraErrors]";
 		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
-		errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
+		if (!Debugger::IsDebugBootstrapped()) {
+			errorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
+		}
+		else {
+			errorGuide += std::string() + "\\n" + TextSystem::Find("AOSORA_RELOAD_DEBUGGER_HINT");
+		}
 		return errorGuide;
 	}
 
@@ -671,7 +701,12 @@ namespace sakura {
 
 		ghostErrorGuide += std::string() + "\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_2") + "]\\_?\\n" + firstTrace + "\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_3") + "]\\_?\\n" + "\\_?" + err->GetErrorMessage() + "\\_?" + "\\n\\n\\_?[" + TextSystem::Find("AOSORA_RUNTIME_ERROR_4") + "]\\_?\\n" + trace;
 		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_CLOSE") + ",OnAosoraErrorClose]";
-		ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
+		if (!Debugger::IsDebugBootstrapped()) {
+			ghostErrorGuide += std::string() + "\\n\\![*]\\q[" + TextSystem::Find("AOSORA_BALLOON_RELOAD") + ",OnAosoraRequestReload]";
+		}
+		else {
+			ghostErrorGuide += std::string() + "\\n" + TextSystem::Find("AOSORA_RELOAD_DEBUGGER_HINT");
+		}
 
 		return ghostErrorGuide;
 	}

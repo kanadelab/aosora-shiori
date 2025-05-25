@@ -1,11 +1,39 @@
 import * as vscode from 'vscode';
-import { Breakpoint, DebugSession, InitializedEvent, Scope, Source, StackFrame, StoppedEvent, TerminatedEvent, Thread } from '@vscode/debugadapter';
+import { Breakpoint, DebugSession, InitializedEvent,  LoadedSourceEvent,  OutputEvent,  Scope, Source, StackFrame, StoppedEvent, TerminatedEvent, Thread } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
-import { AosoraDebuggerInterface, VariableInformation } from './debuggerInterface';
+import { AosoraDebuggerInterface, LoadedSource, VariableInformation } from './debuggerInterface';
 import { basename } from 'path';
+import { LaunchDebuggerRuntime } from './debuggerRuntime';
+import { LogLevel, LogOutputEvent } from '@vscode/debugadapter/lib/logger';
+import { ProjectParser } from './projectParser';
+import path = require('path');
+
+
+//規定の設定群を作成
+export class DebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+	resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
+		if (!config.type && !config.request && !config.name) {
+			// launch.json が無いときのデフォルト設定を返す
+			return {
+				name: 'aosora debug',
+				type: 'aosora',
+				request: 'launch'
+			};
+    }
+
+    return config;
+	}
+}
+
 export class DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+
+	private extensionPath:string;
+	public constructor(extensionPath:string){
+		this.extensionPath = extensionPath;
+	}
+
 	createDebugAdapterDescriptor(session: vscode.DebugSession, executable: vscode.DebugAdapterExecutable | undefined): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-		return new vscode.DebugAdapterInlineImplementation(new AosoraDebugSession());
+		return new vscode.DebugAdapterInlineImplementation(new AosoraDebugSession(this.extensionPath));
 	}
 }
 
@@ -16,10 +44,12 @@ export class DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory
 class AosoraDebugSession extends DebugSession {
 
 	private debugInterface: AosoraDebuggerInterface;
+	private extensionPath: string;
 
-	public constructor() {
+	public constructor(extensionPath:string) {
 		super();
 		this.debugInterface = new AosoraDebuggerInterface();
+		this.extensionPath = extensionPath;
 
 		//各種コールバックを設定
 		this.debugInterface.onClose = () => {
@@ -37,6 +67,21 @@ class AosoraDebugSession extends DebugSession {
 			
 			this.sendEvent(ev);
 		};
+
+		this.debugInterface.onMessage = (message:string, isError:boolean, filepath: string|null, line:number|null) => {
+
+			const ev = new OutputEvent(message + "\n", isError ? 'stderr' : 'stdout') as DebugProtocol.OutputEvent ;
+			if(line && filepath){
+				ev.body.source = {
+					path: filepath,
+				};
+				ev.body.line = line;
+			}
+			this.sendEvent(ev);
+		}
+
+		//Aosora側でゴーストをよみなおしたときにやる必要がある
+		//new LoadedSourceEvent()
 	}
 
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
@@ -46,6 +91,8 @@ class AosoraDebugSession extends DebugSession {
 			//supportsExceptionOptions: true,
 			//supportsExceptionFilterOptions: true,
 			supportsExceptionInfoRequest: true,
+			supportsLoadedSourcesRequest: true,
+			supportsRestartRequest: false,
 			exceptionBreakpointFilters: [
 				{
 					label: "すべてのエラー",
@@ -69,15 +116,74 @@ class AosoraDebugSession extends DebugSession {
 	}
 
 	//デバッグ起動のリクエスト（アタッチは別で存在している）
-	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: any) {
+	protected async launchRequest(response: DebugProtocol.LaunchResponse, args: any) :Promise<void>{
+
+		//プロジェクトファイルをパース
+		const ghostProj = await vscode.workspace.findFiles("**/ghost.asproj");
+		if(ghostProj.length == 1){
+			//プロジェクトファイルを読む
+			const project = new ProjectParser();
+			const projPath = ghostProj[0].fsPath;
+			const debugPath = path.join(path.dirname(projPath), "debug.asproj");
+			await project.Parse(projPath);
+			await project.Parse(debugPath);
+
+			//起動する
+			if(project.runtimePath){
+				const aosoraDir = path.dirname(projPath);
+				const ghostPath = path.dirname(path.dirname(aosoraDir));	//プロジェクトの２階層上
+				try{
+					//TODO: ここでawaitで待つとSSP終了まで待ってしまうので一旦待たない
+					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir);
+				}
+				catch{
+					vscode.window.showErrorMessage("sspの起動に失敗しました。");
+					this.sendEvent(new TerminatedEvent());	
+					return;
+				}
+
+				try{
+					await this.debugInterface.Connect();
+				}
+				catch{
+					vscode.window.showErrorMessage("デバッガはゴーストへの接続に失敗しました。");
+					this.sendEvent(new TerminatedEvent());	
+					return;
+				}
+			}
+			else {
+				vscode.window.showErrorMessage("asprojファイルに debug.debugger.runtime 設定が見つかりません。");
+				this.sendEvent(new TerminatedEvent());
+			}
+		}
+		else if(ghostProj.length == 0) {
+			//terminateイベントを出す
+			vscode.window.showErrorMessage("ワークスペースに ghost.asproj が見つからないため起動できませんでした。");
+			this.sendEvent(new TerminatedEvent());
+			return;
+		}
+		else {
+			//terminateイベントを出す
+			vscode.window.showErrorMessage("ワークスペースに複数のghost.asprojがあるため起動に使用する１つを特定できませんでした。");
+			this.sendEvent(new TerminatedEvent());
+			return;
+		}
+
+		
+		this.sendResponse(response);
+	}
+
+	protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
 		console.log("test");
-		this.debugInterface.Connect();
+		await this.debugInterface.Connect();
 		this.sendResponse(response);
 	}
 
 	//例外ブレークポイント
 	protected async setExceptionBreakPointsRequest(response: DebugProtocol.SetExceptionBreakpointsResponse, args: DebugProtocol.SetExceptionBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
-		this.debugInterface.SetExceptionBreakPoints(args.filters);
+		await this.debugInterface.WaitForConnect();
+		console.log("send exception breakpoints");
+		await this.debugInterface.SetExceptionBreakPoints(args.filters);
 		this.sendResponse(response);
 	}
 
@@ -93,6 +199,7 @@ class AosoraDebugSession extends DebugSession {
 
 	//ブレークポイント
 	protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.WaitForConnect();
 
 		//ファイル名と行番号を取得
 		const filename = args.source.path ?? "";
@@ -145,27 +252,31 @@ class AosoraDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
-	protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments, request?: DebugProtocol.Request): void {
-		this.debugInterface.Continue();
+	//実行
+	protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments, request?: DebugProtocol.Request): Promise<void>{
+		await this.debugInterface.Continue();
 		this.sendResponse(response);
 	}
 
-	protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments, request?: DebugProtocol.Request): void {
-		this.debugInterface.StepOver();
+	//ステップオーバー
+	protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.StepOver();
 		this.sendResponse(response);
 	}
 
-	protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments, request?: DebugProtocol.Request): void {
-		this.debugInterface.StepIn();
+	//ステップイン
+	protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.StepIn();
 		this.sendResponse(response);
 	}
 
-	protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments, request?: DebugProtocol.Request): void {
-		this.debugInterface.StepOut();
+	//ステップアウト
+	protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.StepOut();
 		this.sendResponse(response);
 	}
 
-
+	//切断
 	protected disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request): void {
 		this.debugInterface.Disconnect();
 		this.sendResponse(response);
@@ -192,9 +303,26 @@ class AosoraDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
+	//読み込みソースリクエスト
+	protected async loadedSourcesRequest(response: DebugProtocol.LoadedSourcesResponse, args: DebugProtocol.LoadedSourcesArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.WaitForConnect();
+		const sources = await this.debugInterface.RequestLoadedSource();
+		response.body = {
+			sources: sources.map(o => this.createLoadedsource(o))
+		};
+		this.sendResponse(response);
+	}
+
 	//ヘルパ類
 	private createSource(filename: string) {
 		return new Source(basename(filename), this.convertDebuggerPathToClient(filename));
+	}
+
+	private createLoadedsource(source: LoadedSource):DebugProtocol.Source{
+		return {
+			path: source.path, 
+			checksums: [{algorithm: 'MD5', checksum: source.md5}]
+		};
 	}
 
 	private convertVariable(v: VariableInformation): DebugProtocol.Variable {

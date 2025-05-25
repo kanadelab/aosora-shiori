@@ -33,6 +33,14 @@ const BreakHitRequest = z.object({
 });
 type BreakHitRequest = z.infer<typeof BreakHitRequest>;
 
+const MessageRequest = z.object({
+	message: z.string(),
+	isError: z.boolean(),
+	filepath: z.optional(z.string()),
+	line: z.optional(z.number())
+});
+type MessageRequest = z.infer<typeof MessageRequest>;
+
 const VariableInformation = z.object({
 	key: z.string(),
 	primitiveType: z.string(),
@@ -58,13 +66,27 @@ const EnumScopeResponse = z.object({
 });
 export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 
+const LoadedSource = z.object({
+	path: z.string(), 
+	md5: z.string()
+});
+export type LoadedSource = z.infer<typeof LoadedSource>;
+
+const LoadedSourcesResponse = z.object({
+	files: z.array(LoadedSource)
+});
+export type LoadedSourcesResponse = z.infer<typeof LoadedSourcesResponse>;
+
 export class AosoraDebuggerInterface {
 
 	public onClose:() => void;
 	public onBreak:(errorMessage: string|null) => void;
+	public onMessage:(message:string, isError:boolean, filepath:string|null, line:number|null) => void;
 
 	private socketClient:Net.Socket|null;
 	private breakInfo:BreakHitRequest|null;
+	private connectWaitList:(()=>void)[];
+	private isConnected = false;
 
 	//待機レスポンスリスト
 	private responseMap:Map<string, (body:any, error: any) => void>;
@@ -72,9 +94,11 @@ export class AosoraDebuggerInterface {
 	public constructor(){
 		this.onClose = () => {};
 		this.onBreak = () => {};
+		this.onMessage = () => {};
 		this.responseMap = new Map<string, ()=>void>();
 		this.socketClient = null;
 		this.breakInfo = null;
+		this.connectWaitList = [];
 	}
 
 	//ブレーク情報取得
@@ -82,29 +106,90 @@ export class AosoraDebuggerInterface {
 		return this.breakInfo;
 	}
 
-	//接続
-	public Connect() {
-		this.socketClient = Net.connect(27016, 'localhost', () => {
-			console.log("connected to aosora");
+	private async Wait(ms:number){
+		return new Promise<void>(resolve => {
+			setTimeout(() => resolve(), ms);
 		});
+	}
 
-		//受信
-		this.socketClient.on('data', (data => {
-			let requestObj = null;
+	//接続：内部
+	private async ConnectInternal(){
+		return new Promise<void>((resolve, reject) => {
+				this.socketClient = Net.connect(27016, 'localhost', () => {
+				console.log("connected to aosora");
+				resolve();
+				for(const callback of this.connectWaitList){
+					callback();
+				}
+				this.isConnected = true;
+			});
+
+			//受信
+			this.socketClient.on('data', (data => {
+				let offset = 0;
+				while(true){
+					const index = data.indexOf(0, offset);
+					if(index < 0){
+						break;
+					}					
+
+					//リクエスト処理
+					let requestObj = null;
+					try{
+						const dataStr = data.toString('utf8', offset, index);
+						requestObj = JSON.parse(dataStr);
+					}
+					catch{
+						console.log("json parse error");
+					}
+					this.Recv(requestObj);
+					offset = index + 1;
+				}
+				
+			}));
+
+			//終了
+			this.socketClient.on('close', () => {
+				console.log('client-> connection is closed');
+				if(!this.isConnected){
+					//接続待ち
+					reject();
+				}
+				else{
+					this.onClose();
+				}
+			});
+		});
+	}
+
+	//接続
+	public async Connect() {
+
+		//retry
+		for(let i = 0; i < 10; i++){
 			try{
-				const dataStr = data.toString();
-				requestObj = JSON.parse(dataStr);
+				await this.ConnectInternal();
+				return;	//接続成功
 			}
 			catch{
-				console.log("json parse error");
+				//接続待機
+				await this.Wait(1000);
 			}
-			this.Recv(requestObj);
-		}));
+		}
 
-		//終了
-		this.socketClient.on('close', () => {
-			console.log('client-> connection is closed');
-			this.onClose();
+		//接続失敗
+		throw new Error();
+	}
+
+	//接続中の場合、それを待つ
+	public async WaitForConnect(){
+		return new Promise<void>((resolve) => {
+			if(!this.isConnected){
+				this.connectWaitList.push(resolve);
+			}
+			else{
+				resolve();
+			}
 		});
 	}
 
@@ -122,8 +207,25 @@ export class AosoraDebuggerInterface {
 			this.responseMap.set(request.id, callback);
 		}
 
-		//リクエスト送信
-		this.socketClient?.write(JSON.stringify(request));
+		//リクエスト送信、末尾に0をつけて終端にする
+		const buff = (new TextEncoder).encode(JSON.stringify(request));
+		const sendBuff = new Uint8Array(buff.length + 1);
+		sendBuff.set(buff);
+		sendBuff.set([0], buff.length);
+		this.socketClient?.write(sendBuff);
+	}
+
+	//Promise版のSend
+	public async SendPromise(requestType: string, requestBody: {}):Promise<any>{
+		return new Promise((resolve, reject) => {
+			this.Send(requestType, requestBody, (r, e) => {
+				if(e){
+					reject(e);
+					return;
+				}
+				resolve(r);
+			})
+		});
 	}
 
 	private Recv(requestObj:any) {
@@ -141,6 +243,14 @@ export class AosoraDebuggerInterface {
 			const parsedBody = BreakHitRequest.safeParse(body);
 			if(parsedBody.success){
 				this.RecvBreak(parsedBody.data);
+			}
+		}
+		else if(req.type == 'message'){
+			const parsedMessage = MessageRequest.safeParse(body);
+			if(parsedMessage.success){
+				this.onMessage(parsedMessage.data.message, parsedMessage.data.isError,
+					parsedMessage.data.filepath ?? null, parsedMessage.data.line ?? null
+				);
 			}
 		}
 		else if(req.type == "response"){
@@ -169,24 +279,20 @@ export class AosoraDebuggerInterface {
 	//-- エディタ向けインターフェース
 
 	//ブレークポイント設定（エディタ側都合でファイルごとに差し替えの形）
-	public SetBreakPoints(filename: string, lines: number[]){
-		return new Promise<void>((resolve, reject) => {
-			const requestBody = {
-				filename:  filename.replace("\\\\", "\\"),
-				lines
-			};
-			this.Send('set_breakpoints', requestBody, (_, e) => {!e ? resolve() : reject();} );
-		});
+	public async SetBreakPoints(filename: string, lines: number[]){
+		const requestBody = {
+			filename:  filename.replace("\\\\", "\\"),
+			lines
+		};
+		await this.SendPromise('set_breakpoints', requestBody);
 	}
 
 	//例外ブレークポイント設定
-	public SetExceptionBreakPoints(exceptions: string[]){
-		return new Promise<void>((resolve, reject) => {
-			const requestBody = {
-				filters: exceptions
-			};
-			this.Send('set_exception_breakpoint', requestBody, (_, e) => {!e ? resolve() : reject();} );
-		});
+	public async SetExceptionBreakPoints(exceptions: string[]){
+		const requestBody = {
+			filters: exceptions
+		};
+		this.SendPromise('set_exception_breakpoint', requestBody);
 	}
 
 	public RequestEnumScopes(stackIndex:number){
@@ -227,20 +333,29 @@ export class AosoraDebuggerInterface {
 	}
 
 	//デバッグ続行
-	public Continue(){
-		this.Send("continue", {});
+	public async Continue(){
+		await this.SendPromise("continue", {});
 	}
 
-	public StepIn(){
-		this.Send("stepin", {});
+	public async StepIn(){
+		await this.SendPromise("stepin", {});
 	}
 
-	public StepOut(){
-		this.Send("stepout", {});
+	public async StepOut(){
+		await this.SendPromise("stepout", {});
 	}
 
-	public StepOver(){
-		this.Send("stepover", {});
+	public async StepOver(){
+		await this.SendPromise("stepover", {});
+	}
+
+	public async RequestLoadedSource(){
+		const response = await this.SendPromise("loaded_sources", {});
+		const parsedResponse = LoadedSourcesResponse.safeParse(response);
+		if(parsedResponse.success){
+			return parsedResponse.data.files;
+		}
+		throw new Error();
 	}
 
 	//切断
