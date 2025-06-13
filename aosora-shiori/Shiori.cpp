@@ -230,17 +230,17 @@ namespace sakura {
 				//デバッグモード
 				if (settingsKey == "debug") {
 					projectSettings.enableDebug = StringToSettingsBool(settingsValue);
-					return;
+					continue;
 				}
 
 				if (settingsKey == "debug.logfile.name") {
 					projectSettings.debugOutputFilename = settingsValue;
-					return;
+					continue;
 				}
 
 				if (settingsKey == "debug.logfile.enable") {
 					projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
-					return;
+					continue;
 				}
 
 				if (settingsKey == "debug.debugger.port") {
@@ -250,10 +250,12 @@ namespace sakura {
 					}
 				}
 			}
-
-			//とりあえずロードすべきファイルの列挙があるということにしてみる
-			std::string filename = line;
-			projectSettings.scriptFiles.push_back(filename);
+			else
+			{
+				//カンマがない行はロードするファイルの列挙
+				std::string filename = line;
+				projectSettings.scriptFiles.push_back(filename);
+			}
 		}
 	}
 
