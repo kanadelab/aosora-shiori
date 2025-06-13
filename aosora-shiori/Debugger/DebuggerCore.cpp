@@ -925,7 +925,7 @@ namespace sakura {
 					GetInstance()->ClearState();
 				}
 				else {
-					GetInstance()->NotifyLog("aosora debugger", false);
+					GetInstance()->NotifyLog("ゴーストに接続しました。", false);
 				}
 			}
 		}
