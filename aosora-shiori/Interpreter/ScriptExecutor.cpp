@@ -1145,7 +1145,9 @@ namespace sakura {
 
 			//呼び出し
 			FunctionResponse res;
+			executeContext.GetStack().SetTalkJump(true);
 			executeContext.GetInterpreter().CallFunction(*jumpTarget, res, args, executeContext, &node);
+			executeContext.GetStack().SetTalkJump(false);
 
 			if (res.IsThrew()) {
 				executeContext.GetStack().Throw(res.GetThrewError());
@@ -1154,7 +1156,10 @@ namespace sakura {
 			else {
 
 				//関数の出力に貼り付ける
+				executeContext.GetStack().SetTalkJump(true);
 				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext, &node);
+				executeContext.GetStack().SetTalkJump(false);
+
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
@@ -1703,6 +1708,7 @@ namespace sakura {
 			stackFrame.sourceRange = currentAstNode.GetSourceRange();
 			stackFrame.funcName = currentFuncName;
 			stackFrame.blockScope = callingBlockScope;
+			stackFrame.isJumping = false;
 			stackInfo.push_back(stackFrame);
 		}
 
@@ -1720,6 +1726,7 @@ namespace sakura {
 				stackFrame.hasSourceRange = false;
 			}
 			stackFrame.funcName = st->GetFunctionName();
+			stackFrame.isJumping = st->IsTalkJump();
 
 			stackInfo.push_back(stackFrame);
 			st = st->GetParentStackFrame();

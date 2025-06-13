@@ -2,8 +2,9 @@
 #include <cassert>
 #include <windows.h>
 #include <CommCtrl.h>
-#include "Debugger/DebugIO.h"
+#include "Debugger/DebuggerCore.h"
 
+#if defined(AOSORA_ENABLE_DEBUGGER)
 namespace sakura
 {
 	//デバッグブートストラップウインドウ
@@ -142,3 +143,4 @@ namespace sakura
 
 	}
 }
+#endif

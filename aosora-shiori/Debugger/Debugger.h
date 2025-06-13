@@ -1,3 +1,3 @@
 ﻿#pragma once
 
-#include "Debugger/DebugIO.h"
+#include "Debugger/DebuggerCore.h"

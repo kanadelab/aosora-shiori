@@ -13,9 +13,11 @@
 #include <set>
 #include <atomic>
 #include "CoreLibrary/CoreLibrary.h"
-#include "Debugger/DebugIO.h"
+#include "Debugger/DebuggerCore.h"
 #include "Debugger/DebuggerUtility.h"
 #include "Misc/Json.h"
+
+#if defined(AOSORA_ENABLE_DEBUGGER)
 #pragma comment(lib, "Ws2_32.lib")
 
 //デバッグ通信系。
@@ -89,7 +91,6 @@ namespace sakura {
 	//ブレークポイント管理
 	class BreakPointManager {
 	private:
-		//TODO: 重複追加を考慮すべきだろうか
 		std::map<std::string, std::set<uint32_t>> breakPoints;
 		bool isBreakAllError;
 		bool isBreakUncaughtError;
@@ -194,7 +195,6 @@ namespace sakura {
 	};
 
 	//デバッグスナップショットのオブジェクトを外部から特定するためのハンドル変換器
-	//TODO: システム側のクラスやスコープ単位の情報など特殊なものをふくめて一意キーを発行する必要がある
 	class ScriptReferenceHandleManager {
 	private:
 		static const uint32_t HANDLE_BASE_OBJECTS = 1000;	//通常のハンドルのオフセット
@@ -376,17 +376,19 @@ namespace sakura {
 		SOCKET listenSocket;
 		CriticalSection connectionLock;
 		CriticalSection threadLock;
+		const uint32_t connectionPort;
 
 	public:
 
-		DebugConnection(ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback):
+		DebugConnection(uint32_t connectionPort, ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback):
 			receiveCallback(receiveCallback),
 			connectionStateCallback(connectionStateCallback),
 			isConnected(false),
 			isClosing(false),
 			isStartupFailed(false),
 			clientSocket(INVALID_SOCKET),
-			listenSocket(INVALID_SOCKET)
+			listenSocket(INVALID_SOCKET),
+			connectionPort(connectionPort)
 		{
 			assert(receiveCallback != nullptr);
 			assert(connectionStateCallback != nullptr);
@@ -405,11 +407,11 @@ namespace sakura {
 			WSACleanup();
 		}
 
-		static void Create(ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback)
+		static void Create(uint32_t connectionPort, ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback)
 		{
 			assert(instance == nullptr);
 			if (instance == nullptr) {
-				instance = new DebugConnection(receiveCallback, connectionStateCallback);
+				instance = new DebugConnection(connectionPort, receiveCallback, connectionStateCallback);
 			}
 		}
 
@@ -453,8 +455,8 @@ namespace sakura {
 			hints.ai_protocol = IPPROTO_TCP;
 			hints.ai_flags = AI_PASSIVE;
 
-			//ローカル向けに開く
-			if (getaddrinfo("127.0.0.1", "27016", &hints, &result) != 0) {
+			//ポートをローカル向きに開く
+			if (getaddrinfo("127.0.0.1", std::to_string(connectionPort).c_str(), &hints, &result) != 0) {
 				assert(false);
 				isStartupFailed = true;
 				return;
@@ -606,7 +608,7 @@ namespace sakura {
 
 			while (!isClosing) {
 				//受信処理
-				const int size = recv(clientSocket, (buffer), recvBufferSize, 0);
+				const size_t size = recv(clientSocket, (buffer), recvBufferSize, 0);
 
 				//終了要求
 				if (isClosing)
@@ -857,12 +859,15 @@ namespace sakura {
 		uint32_t lastPassLineIndex;
 		size_t lastPassStackLevel;
 
+		//ポート番号
+		uint32_t connectionPort;
+
 	public:
-		static void Create()
+		static void Create(uint32_t connectionPort)
 		{
 			assert(instance == nullptr);
 			if (instance == nullptr) {
-				instance = new DebugSystem();
+				instance = new DebugSystem(connectionPort);
 			}
 		}
 
@@ -878,14 +883,14 @@ namespace sakura {
 		static DebugSystem* GetInstance() { return instance; }
 
 	private:
-		DebugSystem() :
+		DebugSystem(uint32_t connectionPort) :
 			executingState(ExecutingState::Execute),
 			isConnected(false),
 			isSetupCompleted(false),
 			isDebugBootstrapped(false)
 		{
 			//同時に通信系を起動する
-			DebugConnection::Create(&DebugSystem::OnNotifyReceive, &DebugSystem::OnNotifyConnectionState);
+			DebugConnection::Create(connectionPort, &DebugSystem::OnNotifyReceive, &DebugSystem::OnNotifyConnectionState);
 			DebugConnection::GetInstance()->Start();
 		}
 
@@ -999,7 +1004,8 @@ namespace sakura {
 		bool isBreak = false;
 
 		//エディタスタックレベルの確認
-		auto stackLevel = executeContext.MakeStackTrace(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
+		auto stackTrace = executeContext.MakeStackTrace(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName());
+		auto stackLevel = stackTrace.size();
 		const std::string fullPath = node.GetSourceRange().GetSourceFileFullPath();
 		const uint32_t line = node.GetSourceRange().GetBeginLineIndex();
 
@@ -1032,8 +1038,11 @@ namespace sakura {
 				}
 				else if (executingState == ExecutingState::StepOver) {
 					//ステップオーバーなら同階層以前なら
-					//TODO: ジャンプの場合ステップイン扱いになるがステップオーバーで引っ掛けたい
 					if (stackLevel <= lastBreakStackLevel) {
+						isBreak = true;
+					}
+					else if (lastBreakStackLevel < stackTrace.size() && stackTrace[lastBreakStackLevel - 1].isJumping) {
+						//ジャンプの場合ステップイン扱いになるがステップオーバーで引っ掛けたい
 						isBreak = true;
 					}
 				}
@@ -1047,9 +1056,7 @@ namespace sakura {
 
 	//例外発生時
 	void DebugSystem::NotifyThrowExceotion(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
-		//TODO: このタイミングでキャッチするかどうかを判定できる必要がありそう
-		//if (breakPoints.IsBreakOnAllRuntimeError())
-		{
+		if (breakPoints.IsBreakOnAllRuntimeError()) {
 			//エディタスタックレベルの確認
 			auto stackLevel = executeContext.MakeStackTrace(executingNode, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
 			const std::string fullPath = executingNode.GetSourceRange().GetSourceFileFullPath();
@@ -1125,7 +1132,7 @@ namespace sakura {
 				}
 			}
 			else {
-				//TODO: 必要に応じてい停止する仕組みが必要そう
+				//TODO: 必要に応じて停止する仕組みが必要そう
 				Sleep(1);
 			}
 		}
@@ -1507,7 +1514,6 @@ namespace sakura {
 		}
 		else if (requestType == "members") {
 			//メンバの展開
-			//TODO: スコープは通信で受け取るのではなく、あらかじめscopesリクエストで払い出したメタデータのハンドルを使用する形になる
 			uint32_t handle;
 			if (JsonSerializer::As(body->Get("handle"), handle)) {
 				AddBreakingCommand(new MembersRequestCommand(handle, requestId));
@@ -1617,8 +1623,8 @@ namespace sakura {
 		return false;
 	}
 
-	void Debugger::Create() {
-		DebugSystem::Create();
+	void Debugger::Create(uint32_t connectionPort) {
+		DebugSystem::Create(connectionPort);
 	}
 
 	void Debugger::Destroy() {
@@ -1642,3 +1648,28 @@ namespace sakura {
 		::TerminateProcess(hProcess, 0);
 	}
 }
+
+#else // defined(AOSORA_ENABLE_DEBUGGER)
+
+//ダミー
+namespace sakura {
+	void Debugger::NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext){}
+	void Debugger::NotifyError(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext){}
+	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName){}
+	void Debugger::NotifyLog(const std::string& log, bool isError){}
+	void Debugger::NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError){}
+	void Debugger::NotifyLog(const std::string& log, const SourceCodeRange& range, bool isError){}
+	void Debugger::NotifyEventReturned(){}
+	void Debugger::Create(uint32_t connectionPort){}
+	void Debugger::Destroy(){}
+	bool Debugger::IsCreated() { return false; }
+	void Debugger::Bootstrap(){}
+	bool Debugger::IsConnected() { return false; }
+	void Debugger::SetDebugBootstrapped(bool isBootstrapped){}
+	bool Debugger::IsDebugBootstrapped() { return false; }
+
+	//呼び出されないはず
+	void Debugger::TerminateProcess() { assert(false); }
+}
+
+#endif // defined(AOSORA_ENABLE_DEBUGGER)

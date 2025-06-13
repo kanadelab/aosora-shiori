@@ -65,22 +65,31 @@
     "debuggers": [
       {
         "type": "aosora",
-        "languages": ["aosora-shiori"],
+        "languages": [
+          "aosora-shiori"
+        ],
         "label": "Aosora Debugger",
         "initialConfigurations": [
           {
             "type": "aosora",
-            "request": "launch"
+            "request": "launch",
+            "name": "SSPでaosoraを起動",
+            "port": 27016
           }
         ],
         "configurationAttributes": {
           "launch": {
-            "properties": {
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "Automatically stop after launch.",
-                "default": true
-              }
+            "port": {
+              "type": "number",
+              "description": "接続するポート番号",
+              "default": 27016
+            }
+          },
+          "attach": {
+            "port": {
+              "type": "number",
+              "description": "接続するポート番号",
+              "default": 27016
             }
           }
         }

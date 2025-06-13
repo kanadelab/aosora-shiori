@@ -1,9 +1,10 @@
 ﻿#pragma once
 #include <string>
 #include <vector>
+#include "Base.h"
 
+#if defined(AOSORA_ENABLE_DEBUGGER)
 namespace sakura {
-
 
 	//読み込み済みのスクリプトを列挙してVSCode側に通知する
 	class LoadedSourceManager {
@@ -20,6 +21,5 @@ namespace sakura {
 		size_t GetLoadedSourceCount() const { return loadedSources.size(); }
 		const LoadedSource& GetLoadedSource(size_t index) const { return loadedSources[index]; }
 	};
-
-
 }
+#endif

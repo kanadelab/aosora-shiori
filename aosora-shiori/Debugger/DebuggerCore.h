@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Base.h"
 #include "AST/AST.h"
 #include "Interpreter/Interpreter.h"
 
@@ -54,7 +55,7 @@ namespace sakura {
 		//イベントから処理が戻った。stepin等の次回ブレーク処理を無効化する。
 		static void NotifyEventReturned();
 
-		static void Create();
+		static void Create(uint32_t connectionPort);
 		static void Destroy();
 		static bool IsCreated();
 		static void Bootstrap();

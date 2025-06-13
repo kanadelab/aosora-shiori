@@ -8,20 +8,23 @@ import { LogLevel, LogOutputEvent } from '@vscode/debugadapter/lib/logger';
 import { ProjectParser } from './projectParser';
 import path = require('path');
 
+const DEFAULT_PORT_NUMBER = 27016;
 
-//規定の設定群を作成
+//aosoraデバッガむけの設定情報
+interface AosoraDebugConfiguration extends vscode.DebugConfiguration {
+	port: number
+};
+
+//設定情報の補完、解決を行う
 export class DebugConfigurationProvider implements vscode.DebugConfigurationProvider {
-	resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration, token?: vscode.CancellationToken): vscode.ProviderResult<vscode.DebugConfiguration> {
-		if (!config.type && !config.request && !config.name) {
-			// launch.json が無いときのデフォルト設定を返す
-			return {
-				name: 'aosora debug',
-				type: 'aosora',
-				request: 'launch'
-			};
-    }
-
-    return config;
+	resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: {}, token?: vscode.CancellationToken): vscode.ProviderResult<AosoraDebugConfiguration> {
+		return {
+			name: 'debug aosora',
+			type: 'aosora',
+			request: 'launch',
+			port: DEFAULT_PORT_NUMBER,
+			...config
+		};
 	}
 }
 
@@ -79,33 +82,31 @@ class AosoraDebugSession extends DebugSession {
 			}
 			this.sendEvent(ev);
 		}
-
-		//Aosora側でゴーストをよみなおしたときにやる必要がある
-		//new LoadedSourceEvent()
 	}
 
 	protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
 
-		//TODO: この辺でセットアップ
+
 		response.body = {
-			//supportsExceptionOptions: true,
-			//supportsExceptionFilterOptions: true,
 			supportsExceptionInfoRequest: true,
 			supportsLoadedSourcesRequest: true,
-			supportsRestartRequest: false,
+			supportsBreakpointLocationsRequest: true,
 			exceptionBreakpointFilters: [
 				{
 					label: "すべてのエラー",
 					description: "実行時にエラーが発生したとき、キャッチされるかどうかにかかわらず実行中断します。",
 					filter: "all",
 					default: false
-				},
+				}
+				/*
+				,
 				{
 					label: "キャッチされなかったエラー",
 					description: "実行時にエラーが発生したとき、キャッチされなかった場合に実行中断します。",
 					filter: "uncaught",
 					default: true
 				}
+				*/
 			]
 		};
 
@@ -133,11 +134,11 @@ class AosoraDebugSession extends DebugSession {
 				const aosoraDir = path.dirname(projPath);
 				const ghostPath = path.dirname(path.dirname(aosoraDir));	//プロジェクトの２階層上
 				try{
-					//TODO: ここでawaitで待つとSSP終了まで待ってしまうので一旦待たない
-					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir);
+					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir, () => {this.sendEvent(new TerminatedEvent())});
 				}
-				catch{
-					vscode.window.showErrorMessage("sspの起動に失敗しました。");
+				catch(e){
+					const err = e as Error
+					vscode.window.showErrorMessage(err.message);
 					this.sendEvent(new TerminatedEvent());	
 					return;
 				}
@@ -169,12 +170,13 @@ class AosoraDebugSession extends DebugSession {
 			return;
 		}
 
-		
 		this.sendResponse(response);
 	}
 
+	//アタッチ
 	protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
-		console.log("test");
+
+		//純粋に接続する形
 		await this.debugInterface.Connect();
 		this.sendResponse(response);
 	}

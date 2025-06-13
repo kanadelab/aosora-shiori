@@ -41,7 +41,7 @@
     <ClCompile Include="Misc\Message.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Debugger\DebugIO.cpp">
+    <ClCompile Include="Debugger\DebuggerCore.cpp">
       <Filter>Debugger</Filter>
     </ClCompile>
     <ClCompile Include="Debugger\DebugBootstrap.cpp">
@@ -112,7 +112,7 @@
     <ClInclude Include="Debugger\Debugger.h">
       <Filter>Debugger</Filter>
     </ClInclude>
-    <ClInclude Include="Debugger\DebugIO.h">
+    <ClInclude Include="Debugger\DebuggerCore.h">
       <Filter>Debugger</Filter>
     </ClInclude>
     <ClInclude Include="Debugger\DebuggerUtility.h">

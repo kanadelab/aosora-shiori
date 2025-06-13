@@ -660,6 +660,7 @@ namespace sakura {
 		Reference<BlockScope> blockScope;
 		std::string funcName;
 		bool hasSourceRange;
+		bool isJumping;
 	};
 
 	//スクリプト実行コンテキスト
@@ -717,7 +718,6 @@ namespace sakura {
 			return nullptr;
 		}
 		
-
 	};
 
 }

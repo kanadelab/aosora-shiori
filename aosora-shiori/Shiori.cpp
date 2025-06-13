@@ -91,7 +91,7 @@ namespace sakura {
 
 		//デバッグが有効ならデバッグシステムを起動する
 		if (projectSettings.enableDebug) {
-			Debugger::Create();
+			Debugger::Create(projectSettings.debuggerPort);
 		}
 
 		//デバッグモードが有効ならデバッグ出力のストリームを開く
@@ -241,6 +241,13 @@ namespace sakura {
 				if (settingsKey == "debug.logfile.enable") {
 					projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
 					return;
+				}
+
+				if (settingsKey == "debug.debugger.port") {
+					size_t port;
+					if (StringToIndex(settingsValue, port)) {
+						projectSettings.debuggerPort = static_cast<uint32_t>(port);
+					}
 				}
 			}
 

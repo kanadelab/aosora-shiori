@@ -17,6 +17,7 @@ namespace sakura {
 			std::vector<std::string> scriptFiles;
 			std::string debugOutputFilename;
 			size_t limitScriptSteps;
+			uint32_t debuggerPort;
 			bool setLimitScriptSteps;
 			bool enableDebug;
 			bool enableDebugLog;
@@ -24,6 +25,7 @@ namespace sakura {
 			ProjectSettings():
 				debugOutputFilename("aosora.log"),
 				limitScriptSteps(0),
+				debuggerPort(27016),
 				setLimitScriptSteps(false),
 				enableDebug(false),
 				enableDebugLog(true)

@@ -165,8 +165,8 @@ export class AosoraDebuggerInterface {
 	//接続
 	public async Connect() {
 
-		//retry
-		for(let i = 0; i < 10; i++){
+		//30秒待つ形
+		for(let i = 0; i < 30; i++){
 			try{
 				await this.ConnectInternal();
 				return;	//接続成功
@@ -211,7 +211,7 @@ export class AosoraDebuggerInterface {
 		const buff = (new TextEncoder).encode(JSON.stringify(request));
 		const sendBuff = new Uint8Array(buff.length + 1);
 		sendBuff.set(buff);
-		sendBuff.set([0], buff.length);
+		sendBuff.set([0], buff.length);		//0終端で送る
 		this.socketClient?.write(sendBuff);
 	}
 
