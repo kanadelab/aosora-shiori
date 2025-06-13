@@ -184,7 +184,6 @@ class AosoraDebugSession extends DebugSession {
 	//例外ブレークポイント
 	protected async setExceptionBreakPointsRequest(response: DebugProtocol.SetExceptionBreakpointsResponse, args: DebugProtocol.SetExceptionBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
 		await this.debugInterface.WaitForConnect();
-		console.log("send exception breakpoints");
 		await this.debugInterface.SetExceptionBreakPoints(args.filters);
 		this.sendResponse(response);
 	}

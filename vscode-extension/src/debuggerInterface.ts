@@ -116,7 +116,6 @@ export class AosoraDebuggerInterface {
 	private async ConnectInternal(){
 		return new Promise<void>((resolve, reject) => {
 				this.socketClient = Net.connect(27016, 'localhost', () => {
-				console.log("connected to aosora");
 				resolve();
 				for(const callback of this.connectWaitList){
 					callback();
@@ -271,7 +270,6 @@ export class AosoraDebuggerInterface {
 
 	//ブレークリクエスト
 	private RecvBreak(request: BreakHitRequest){
-		console.log("break!");
 		this.breakInfo = request;
 		this.onBreak(this.breakInfo.errorMessage);
 	}
