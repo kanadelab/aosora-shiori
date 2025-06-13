@@ -2,15 +2,7 @@
 	メニュー関係。
 */
 
-talk MainMenu{
-	%{
-		local test = null;
-		local test2 = test();
-	}
-	:あああ
-}
-
-talk MainMenu2 {
+talk MainMenu {
 	\s[4]なーあにっと。
 
 	\![*]\q[何か喋って,ランダムトーク]
