@@ -96,15 +96,25 @@ namespace sakura {
 		bool isBreakUncaughtError;
 		CriticalSection lockObj;
 
+	private:
+		std::string NormalizeFilename(const std::string& filename) {
+			//windowsの場合を想定して大文字小文字を考慮しないファイル名にする
+			//VSCodeがドライブレターを小文字にしてくることがあるのでその対策として
+			std::string f(filename);
+			ToLower(f);
+			return f;
+		}
+
 	public:
 		//ブレークポイントの追加
 		void AddBreakPoint(const std::string& filename, uint32_t line) {
 			LockScope ls(lockObj);
 
-			auto fileHit = breakPoints.find(filename);
+			auto normalizedName = NormalizeFilename(filename);
+			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
 				//ファイルごと新規登録
-				breakPoints.insert(decltype(breakPoints)::value_type(filename, { line }));
+				breakPoints.insert(decltype(breakPoints)::value_type(normalizedName, { line }));
 				return;
 			}
 
@@ -116,7 +126,8 @@ namespace sakura {
 		void RemoveBreakPoint(const std::string& filename, uint32_t line) {
 			LockScope ls(lockObj);
 
-			auto fileHit = breakPoints.find(filename);
+			auto normalizedName = NormalizeFilename(filename);
+			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
 				return;
 			}
@@ -134,14 +145,15 @@ namespace sakura {
 		void SetBreakPoints(const std::string& filename, const uint32_t* lines, uint32_t lineCount) {
 			LockScope lc(lockObj);
 
+			auto normalizedName = NormalizeFilename(filename);
 			if (lineCount == 0) {
 				//削除
-				breakPoints.erase(filename);
+				breakPoints.erase(normalizedName);
 			}
 			else {
 				//設定
 				assert(lines != nullptr);
-				breakPoints[filename] = std::set<uint32_t>(lines, lines + lineCount);
+				breakPoints[normalizedName] = std::set<uint32_t>(lines, lines + lineCount);
 			}
 
 		}
@@ -155,14 +167,9 @@ namespace sakura {
 		//ブレークポイントに引っかかるかチェック
 		bool QueryBreakPoint(const std::string& filename, uint32_t line) {
 			LockScope ls(lockObj);
+			auto normalizedName = NormalizeFilename(filename);
 
-			//WARN: 暫定:ドライブレターを統一する
-			std::string filename2 = filename;
-			if (filename2.size() > 0) {
-				filename2[0] = toupper(filename2[0]);
-			}
-
-			auto fileHit = breakPoints.find(filename2);
+			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
 				return false;
 			}
@@ -1449,11 +1456,6 @@ namespace sakura {
 				if (JsonSerializer::As(token, l)) {
 					lines.push_back(l);
 				}
-			}
-
-			//WARN: VSCodeがドライブレターを小文字にするので一旦無理やり大文字にする
-			if (filename.size() > 0) {
-				filename[0] = toupper(filename[0]);
 			}
 
 			if (!lines.empty()) {

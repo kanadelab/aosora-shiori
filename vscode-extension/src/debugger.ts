@@ -220,7 +220,7 @@ class AosoraDebugSession extends DebugSession {
 		})
 
 		//設定要求
-		await this.debugInterface.SetBreakPoints(this.convertClientPathToDebugger(filename).toLowerCase(), debuggerBreakPoints);
+		await this.debugInterface.SetBreakPoints(this.convertClientPathToDebugger(filename), debuggerBreakPoints);
 
 		//完了
 		response.body = {
