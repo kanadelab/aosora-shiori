@@ -130,7 +130,11 @@ class AosoraDebugSession extends DebugSession {
 			await project.Parse(debugPath);
 
 			//起動する
-			if(project.runtimePath){
+			if(!project.enableDebug){
+				vscode.window.showErrorMessage("asprojファイルで debug 設定が有効化されていません。");
+				this.sendEvent(new TerminatedEvent());
+			}
+			else if(project.runtimePath){
 				const aosoraDir = path.dirname(projPath);
 				const ghostPath = path.dirname(path.dirname(aosoraDir));	//プロジェクトの２階層上
 				try{
