@@ -6,6 +6,7 @@
 #include "CoreLibrary/CoreLibrary.h"
 #include "CommonLibrary/CommonClasses.h"
 #include "Misc/Message.h"
+#include "Debugger/Debugger.h"
 
 namespace sakura {
 
@@ -23,7 +24,7 @@ namespace sakura {
 		//無限ループ対策の実行ステップ制限
 		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
 			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
-				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"))->SetCanCatch(false);
+				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"), executeContext)->SetCanCatch(false);
 				return ScriptValue::Null;
 			}
 		}
@@ -103,6 +104,11 @@ namespace sakura {
 		//たとえばforやcatchのようなローカル変数を用意するものがあるので呼び出し側でブロックスコープをつくり、その中で変数をいれてから呼び出す
 
 		for (const ConstASTNodeRef& stmt : node.GetStatements()) {
+
+			//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
+			Debugger::NotifyASTExecute(*stmt.get(), executeContext);
+
+			//実行
 			ExecuteInternal(*stmt, executeContext);
 
 			//離脱要求があれば即時終了
@@ -135,7 +141,7 @@ namespace sakura {
 
 			//フォーマット指定が有効なものだけくっつける
 			if (item.isFormatExpression) {
-				auto str = v->ToStringWithFunctionCall(executeContext);
+				auto str = v->ToStringWithFunctionCall(executeContext, &node);
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
@@ -880,14 +886,14 @@ namespace sakura {
 
 		//呼び出し不可時、エラーを生成する
 		if (!function->IsObject() || !function->GetObjectRef()->CanCall()) {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"));
+			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"), executeContext);
 			return ScriptValue::Null;
 		}
 
 		FunctionResponse response;
 		executeContext.GetInterpreter().CallFunction(*function, response, callArgs, executeContext, &node);
 		if (response.IsThrew()) {
-			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), response.GetThrewError());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), response.GetThrewError(), executeContext);
 			return ScriptValue::Null;
 		}
 		else {
@@ -1058,10 +1064,10 @@ namespace sakura {
 		}
 		
 		if (r->IsObject()) {
-			executeContext.ThrowError(node, executeContext.GetStack().GetFunctionName(), r->GetObjectRef());
+			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), r->GetObjectRef(), executeContext);
 		}
 		else {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。");
+			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。", executeContext);
 		}
 		
 		return ScriptValue::Null;
@@ -1139,7 +1145,9 @@ namespace sakura {
 
 			//呼び出し
 			FunctionResponse res;
+			executeContext.GetStack().SetTalkJump(true);
 			executeContext.GetInterpreter().CallFunction(*jumpTarget, res, args, executeContext, &node);
+			executeContext.GetStack().SetTalkJump(false);
 
 			if (res.IsThrew()) {
 				executeContext.GetStack().Throw(res.GetThrewError());
@@ -1148,7 +1156,10 @@ namespace sakura {
 			else {
 
 				//関数の出力に貼り付ける
-				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext);
+				executeContext.GetStack().SetTalkJump(true);
+				auto str = res.GetReturnValue()->ToStringWithFunctionCall(executeContext, &node);
+				executeContext.GetStack().SetTalkJump(false);
+
 				if (executeContext.RequireLeave()) {
 					return ScriptValue::Null;
 				}
@@ -1201,7 +1212,7 @@ namespace sakura {
 		}
 	}
 
-	std::string ScriptInterpreter::GetClassName(uint32_t typeId) {
+	std::string ScriptInterpreter::GetClassTypeName(uint32_t typeId) {
 		auto item = classIdMap.find(typeId);
 		if (item != classIdMap.end()) {
 			return item->second->GetMetadata().GetName();
@@ -1232,6 +1243,24 @@ namespace sakura {
 			result.success = true;
 		}
 		return result;
+	}
+
+	//文字列を式として評価
+	ScriptValueRef ScriptInterpreter::Eval(const std::string& expr) {
+
+		//TODO: とりあえずいけそう⋯というところまで。続きの実装を。
+
+		//その場で解析を行い、実行する		
+		auto tokens = TokensParser::Parse(expr, SourceFilePath("eval", "eval"));	//一時的なファイル名として入力しておく
+		auto ast = ASTParser::Parse(tokens);
+
+		ScriptInterpreterStack rootStack;
+		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
+		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
+		ScriptExecutor::ExecuteASTNode(*ast->root, executeContext);
+
+		//結果をかえす(失敗した場合とかはどうする？）
+		return nullptr;
 	}
 
 	ScriptInterpreter::ScriptInterpreter() :
@@ -1403,7 +1432,7 @@ namespace sakura {
 
 	//実行コンテキストから新しいスタックフレームで関数を実行
 	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName) {
-		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, funcName);
+		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, executeContext.GetBlockScope(), funcName);
 
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
@@ -1442,7 +1471,7 @@ namespace sakura {
 			ScriptFunctionRef initFunc = scriptClassData.GetInitFunc();
 
 			//コンストラクタ用のスタックフレームとブロックスコープを作成して引数を登録
-			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, "init");
+			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, context.GetBlockScope(), "init");
 			Reference<BlockScope> initScope = context.GetInterpreter().CreateNativeObject<BlockScope>(context.GetBlockScope());
 
 			ScriptExecuteContext funcContext(*this, initStack, initScope);
@@ -1523,7 +1552,7 @@ namespace sakura {
 				nativeClass.GetInitFunc()(request, response);
 				
 				if (response.IsThrew()) {
-					context.ThrowError(callingNode, "init", response.GetThrewError());
+					context.ThrowError(callingNode, context.GetBlockScope(), "init", response.GetThrewError(), context);
 					return nullptr;
 				}
 				else {
@@ -1540,7 +1569,7 @@ namespace sakura {
 				}
 			}
 			else {
-				context.ThrowRuntimeError<RuntimeError>(callingNode, "このクラスはインスタンス化できません。");
+				context.ThrowRuntimeError<RuntimeError>(callingNode, "このクラスはインスタンス化できません。", context);
 				return nullptr;
 			}
 		}
@@ -1670,48 +1699,59 @@ namespace sakura {
 		interpreter.SetGlobalVariable(name, value);
 	}
 
-	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const std::string& funcName, const ObjectRef& err) {
+	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string & currentFuncName) {
+		//現在実行中のスタックフレームは引数から位置を取得
+		std::vector<CallStackInfo> stackInfo;
+		{
+			CallStackInfo stackFrame;
+			stackFrame.hasSourceRange = true;
+			stackFrame.sourceRange = currentAstNode.GetSourceRange();
+			stackFrame.funcName = currentFuncName;
+			stackFrame.blockScope = callingBlockScope;
+			stackFrame.isJumping = false;
+			stackInfo.push_back(stackFrame);
+		}
+
+		//親以降は呼び出し時に格納されてる値を使う
+		const ScriptInterpreterStack* st = stack.GetParentStackFrame();
+		while (st != nullptr)
+		{
+			CallStackInfo stackFrame;
+			if (st->GetCallingASTNode() != nullptr) {
+				stackFrame.hasSourceRange = true;
+				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+				stackFrame.blockScope = st->GetCallingBlockScope();
+			}
+			else {
+				stackFrame.hasSourceRange = false;
+			}
+			stackFrame.funcName = st->GetFunctionName();
+			stackFrame.isJumping = st->IsTalkJump();
+
+			stackInfo.push_back(stackFrame);
+			st = st->GetParentStackFrame();
+		}
+
+		return stackInfo;
+	}
+
+	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err, ScriptExecuteContext& executeContext) {
 
 		//エラーオブジェクトしかスローできないのでチェック
 		RuntimeError* e = interpreter.InstanceAs<RuntimeError>(err);
 		if (e == nullptr) {
-			ThrowError(throwAstNode, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"));
+			ThrowError(throwAstNode, callingBlockScope, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"), executeContext);
 			return;
 		}
 
 		//コールスタック情報が未設定の場合にのみ設定する
 		if (!e->HasCallstackInfo()) {
-
-			//現在実行中のスタックフレームは引数から位置を取得
-			std::vector<RuntimeError::CallStackInfo> stackInfo;
-			{
-				RuntimeError::CallStackInfo stackFrame;
-				stackFrame.hasSourceRange = true;
-				stackFrame.sourceRange = throwAstNode.GetSourceRange();
-				stackFrame.funcName = funcName;
-				stackInfo.push_back(stackFrame);
-			}
-
-			//親以降は呼び出し時に格納されてる値を使う
-			const ScriptInterpreterStack* st = stack.GetParentStackFrame();
-			while (st != nullptr)
-			{
-				RuntimeError::CallStackInfo stackFrame;
-				if (st->GetCallingASTNode() != nullptr) {
-					stackFrame.hasSourceRange = true;
-					stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
-				}
-				else {
-					stackFrame.hasSourceRange = false;
-				}
-				stackFrame.funcName = st->GetFunctionName();
-
-				stackInfo.push_back(stackFrame);
-				st = st->GetParentStackFrame();
-			}
-
-			e->SetCallstackInfo(stackInfo);
+			e->SetCallstackInfo(MakeStackTrace(throwAstNode, callingBlockScope, funcName));
 		}
+
+		//この時点でデバッガに例外を通知する
+		Debugger::NotifyError(*e, throwAstNode, executeContext);
+
 		stack.Throw(e);
 	}
 

@@ -2,11 +2,19 @@
 	メニュー関係。
 */
 
-talk MainMenu {
+talk MainMenu{
+	%{
+		local test = null;
+		local test2 = test();
+	}
+	:あああ
+}
+
+talk MainMenu2 {
 	\s[4]なーあにっと。
-	
+
 	\![*]\q[何か喋って,ランダムトーク]
-	\![*]\q[喋り間隔変更,OnChagneTalkInterval]
+	\![*]\q[喋り間隔変更,FirstTalk]
 	\![*]\q[呼ばれ方を変える,OnChangeUserName]
 	\![*]\q[かいものリスト,OnItemList]
 	

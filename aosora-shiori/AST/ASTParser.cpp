@@ -1,4 +1,5 @@
-﻿#include "Misc/Utility.h"
+﻿#include <set>
+#include "Misc/Utility.h"
 #include "Tokens/Tokens.h"
 #include "AST/ASTNodeBase.h"
 #include "AST/ASTNodes.h"
@@ -205,6 +206,7 @@ namespace sakura {
 		}
 	};
 
+	//ソースコードとしてパース
 	std::shared_ptr<const ASTParseResult> ASTParser::Parse(const std::shared_ptr<const TokensParseResult>& tokens) {
 		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
 		ASTParseContext parseContext(tokens->tokens, *parseResult);
@@ -228,6 +230,46 @@ namespace sakura {
 
 		parseResult->root = codeBlock;
 
+		//パースした結果からブレーク可能な行を作成
+		std::vector<ConstASTNodeRef> allNodes;
+		std::vector<ConstASTNodeRef> breakableNodes;
+		std::set<uint32_t> breakableLinesSet;
+		parseResult->root->GetChildren(allNodes);
+
+		//ブレークできるのはコードブロックの子として認識しているノードなので、それらをまとめて取得する
+		for (size_t i = 0; i < allNodes.size(); i++) {
+			if (allNodes[i]->GetType() == ASTNodeType::CodeBlock) {
+				allNodes[i]->GetChildren(breakableNodes);
+			}
+		}
+
+		//行数にまとめる
+		for (size_t i = 0; i < breakableNodes.size(); i++) {
+			breakableLinesSet.insert(breakableNodes[i]->GetSourceRange().GetBeginLineIndex());
+		}
+
+		//ソートしたうえで配列として持つ
+		parseResult->breakableLines.reserve(breakableLinesSet.size());
+		for (auto it = breakableLinesSet.begin(); it != breakableLinesSet.end(); it++) {
+			parseResult->breakableLines.push_back(*it);
+		}
+		std::sort(parseResult->breakableLines.begin(), parseResult->breakableLines.end());
+
+		return parseResult;
+	}
+
+	//式としてパース
+	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens) {
+		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
+		ASTParseContext parseContext(tokens->tokens, *parseResult);
+
+		auto expression = ParseASTExpression(parseContext, 0);
+		parseResult->success = !parseContext.HasError();
+
+		if (parseContext.HasError()) {
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken().sourceRange));
+		}
+		parseResult->root = expression;
 		return parseResult;
 	}
 
@@ -1967,12 +2009,16 @@ namespace sakura {
 
 	//ResolveSymbol -> AssignSymbol
 	ASTNodeRef ASTNodeResolveSymbol::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		return ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode));
+		node->SetSourceRange(GetSourceRange());
+		return node;
 	}
 
 	//ResolveMember -> AssignMember
 	ASTNodeRef ASTNodeResolveMember::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		return ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode));
+		node->SetSourceRange(GetSourceRange());
+		return node;
 	}
 
 	

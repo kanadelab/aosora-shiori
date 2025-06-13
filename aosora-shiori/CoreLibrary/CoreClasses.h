@@ -72,6 +72,11 @@ namespace sakura {
 			}
 		}
 
+		//ローカル変数のコレクションを直接取得
+		const std::map<std::string, ScriptValueRef>& GetLocalVariableCollection() const {
+			return localVariables;
+		}
+
 		//thisの設定
 		void SetThisValue(const ScriptValueRef& value) {
 			thisValue = value;
@@ -88,6 +93,11 @@ namespace sakura {
 			else {
 				return nullptr;
 			}
+		}
+
+		//親スコープの取得
+		const Reference<BlockScope>& GetParentScope() const {
+			return parentScope;
 		}
 	};
 
@@ -219,14 +229,6 @@ namespace sakura {
 
 	//エラーオブジェクト
 	class RuntimeError : public Object<RuntimeError> {
-	public:
-		//表示用のスタック情報
-		struct CallStackInfo {
-			SourceCodeRange sourceRange;
-			std::string funcName;
-			bool hasSourceRange;
-		};
-
 	private:
 		bool canCatch;
 		bool hasCallstackInfo;
@@ -254,7 +256,7 @@ namespace sakura {
 		}
 
 		//メッセージ取得
-		const std::string& GetMessage() const {
+		const std::string& GetErrorMessage() const {
 			return message;
 		}
 

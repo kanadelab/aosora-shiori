@@ -72,6 +72,10 @@ namespace sakura {
 		{
 			return Reference<T>(static_cast<T*>(reference));
 		}
+
+		CollectableType* Get() const {
+			return reference;
+		}
 	};
 
 	class ObjectSystem;

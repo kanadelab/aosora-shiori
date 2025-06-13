@@ -17,6 +17,7 @@ namespace sakura {
 			std::vector<std::string> scriptFiles;
 			std::string debugOutputFilename;
 			size_t limitScriptSteps;
+			uint32_t debuggerPort;
 			bool setLimitScriptSteps;
 			bool enableDebug;
 			bool enableDebugLog;
@@ -24,6 +25,7 @@ namespace sakura {
 			ProjectSettings():
 				debugOutputFilename("aosora.log"),
 				limitScriptSteps(0),
+				debuggerPort(27016),
 				setLimitScriptSteps(false),
 				enableDebug(false),
 				enableDebugLog(true)
@@ -52,7 +54,7 @@ namespace sakura {
 
 		//SHIORI内部用のファイルロード
 		std::shared_ptr<const ASTParseResult> LoadScriptFile(const std::string& path);
-		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const std::string& name);
+		std::shared_ptr<const ASTParseResult> LoadScriptString(const std::string& script, const SourceFilePath& filePath);
 
 		//ランタイムエラー処理
 		void HandleRuntimeError(const ObjectRef& err, ShioriResponse& response, bool isSaori);

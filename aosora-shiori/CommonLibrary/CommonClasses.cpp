@@ -5,6 +5,7 @@
 #include "Misc/Json.h"
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
+#include "Debugger/Debugger.h"
 
 namespace sakura {
 
@@ -630,16 +631,24 @@ namespace sakura {
 		}
 
 		DebugOutputContext debugOutputContext;
+		std::string data = request.GetArgument(0)->DebugToString(request.GetContext(), debugOutputContext);
+		const ASTNodeBase* node = request.GetContext().GetLatestASTNode();
+
 		std::ofstream* const stream = request.GetContext().GetInterpreter().GetDebugOutputStream();
 		if (stream != nullptr) {
-			const ASTNodeBase* node = request.GetContext().GetLatestASTNode();
 			if (node != nullptr) {
 				//出力元のスクリプト位置をとっておく
 				*stream << node->GetSourceRange().ToString() << " ";
 			}
-			*stream << request.GetArgument(0)->DebugToString(request.GetContext(), debugOutputContext) << std::endl;
+			*stream << data << std::endl;
 			stream->flush();
 		}
+
+		if (node != nullptr) {
+			//デバッグ出力
+			Debugger::NotifyLog(data, *node, false);
+		}
+
 	}
 
 	ScriptValueRef ScriptDebug::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {

@@ -585,7 +585,9 @@ namespace sakura {
 			operatorInfo(info),
 			operandLeft(left),
 			operandRight(right)
-		{}
+		{
+			SetSourceRange(left->GetSourceRange(), right->GetSourceRange());
+		}
 
 		const OperatorInformation& GetOperator() const { return operatorInfo; }
 		const ConstASTNodeRef& GetOperandLeft() const { return operandLeft; }
@@ -710,6 +712,7 @@ namespace sakura {
 		ASTNodeResolveMember(const ConstASTNodeRef& obj, const ConstASTNodeRef& member) :
 			target(obj),
 			key(member) {
+			SetSourceRange(obj->GetSourceRange(), member->GetSourceRange());
 		}
 
 		const ConstASTNodeRef& GetThisNode() const { return target; }

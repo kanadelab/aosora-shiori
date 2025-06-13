@@ -147,6 +147,9 @@
     <ClInclude Include="CoreLibrary\CoreClasses.h" />
     <ClInclude Include="CoreLibrary\CoreLibrary.h" />
     <ClInclude Include="CoreLibrary\PrimitiveMethod.h" />
+    <ClInclude Include="Debugger\Debugger.h" />
+    <ClInclude Include="Debugger\DebuggerUtility.h" />
+    <ClInclude Include="Debugger\DebuggerCore.h" />
     <ClInclude Include="Interpreter\Interpreter.h" />
     <ClInclude Include="Interpreter\ObjectSystem.h" />
     <ClInclude Include="Interpreter\ScriptExecutor.h" />
@@ -166,6 +169,9 @@
     <ClCompile Include="CommonLibrary\CommonClasses.cpp" />
     <ClCompile Include="CoreLibrary\CoreClasses.cpp" />
     <ClCompile Include="CoreLibrary\PrimitiveMethod.cpp" />
+    <ClCompile Include="Debugger\DebugBootstrap.cpp" />
+    <ClCompile Include="Debugger\DebuggerUtility.cpp" />
+    <ClCompile Include="Debugger\DebuggerCore.cpp" />
     <ClCompile Include="Interpreter\ObjectSystem.cpp" />
     <ClCompile Include="Interpreter\ScriptExecutor.cpp" />
     <ClCompile Include="Interpreter\ScriptVariable.cpp" />

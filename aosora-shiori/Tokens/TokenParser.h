@@ -93,14 +93,35 @@ namespace sakura {
 		SpeakEnd
 	};
 
+	//スクリプトファイルのパスを示すもの
+	class SourceFilePath {
+	private:
+		std::string sourceName;			//相対パスなど見て理解する名前
+		std::string sourceFullPath;		//フルパスなどファイル追跡用
+
+	public:
+		SourceFilePath(const std::string& name, const std::string& fullpath):
+			sourceName(name),
+			sourceFullPath(fullpath) {
+		}
+
+		const std::string& GetFileName() const{
+			return sourceName;
+		}
+
+		const std::string& GetFullPath() const{
+			return sourceFullPath;
+		}
+	};
+
 	//スクリプトデバッグ用のソース上の位置を示すもの
 	class SourceCodeRange {
 	private:
-		std::shared_ptr<const std::string> sourcePath;
-		uint32_t beginLineIndex;
-		uint32_t beginColumnIndex;
-		uint32_t endLineIndex;
-		uint32_t endColumnIndex;
+		std::shared_ptr<SourceFilePath> sourcePath;			//ソースファイル
+		uint32_t beginLineIndex;							//開始行
+		uint32_t beginColumnIndex;							//開始カラム（文字インデックス）
+		uint32_t endLineIndex;								//終了行
+		uint32_t endColumnIndex;							//終了カラム
 
 	public:
 		SourceCodeRange():
@@ -110,7 +131,7 @@ namespace sakura {
 			endColumnIndex(0)
 		{}
 
-		SourceCodeRange(const std::shared_ptr<const std::string>& sourceFilePath, uint32_t beginLineIdx, uint32_t beginColumnIdx, uint32_t endLineIdx, uint32_t endColumnIdx):
+		SourceCodeRange(const std::shared_ptr<SourceFilePath>& sourceFilePath,uint32_t beginLineIdx, uint32_t beginColumnIdx, uint32_t endLineIdx, uint32_t endColumnIdx):
 			sourcePath(sourceFilePath),
 			beginLineIndex(beginLineIdx),
 			beginColumnIndex(beginColumnIdx),
@@ -127,7 +148,35 @@ namespace sakura {
 		}
 
 		std::string ToString() const {
-			return *sourcePath + ":" + std::to_string(beginLineIndex+1);
+			return GetSourceFileName() + ":" + std::to_string(beginLineIndex + 1);
+		}
+
+		const std::string& GetSourceFileName() const {
+			return sourcePath->GetFileName();
+		}
+
+		const std::string& GetSourceFileFullPath() const {
+			return sourcePath->GetFullPath();
+		}
+
+		const std::shared_ptr<SourceFilePath>& GetSourceFilePath() const {
+			return sourcePath;
+		}
+
+		uint32_t GetBeginLineIndex() const {
+			return beginLineIndex;
+		}
+
+		uint32_t GetBeginColumnIndex() const {
+			return beginColumnIndex;
+		}
+
+		uint32_t GetEndLineIndex() const {
+			return endLineIndex;
+		}
+
+		uint32_t GetEndColumnIndex() const {
+			return endColumnIndex;
 		}
 	};
 
@@ -143,7 +192,7 @@ namespace sakura {
 			body()
 		{}
 
-		ScriptToken(const std::string& str, ScriptTokenType tokenType, const std::shared_ptr<const std::string>& sourceFilePath, uint32_t beginLineIdx, uint32_t beginColumnIdx, uint32_t endLineIdx, uint32_t endColumnIdx) :
+		ScriptToken(const std::string& str, ScriptTokenType tokenType, const std::shared_ptr<SourceFilePath>& sourceFilePath, uint32_t beginLineIdx, uint32_t beginColumnIdx, uint32_t endLineIdx, uint32_t endColumnIdx) :
 			type(tokenType),
 			body(str),
 			sourceRange(sourceFilePath, beginLineIdx, beginColumnIdx, endLineIdx, endColumnIdx)
@@ -183,6 +232,11 @@ namespace sakura {
 		std::string MakeConsoleErrorString() const {
 			return "ERROR: " + GetPosition().ToString() + " [" + GetData().errorCode + "] " + GetData().message;
 		}
+
+		//デバッガ出力用(位置データを別でもつ)のエラーメッセージ作成
+		std::string MakeDebuggerErrorString() const {
+			return "[" + GetData().errorCode + "] " + GetData().message;
+		}
 	};
 
 	//EOFを示すトークン
@@ -203,7 +257,7 @@ namespace sakura {
 		static void ParseStringLiteral(ScriptTokenParseContext& parseContext, uint32_t blockEndFlags, bool isRawString);
 
 	public:
-		static std::shared_ptr<const TokensParseResult> Parse(const std::string& document, const std::string& filePath);
+		static std::shared_ptr<const TokensParseResult> Parse(const std::string& document, const SourceFilePath& filePath);
 	};
 
 }
