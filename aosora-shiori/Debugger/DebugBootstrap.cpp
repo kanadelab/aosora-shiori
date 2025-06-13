@@ -122,7 +122,6 @@ namespace sakura
 	}
 
 	void Debugger::Bootstrap() {	
-#if 0
 		//指定の環境変数が設定されていれば機動隊気に入る
 		const char* bootstrapEnv = getenv("AOSORA_DEBUG_BOOTSTRAP");
 		bool enableDebugBootstrap = false;
@@ -132,9 +131,6 @@ namespace sakura
 				enableDebugBootstrap = true;
 			}
 		}
-#else
-		bool enableDebugBootstrap = true;
-#endif
 		
 		if (enableDebugBootstrap) {
 			Debugger::SetDebugBootstrapped(true);
