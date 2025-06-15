@@ -102,6 +102,7 @@ class AosoraDebugSession extends DebugSession {
 			supportsExceptionInfoRequest: true,
 			supportsLoadedSourcesRequest: true,
 			//supportsBreakpointLocationsRequest: true,
+			supportedChecksumAlgorithms: ['MD5'],
 			exceptionBreakpointFilters: [
 				{
 					label: "すべてのエラー",
@@ -232,6 +233,7 @@ class AosoraDebugSession extends DebugSession {
 
 	//ブレークポイント
 	protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
+		await this.debugInterface.WaitForConnect();
 
 		//ファイル名と行番号を取得
 		const filename = args.source.path ?? "";
@@ -312,6 +314,11 @@ class AosoraDebugSession extends DebugSession {
 	//切断
 	protected disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request): void {
 		this.debugInterface.Disconnect();
+		this.sendResponse(response);
+	}
+
+	protected pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments, request?: DebugProtocol.Request): void {
+		vscode.window.showErrorMessage("Aosora Debugger は Pause をサポートしていません。");
 		this.sendResponse(response);
 	}
 
