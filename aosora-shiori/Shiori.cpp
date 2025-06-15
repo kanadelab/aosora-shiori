@@ -199,6 +199,12 @@ namespace sakura {
 			Replace(line, "\r", "");
 #endif // not(WIN32 or _WIN32)
 
+            //コメントの除去
+            size_t commentPos = line.find("//");
+            if (commentPos != std::string::npos) {
+				line = line.substr(0, commentPos);
+            }
+
 			//空白行のスキップ
 			std::string emptyTest = line;
 			Replace(emptyTest, " ", "");
@@ -313,10 +319,13 @@ namespace sakura {
 			return std::shared_ptr<const ASTParseResult>(errorResult);
 		}
 
-		//デバッグシステムに読み込み通知
-		Debugger::NotifyScriptFileLoaded(script, filePath.GetFullPath());
-
 		auto ast = sakura::ASTParser::Parse(tokens);
+
+		//デバッグシステムに読み込み通知
+		if (ast->success) {
+			Debugger::NotifyScriptFileLoaded(script, filePath.GetFullPath(), *ast.get());
+		}
+
 		return ast;
 	}
 

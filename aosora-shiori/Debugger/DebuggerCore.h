@@ -45,7 +45,7 @@ namespace sakura {
 		static void NotifyError(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
 
 		//スクリプトファイル読み込み時の通知
-		static void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName);
+		static void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult);
 
 		//ログ出力時に通知
 		static void NotifyLog(const std::string& log, bool isError = false);

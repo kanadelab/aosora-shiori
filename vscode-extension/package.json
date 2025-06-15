@@ -73,24 +73,52 @@
           {
             "type": "aosora",
             "request": "launch",
-            "name": "SSPでaosoraを起動",
+            "name": "蒼空デバッグ",
             "port": 27016
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "蒼空デバッグ",
+            "description": "Aosora SHIORIを起動するための設定",
+            "body": {
+              "type": "aosora",
+              "request": "launch",
+              "name": "蒼空デバッグ",
+              "port": 27016
+            }
+          },
+          {
+            "label": "蒼空アタッチ",
+            "description": "Aosora SHIORIに接続するための設定",
+            "body": {
+              "type": "aosora",
+              "request": "attach",
+              "name": "蒼空アタッチ",
+              "port": 27016
+            }
           }
         ],
         "configurationAttributes": {
           "launch": {
-            "port": {
-              "type": "number",
-              "description": "接続するポート番号",
-              "default": 27016
-            }
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "接続するポート番号",
+                "default": 27016
+              }
+            },
+            "required": ["port"]
           },
           "attach": {
-            "port": {
-              "type": "number",
-              "description": "接続するポート番号",
-              "default": 27016
-            }
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "接続するポート番号",
+                "default": 27016
+              }
+            },
+            "required": ["port"]
           }
         }
       }

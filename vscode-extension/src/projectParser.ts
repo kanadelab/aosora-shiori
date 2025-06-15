@@ -17,8 +17,13 @@ export class ProjectParser {
 			const projectFile = await fs.readFile(filename, {encoding:"utf-8"});
 			const lines = projectFile.split("\n");
 			for(const line of lines){
+
+				//コメント除去
+				const commentIndex = line.indexOf("//");
+				const lineWithoutComment = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
+
 				//改行と空白を除去してカンマで分離
-				const items = line.replace("\t", "").replace("\r", "").replace(" ", "").split(",");
+				const items = lineWithoutComment.replace("\t", "").replace("\r", "").replace(" ", "").split(",");
 				if(items.length !== 2){
 					continue;
 				}

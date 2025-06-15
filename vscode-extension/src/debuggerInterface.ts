@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import {number, z} from 'zod';
 import * as Net from 'net';
 
+export const DEBUGGER_REVISION = "0";
+
 //Aosora デバッガインターフェース
 type BreakPointRequest = {
 	filename: string,
@@ -77,11 +79,24 @@ const LoadedSourcesResponse = z.object({
 });
 export type LoadedSourcesResponse = z.infer<typeof LoadedSourcesResponse>;
 
+const BreakpointLocationsResponse = z.object({
+	lines: z.array(z.number())
+});
+export type BreakpointLocationsResponse = z.infer<typeof BreakpointLocationsResponse>;
+
+const VersionResponse = z.object({
+	version: z.string(),
+	debuggerRevision: z.string()
+});
+export type VersionResponse = z.infer<typeof VersionResponse>;
+
 export class AosoraDebuggerInterface {
 
+	public onConnect:(editorDebuggerRevision:string, runtimeDebuggerRevision:string) => void;
 	public onClose:() => void;
 	public onBreak:(errorMessage: string|null) => void;
 	public onMessage:(message:string, isError:boolean, filepath:string|null, line:number|null) => void;
+	public onNetworkError:() => void;
 
 	private socketClient:Net.Socket|null;
 	private breakInfo:BreakHitRequest|null;
@@ -92,13 +107,20 @@ export class AosoraDebuggerInterface {
 	private responseMap:Map<string, (body:any, error: any) => void>;
 
 	public constructor(){
+		this.onConnect = () => {};
 		this.onClose = () => {};
 		this.onBreak = () => {};
 		this.onMessage = () => {};
+		this.onNetworkError = () => {};
 		this.responseMap = new Map<string, ()=>void>();
 		this.socketClient = null;
 		this.breakInfo = null;
 		this.connectWaitList = [];
+	}
+
+	private NotifyError():never{
+		this.onNetworkError();
+		throw new Error();
 	}
 
 	//ブレーク情報取得
@@ -168,7 +190,11 @@ export class AosoraDebuggerInterface {
 		for(let i = 0; i < 30; i++){
 			try{
 				await this.ConnectInternal();
-				return;	//接続成功
+
+				//バージョン要求
+				const versionInfo = await this.RequestVersion();	//接続成功
+				this.onConnect(DEBUGGER_REVISION, versionInfo.debuggerRevision);
+				return;
 			}
 			catch{
 				//接続待機
@@ -277,12 +303,17 @@ export class AosoraDebuggerInterface {
 	//-- エディタ向けインターフェース
 
 	//ブレークポイント設定（エディタ側都合でファイルごとに差し替えの形）
-	public async SetBreakPoints(filename: string, lines: number[]){
+	public async SetBreakPoints(filename: string, lines: number[]):Promise<number[]>{
 		const requestBody = {
 			filename:  filename.replace("\\\\", "\\"),
 			lines
 		};
-		await this.SendPromise('set_breakpoints', requestBody);
+		const response = await this.SendPromise('set_breakpoints', requestBody);
+		const parsedResponse = BreakpointLocationsResponse.safeParse(response);
+		if(parsedResponse.success){
+			return parsedResponse.data.lines;
+		}
+		this.NotifyError();
 	}
 
 	//例外ブレークポイント設定
@@ -353,7 +384,27 @@ export class AosoraDebuggerInterface {
 		if(parsedResponse.success){
 			return parsedResponse.data.files;
 		}
-		throw new Error();
+		this.NotifyError();
+	}
+
+	public async RequestBreakpointLocations(filename:string){
+		const response = await this.SendPromise("breakpoint_locations", {
+			filename:  filename.replace("\\\\", "\\"),
+		});
+		const parsedResponse = BreakpointLocationsResponse.safeParse(response);
+		if(parsedResponse.success){
+			return parsedResponse.data.lines;
+		}
+		this.NotifyError();
+	}
+
+	public async RequestVersion() {
+		const response = await this.SendPromise("version", {});
+		const parsedResponse = VersionResponse.safeParse(response);
+		if(parsedResponse.success){
+			return parsedResponse.data;
+		}
+		this.NotifyError();
 	}
 
 	//切断

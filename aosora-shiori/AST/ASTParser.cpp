@@ -234,7 +234,7 @@ namespace sakura {
 		std::vector<ConstASTNodeRef> allNodes;
 		std::vector<ConstASTNodeRef> breakableNodes;
 		std::set<uint32_t> breakableLinesSet;
-		parseResult->root->GetChildren(allNodes);
+		parseResult->root->GetChildrenRecursive(allNodes);
 
 		//ブレークできるのはコードブロックの子として認識しているノードなので、それらをまとめて取得する
 		for (size_t i = 0; i < allNodes.size(); i++) {

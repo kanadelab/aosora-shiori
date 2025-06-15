@@ -12,7 +12,9 @@
 #include <map>
 #include <set>
 #include <atomic>
+#include "Version.h"
 #include "CoreLibrary/CoreLibrary.h"
+#include "CommonLibrary/CommonClasses.h"
 #include "Debugger/DebuggerCore.h"
 #include "Debugger/DebuggerUtility.h"
 #include "Misc/Json.h"
@@ -92,25 +94,26 @@ namespace sakura {
 	class BreakPointManager {
 	private:
 		std::map<std::string, std::set<uint32_t>> breakPoints;
+		std::map<std::string, std::set<uint32_t>> loadedFileBreakLines;		//読み込み済みのファイルでブレークポイント設定可能な行のコレクション
 		bool isBreakAllError;
 		bool isBreakUncaughtError;
 		CriticalSection lockObj;
 
 	private:
-		std::string NormalizeFilename(const std::string& filename) {
+		std::string NormalizeFilename(const std::string& fullname) {
 			//windowsの場合を想定して大文字小文字を考慮しないファイル名にする
 			//VSCodeがドライブレターを小文字にしてくることがあるのでその対策として
-			std::string f(filename);
+			std::string f(fullname);
 			ToLower(f);
 			return f;
 		}
 
 	public:
 		//ブレークポイントの追加
-		void AddBreakPoint(const std::string& filename, uint32_t line) {
+		void AddBreakPoint(const std::string& fullname, uint32_t line) {
 			LockScope ls(lockObj);
 
-			auto normalizedName = NormalizeFilename(filename);
+			auto normalizedName = NormalizeFilename(fullname);
 			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
 				//ファイルごと新規登録
@@ -123,10 +126,10 @@ namespace sakura {
 		}
 
 		//ブレークポイントの削除
-		void RemoveBreakPoint(const std::string& filename, uint32_t line) {
+		void RemoveBreakPoint(const std::string& fullname, uint32_t line) {
 			LockScope ls(lockObj);
 
-			auto normalizedName = NormalizeFilename(filename);
+			auto normalizedName = NormalizeFilename(fullname);
 			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
 				return;
@@ -142,10 +145,10 @@ namespace sakura {
 		}
 
 		//ブレークポイントのファイル単位上書き
-		void SetBreakPoints(const std::string& filename, const uint32_t* lines, uint32_t lineCount) {
+		void SetBreakPoints(const std::string& fullname, const uint32_t* lines, uint32_t lineCount) {
 			LockScope lc(lockObj);
 
-			auto normalizedName = NormalizeFilename(filename);
+			auto normalizedName = NormalizeFilename(fullname);
 			if (lineCount == 0) {
 				//削除
 				breakPoints.erase(normalizedName);
@@ -153,9 +156,33 @@ namespace sakura {
 			else {
 				//設定
 				assert(lines != nullptr);
-				breakPoints[normalizedName] = std::set<uint32_t>(lines, lines + lineCount);
-			}
+				std::set<uint32_t> enabledLines;
 
+				//ブレーク可能かどうかを検証
+				auto breakableLines = loadedFileBreakLines.find(normalizedName);
+				if (breakableLines != loadedFileBreakLines.end()) {
+					for (uint32_t i = 0; i < lineCount; i++) {
+						if (breakableLines->second.contains(lines[i])) {
+							enabledLines.insert(lines[i]);
+						}
+					}
+				}
+				breakPoints[normalizedName] = std::move(enabledLines);
+			}
+		}
+
+		JsonArrayRef GetBreakpoints(const std::string& fullname) {
+			LockScope lc(lockObj);
+
+			auto normalizedName = NormalizeFilename(fullname);
+			auto breakLines = breakPoints.find(normalizedName);
+			JsonArrayRef result = JsonSerializer::MakeArray();
+			if (breakLines != breakPoints.end()) {
+				for (uint32_t line : breakLines->second) {
+					result->Add(JsonSerializer::From(line));
+				}
+			}
+			return result;
 		}
 
 		//ブレークポイントを全クリア
@@ -165,9 +192,9 @@ namespace sakura {
 		}
 
 		//ブレークポイントに引っかかるかチェック
-		bool QueryBreakPoint(const std::string& filename, uint32_t line) {
+		bool QueryBreakPoint(const std::string& fullname, uint32_t line) {
 			LockScope ls(lockObj);
-			auto normalizedName = NormalizeFilename(filename);
+			auto normalizedName = NormalizeFilename(fullname);
 
 			auto fileHit = breakPoints.find(normalizedName);
 			if (fileHit == breakPoints.end()) {
@@ -199,6 +226,32 @@ namespace sakura {
 			return isBreakUncaughtError;
 		}
 
+		//ロード済みのファイル情報を登録、ブレーク可能な行を照会できるようにする
+		void AddLoadedFile(const std::string& fullname, const ASTParseResult& astParseResult) {
+			LockScope lc(lockObj);
+			std::set<uint32_t> lines;
+			for (auto lineIndex : astParseResult.breakableLines) {
+				lines.insert(lineIndex);
+			}
+			auto normalizedName = NormalizeFilename(fullname);
+			loadedFileBreakLines[normalizedName] = std::move(lines);
+		}
+
+		//ブレーク可能な行情報を収集
+		JsonArrayRef FindBreakableLines(const std::string& fullname) {
+			LockScope lc(lockObj);
+			auto normalizedName = NormalizeFilename(fullname);
+			auto it = loadedFileBreakLines.find(normalizedName);
+			JsonArrayRef result = JsonSerializer::MakeArray();
+
+			if (it != loadedFileBreakLines.end()) {
+				for (const uint32_t line : it->second) {
+					result->Add(JsonSerializer::From(line));
+				}
+			}
+			
+			return result;
+		}
 	};
 
 	//デバッグスナップショットのオブジェクトを外部から特定するためのハンドル変換器
@@ -210,6 +263,7 @@ namespace sakura {
 		enum class MetadataType : uint32_t {
 			LocalVariables,			//スタックフレームローカル変数
 			ShioriRequest,			//SHIORI Request
+			SaveData				//SaveData
 		};
 
 		enum class RefType {
@@ -980,7 +1034,7 @@ namespace sakura {
 
 		void NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 		void NotifyThrowExceotion(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
-		void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName);
+		void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult);
 		void NotifyLog(const std::string& log, bool isError);
 		void NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError);
 		void NotifyLog(const std::string& log, const SourceCodeRange& sourceCodeRange, bool isError);
@@ -1048,7 +1102,7 @@ namespace sakura {
 					if (stackLevel <= lastBreakStackLevel) {
 						isBreak = true;
 					}
-					else if (lastBreakStackLevel < stackTrace.size() && stackTrace[lastBreakStackLevel - 1].isJumping) {
+					else if (lastBreakStackLevel < stackTrace.size() && stackTrace[stackTrace.size() - lastBreakStackLevel].isJumping) {
 						//ジャンプの場合ステップイン扱いになるがステップオーバーで引っ掛けたい
 						isBreak = true;
 					}
@@ -1076,7 +1130,8 @@ namespace sakura {
 		}
 	}
 
-	void DebugSystem::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName) {
+	void DebugSystem::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult) {
+		breakPoints.AddLoadedFile(fullName, astParseResult);
 		loadedSources.AddSource(fileBody, fullName);
 	}
 
@@ -1278,17 +1333,24 @@ namespace sakura {
 
 	//SHIORI Requestを送信
 	JsonArrayRef EnumShioriRequests(BreakSession& breakSession) {
-		//TODO: それぞれオブジェクト自体が書き換えられていた場合は進行できないのでチェックをいれること
+		JsonArrayRef result = JsonSerializer::MakeArray();
 		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
 		auto shioriVariable = interpreter.GetGlobalVariable("Shiori");
 		ScriptObject* shioriObj = interpreter.InstanceAs<ScriptObject>(shioriVariable);
+		if (shioriObj == nullptr) {
+			//書き込まれているなどで期待した方でない場合無効
+			return result;
+		}
 
 		auto referenceVariable = shioriObj->RawGet("Reference");
 		ScriptArray* referenceArray = interpreter.InstanceAs<ScriptArray>(referenceVariable);
+		if (referenceArray == nullptr) {
+			//書き込まれているなどで期待した方でない場合無効
+			return result;
+		}
 
 		//Referenceを優先で収集（多分１番必要なので）
 		std::set<std::string> addedSet;
-		JsonArrayRef result = JsonSerializer::MakeArray();
 		for (size_t i = 0; i < referenceArray->Count(); i++) {
 			std::string key = std::string("Reference") + std::to_string(i);
 			auto elem = referenceArray->At(i);
@@ -1299,6 +1361,11 @@ namespace sakura {
 		//そのあと把握してないヘッダを取り込む
 		auto headersVariable = shioriObj->RawGet("Headers");
 		ScriptObject* headersObj = interpreter.InstanceAs<ScriptObject>(headersVariable);
+		if (headersObj == nullptr) {
+			//書き込まれているなどで期待した方でない場合無効
+			return result;
+		}
+
 		for (auto kvp : headersObj->GetInternalCollection()) {
 			//Referenceは重複なのでパス
 			if (!addedSet.contains(kvp.first)) {
@@ -1306,6 +1373,24 @@ namespace sakura {
 			}
 		}
 
+		return result;
+	}
+
+	//SaveDataを送信
+	JsonArrayRef EnumSaveData(BreakSession& breakSession) {
+		auto saveDataVariable = SaveData::StaticGet("Data", breakSession.GetContext());
+		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
+		JsonArrayRef result = JsonSerializer::MakeArray();
+
+		ScriptObject* object = interpreter.InstanceAs<ScriptObject>(saveDataVariable);
+		if (object == nullptr) {
+			//書き込まれているなどで期待した方でない場合無効
+			return result;
+		}
+
+		for (auto item : object->GetInternalCollection()) {
+			result->Add(MakeVariableInfo(item.first, item.second, breakSession));
+		}
 		return result;
 	}
 
@@ -1341,6 +1426,9 @@ namespace sakura {
 			}
 			else if (ref.metadata.metadataType == ScriptReferenceHandleManager::MetadataType::LocalVariables) {
 				return EnumLocalVariables(ref.metadata.stackIndex, breakSession);
+			}
+			else if (ref.metadata.metadataType == ScriptReferenceHandleManager::MetadataType::SaveData) {
+				return EnumSaveData(breakSession);
 			}
 		}
 
@@ -1408,6 +1496,18 @@ namespace sakura {
 			result->Add(obj);
 		}
 
+		//SaveData
+		{
+			auto obj = JsonSerializer::MakeObject();
+			ScriptReferenceHandleManager::Metadata meta;
+			meta.metadataType = ScriptReferenceHandleManager::MetadataType::SaveData;
+			meta.stackIndex = 0;	//スタック関係ないはず
+			const uint32_t handle = breakSession.MetadataToHandle(meta);
+			obj->Add("handle", JsonSerializer::From(handle));
+			obj->Add("name", JsonSerializer::From("SaveData"));
+			result->Add(obj);
+		}
+
 		return result;
 	}
 
@@ -1434,7 +1534,14 @@ namespace sakura {
 		}
 		
 		//リクエストタイプごとに処理を分ける
-		if (requestType == "set_breakpoints") {
+		if (requestType == "version") {
+			JsonObjectRef responseBody = JsonSerializer::MakeObject();
+			responseBody->Add("version", JsonSerializer::From(AOSORA_SHIORI_VERSION));
+			responseBody->Add("debuggerRevision", JsonSerializer::From(AOSORA_DEBUGGER_REVISION));
+			SendResponse(responseBody, requestId);
+			return;
+		}
+		else if (requestType == "set_breakpoints") {
 
 			std::string filename;
 			JsonArrayRef lineArray;
@@ -1464,7 +1571,12 @@ namespace sakura {
 			else {
 				breakPoints.SetBreakPoints(filename, nullptr, 0);
 			}
-			SendResponse(requestId);
+
+			//レスポンスとして設定成功した行を返す
+			JsonObjectRef responseBody = JsonSerializer::MakeObject();
+			responseBody->Add("lines", breakPoints.GetBreakpoints(filename));
+
+			SendResponse(responseBody, requestId);
 			return;
 		}
 		else if (requestType == "set_exception_breakpoint") {
@@ -1490,6 +1602,17 @@ namespace sakura {
 				//例外ブレークポイントの設定は有無にかかわらず呼び出され、この時点でセットアップ完了といえる
 				isSetupCompleted = true;
 				SendResponse(requestId);
+				return;
+			}
+		}
+		else if (requestType == "breakpoint_locations") {
+			//ブレークポイント可能な位置をリストアップ
+			std::string fullname;
+			if (JsonSerializer::As(body->Get("filename"), fullname)) {
+				auto responseData = JsonSerializer::MakeObject();
+				auto responseLines = breakPoints.FindBreakableLines(fullname);
+				responseData->Add("lines", responseLines);
+				SendResponse(responseData, requestId);
 				return;
 			}
 		}
@@ -1582,9 +1705,9 @@ namespace sakura {
 		}
 	}
 
-	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName) {
+	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult) {
 		if (DebugSystem::GetInstance() != nullptr) {
-			DebugSystem::GetInstance()->NotifyScriptFileLoaded(fileBody, fullName);
+			DebugSystem::GetInstance()->NotifyScriptFileLoaded(fileBody, fullName, astParseResult);
 		}
 	}
 
@@ -1657,7 +1780,7 @@ namespace sakura {
 namespace sakura {
 	void Debugger::NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext){}
 	void Debugger::NotifyError(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext){}
-	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName){}
+	void Debugger::NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult){}
 	void Debugger::NotifyLog(const std::string& log, bool isError){}
 	void Debugger::NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError){}
 	void Debugger::NotifyLog(const std::string& log, const SourceCodeRange& range, bool isError){}

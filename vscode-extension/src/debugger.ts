@@ -6,6 +6,7 @@ import { basename } from 'path';
 import { LaunchDebuggerRuntime } from './debuggerRuntime';
 import { LogLevel, LogOutputEvent } from '@vscode/debugadapter/lib/logger';
 import { ProjectParser } from './projectParser';
+import * as crypto from 'crypto';
 import path = require('path');
 
 const DEFAULT_PORT_NUMBER = 27016;
@@ -57,6 +58,16 @@ class AosoraDebugSession extends DebugSession {
 		//各種コールバックを設定
 		this.debugInterface.onClose = () => {
 			this.sendEvent(new TerminatedEvent());
+		};
+
+		this.debugInterface.onConnect = (editorDebuggerRevision:string, runtimeDebuggerRevision:string) => {
+			if(editorDebuggerRevision !== runtimeDebuggerRevision){
+				this.sendEvent(new OutputEvent("ゴーストとVSCode拡張のデバッグ機能バージョンが異なるため、正常に通信できない可能性があります。\n"));
+			}
+		}
+
+		this.debugInterface.onNetworkError = () => {
+			this.sendEvent(new OutputEvent("ゴーストとの通信でエラーが発生しました。", "stderr"));
 		};
 
 		this.debugInterface.onBreak = (errorMessage:string|null) => {
@@ -138,7 +149,10 @@ class AosoraDebugSession extends DebugSession {
 				const aosoraDir = path.dirname(projPath);
 				const ghostPath = path.dirname(path.dirname(aosoraDir));	//プロジェクトの２階層上
 				try{
-					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir, () => {this.sendEvent(new TerminatedEvent())});
+					this.sendEvent(new OutputEvent("SSPを起動して接続しています...\n", "stdout"));
+					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir, () => {
+						this.sendEvent(new TerminatedEvent());
+					});
 				}
 				catch(e){
 					const err = e as Error
@@ -180,8 +194,17 @@ class AosoraDebugSession extends DebugSession {
 	//アタッチ
 	protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
 
+		this.sendEvent(new OutputEvent("起動中のゴーストにアタッチしています...\n", "stdout"));
+
 		//純粋に接続する形
-		await this.debugInterface.Connect();
+		try{
+			await this.debugInterface.Connect();
+		}
+		catch{
+			vscode.window.showErrorMessage("デバッガはゴーストへの接続に失敗しました。");
+			this.sendEvent(new TerminatedEvent());	
+			return;
+		}
 		this.sendResponse(response);
 	}
 
@@ -204,18 +227,10 @@ class AosoraDebugSession extends DebugSession {
 
 	//ブレークポイント
 	protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request): Promise<void> {
-		await this.debugInterface.WaitForConnect();
 
 		//ファイル名と行番号を取得
 		const filename = args.source.path ?? "";
 		const lines = args.lines ?? [];
-
-		//ブレークポイントを単純に全採用状態にする
-		const editorBreeakPoints = lines.map(o => {
-			const bp = new Breakpoint(true, o);
-			bp.setId(o);
-			return bp;
-		});
 
 		//デバッガに送信する行数に変換
 		const debuggerBreakPoints = lines.map(o => {
@@ -223,7 +238,15 @@ class AosoraDebugSession extends DebugSession {
 		})
 
 		//設定要求
-		await this.debugInterface.SetBreakPoints(this.convertClientPathToDebugger(filename), debuggerBreakPoints);
+		const enabledLines = await this.debugInterface.SetBreakPoints(this.convertClientPathToDebugger(filename), debuggerBreakPoints);
+		const enabledLinesSet = new Set<number>(enabledLines);
+
+		//ブレークポイントの状態を取得
+		const editorBreeakPoints = lines.map(o => {
+			const bp = new Breakpoint(enabledLinesSet.has(o-1), o);
+			bp.setId(o);
+			return bp;
+		});
 
 		//完了
 		response.body = {
@@ -318,6 +341,28 @@ class AosoraDebugSession extends DebugSession {
 		this.sendResponse(response);
 	}
 
+	//ブレーク位置リクエスト
+	//NOTE: 動作が期待と違う（自動的に無効状態にするとかでない）ので無効にしておく
+	//		行内ブレークポイントの設定可能位置収集に近い
+	/*
+	protected async breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): Promise<void> {
+		if(!args.source.path){
+			response.body = {
+				breakpoints: []
+			};
+			this.sendResponse(response);
+		}
+		else {
+			const filename = this.convertDebuggerPathToClient(args.source.path);
+			const lines = await this.debugInterface.RequestBreakpointLocations(filename);
+			response.body = {
+				breakpoints: lines.map(o => ({line: o+1}))
+			};
+			this.sendResponse(response);
+		}
+	}
+	*/
+
 	//ヘルパ類
 	private createSource(filename: string) {
 		return new Source(basename(filename), this.convertDebuggerPathToClient(filename));
@@ -343,14 +388,14 @@ class AosoraDebugSession extends DebugSession {
 			return {
 				name: v.key,
 				value: `"${v.value}"`,
-				type: 'null',
+				type: v.primitiveType,
 				variablesReference: -1
 			}
 		}
 		else if (v.primitiveType != 'object') {
 			return {
 				name: v.key,
-				value: v.value ?? null,
+				value: v.value?.toString() ?? null,
 				type: v.primitiveType,
 				variablesReference: -1
 			};
