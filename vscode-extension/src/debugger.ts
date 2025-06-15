@@ -101,7 +101,7 @@ class AosoraDebugSession extends DebugSession {
 		response.body = {
 			supportsExceptionInfoRequest: true,
 			supportsLoadedSourcesRequest: true,
-			supportsBreakpointLocationsRequest: true,
+			//supportsBreakpointLocationsRequest: true,
 			exceptionBreakpointFilters: [
 				{
 					label: "すべてのエラー",
@@ -125,6 +125,11 @@ class AosoraDebugSession extends DebugSession {
 
 		//準備完了
 		this.sendEvent(new InitializedEvent());
+	}
+
+	protected terminateRequest(response: DebugProtocol.TerminateResponse, args: DebugProtocol.TerminateArguments, request?: DebugProtocol.Request): void {
+		this.debugInterface.Disconnect();
+		this.sendResponse(response);
 	}
 
 	//デバッグ起動のリクエスト（アタッチは別で存在している）

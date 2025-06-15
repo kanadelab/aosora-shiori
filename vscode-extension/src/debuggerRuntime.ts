@@ -8,7 +8,7 @@ export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, 
 
 	let runtimeResolvedPath = runtimePath;
 	if(!path.isAbsolute(runtimePath)){
-		runtimePath = path.join(projPath, runtimePath);
+		runtimeResolvedPath = path.join(projPath, runtimePath);
 	}
 	if(!fs.existsSync(runtimeResolvedPath)){
 		throw new Error(`debug.debugger.runtime で設定されたパスにファイルが見つかりませんでした: ${runtimeResolvedPath}`);

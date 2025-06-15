@@ -1583,7 +1583,6 @@ namespace sakura {
 			std::shared_ptr<JsonArray> filters;
 			if (JsonSerializer::As(body->Get("filters"), filters)) {
 				//把握しているフィルタの状態を切り替え
-				//TODO: デフォルトは送信されないっぽい。
 				bool breakAll = false;
 				bool breakUncaught = false;
 				for (size_t i = 0; i < filters->GetCount(); i++) {

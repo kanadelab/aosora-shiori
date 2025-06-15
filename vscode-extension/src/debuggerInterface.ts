@@ -102,6 +102,7 @@ export class AosoraDebuggerInterface {
 	private breakInfo:BreakHitRequest|null;
 	private connectWaitList:(()=>void)[];
 	private isConnected = false;
+	private isConnectCancel = false;
 
 	//待機レスポンスリスト
 	private responseMap:Map<string, (body:any, error: any) => void>;
@@ -188,6 +189,9 @@ export class AosoraDebuggerInterface {
 
 		//30秒待つ形
 		for(let i = 0; i < 30; i++){
+			if(this.isConnectCancel){
+				return;
+			}
 			try{
 				await this.ConnectInternal();
 
@@ -216,6 +220,10 @@ export class AosoraDebuggerInterface {
 				resolve();
 			}
 		});
+	}
+
+	public IsConnectCancel(){
+		return this.isConnectCancel;
 	}
 
 	//リクエストの送信
@@ -409,6 +417,7 @@ export class AosoraDebuggerInterface {
 
 	//切断
 	public Disconnect(){
+		this.isConnectCancel = true;
 		this.socketClient?.end();
 	}
 }
