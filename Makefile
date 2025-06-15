@@ -10,7 +10,7 @@ AR  = llvm-ar
 
 CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori -fPIC
 #CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori
-LDFLAGS	= -shared
+LDFLAGS	= -shared $(shell pkg-config -libs openssl)
 #LDFLAGS	= -shared -static-libgcc -static-libstdc++
 
 .PHONY: all clean

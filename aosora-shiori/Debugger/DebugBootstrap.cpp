@@ -4,12 +4,17 @@
 #if defined(AOSORA_REQUIRED_WIN32)
 #include <windows.h>
 #include <CommCtrl.h>
+#else
+#include <cstdlib>
+#include <cstring>
+#include <unistd.h>
 #endif // AOSORA_REQUIRED_WIN32
 #include "Debugger/DebuggerCore.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
 namespace sakura
 {
+#if defined(AOSORA_REQUIRED_WIN32)
 	//デバッグブートストラップウインドウ
 	//SSPを起動してからAosoraデバッガが接続してくるまで待機するたための、接続待ちを案内するウインドウ
 	class DebugBootstrapWindow
@@ -123,6 +128,19 @@ namespace sakura
 		delete instance;
 		instance = nullptr;
 	}
+#else
+    // X11に依存するの気持ち悪いので対応予定無し
+	class DebugBootstrapWindow
+	{
+	public:
+		static void Run();
+	};
+    void DebugBootstrapWindow::Run() {
+        while (!Debugger::IsConnected()) {
+            sleep(1);
+        }
+    }
+#endif // AOSORA_REQUIRED_WIN32
 
 	void Debugger::Bootstrap() {	
 		//指定の環境変数が設定されていれば機動隊気に入る
@@ -130,7 +148,11 @@ namespace sakura
 		bool enableDebugBootstrap = false;
 		if (bootstrapEnv != nullptr) {
 			if (strcmp(bootstrapEnv, "0") != 0) {
+#if defined(AOSORA_REQUIRED_WIN32)
 				_putenv_s("AOSORA_DEBUG_BOOTSTRAP", "0");
+#else
+				setenv("AOSORA_DEBUG_BOOTSTRAP", "0", 1);
+#endif // AOSORA_REQUIRED_WIN32
 				enableDebugBootstrap = true;
 			}
 		}
