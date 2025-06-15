@@ -1,4 +1,5 @@
 {
     "aosora-version": "0.1.9",
-    "vscode-extension-version": "0.1.9"
+    "vscode-extension-version": "0.1.9",
+    "debugger-revision": "0"
 }
