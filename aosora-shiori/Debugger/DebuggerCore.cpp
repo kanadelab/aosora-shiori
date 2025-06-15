@@ -8,6 +8,25 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <WS2tcpip.h>
+#else
+#include <cerrno>
+#include <condition_variable>
+#include <csignal>
+#include <cstring>
+#include <ctime>
+#include <mutex>
+#include <netdb.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+using SOCKET = int;
+const SOCKET INVALID_SOCKET = -1;
+const int SOCKET_ERROR = -1;
+
+inline int closesocket(SOCKET fd) {
+	close(fd);
+}
 #endif // AOSORA_REQUIRED_WIN32
 #include <thread>
 #include <cassert>
@@ -40,6 +59,7 @@ namespace sakura {
 		Break			//ブレーク
 	};
 
+#if defined(AOSORA_REQUIRED_WIN32)
 	//クリティカルセクションロック
 	class CriticalSection : public ILock {
 	private:
@@ -95,6 +115,31 @@ namespace sakura {
 		}
 	};
 
+#else
+	using CriticalSection = std::mutex;
+	class SyncEvent {
+		private:
+			std::condition_variable cond;
+		public:
+			bool Wait(LockScope& lock, int32_t timeoutMs = -1) {
+				std::cv_status status = std::cv_status::no_timeout;
+				if (timeoutMs >= 0) {
+					status = cond.wait_for(lock, std::chrono::milliseconds(timeoutMs));
+				}
+				else {
+					cond.wait(lock);
+				}
+				if (status == std::cv_status::timeout) {
+					return false;
+				}
+				return true;
+			}
+
+			void Raise() {
+				cond.notify_all();
+			}
+	};
+#endif // AOSORA_REQUIRED_WIN32
 
 	//ブレークポイント管理
 	class BreakPointManager {
@@ -460,18 +505,22 @@ namespace sakura {
 			assert(receiveCallback != nullptr);
 			assert(connectionStateCallback != nullptr);
 
+#if defined(AOSORA_REQUIRED_WIN32)
 			//通信系の起動
 			WSADATA wsaData;
 			if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 				//起動失敗
 				assert(false);
 			}
+#endif // AOSORA_REQUIRED_WIN32
 		}
 
 		~DebugConnection()
 		{
 			Disconnect();
+#if defined(AOSORA_REQUIRED_WIN32)
 			WSACleanup();
+#endif // AOSORA_REQUIRED_WIN32
 		}
 
 		static void Create(uint32_t connectionPort, ReceiveCallback receiveCallback, ConnectionStateCallback connectionStateCallback)
@@ -542,7 +591,11 @@ namespace sakura {
 
 				//重複で開こうとするとここで失敗する
 				if (bind(listenSocket, result->ai_addr, static_cast<int>(result->ai_addrlen)) == SOCKET_ERROR) {
+#if defined(AOSORA_REQUIRED_WIN32)
 					int err = WSAGetLastError();
+#else
+					int err = errno;
+#endif
 					assert(false);
 					freeaddrinfo(result);
 					closesocket(listenSocket);
@@ -564,11 +617,13 @@ namespace sakura {
 			while(!isClosing) {
 				auto acceptedSocket = accept(listenSocket, nullptr, nullptr);
 				if (acceptedSocket == INVALID_SOCKET) {
+#if defined(AOSORA_REQUIRED_WIN32)
 					auto errorCode = WSAGetLastError();
 					if (errorCode != WSAECONNRESET) {
 						//相手側のエラーなど再リッスンでよさそうなものは続行
 						continue;
 					}
+#endif // AOSORA_REQUIRED_WIN32
 
 					//終了要求
 					if(isClosing)
@@ -615,8 +670,10 @@ namespace sakura {
 				sendThread.reset(new std::thread(&DebugConnection::CallSendThread));
 				recvThread.reset(new std::thread(&DebugConnection::CallRecvThread));
 
+#if defined(AOSORA_REQUIRED_WIN32)
 				SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
 				SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
+#endif // AOSORA_REQUIRED_WIN32
 			}
 		}
 
@@ -662,7 +719,12 @@ namespace sakura {
 				else {
 					//送信することがなかったのでCPUを休める
 					//TODO: イベントで待つなど負荷下げる対応をいれたい?
+#if defined(AOSORA_REQUIRED_WIN32)
 					Sleep(1);
+#else
+					timespec t = {0, 1000000};
+					nanosleep(&t, NULL);
+#endif
 				}
 			}
 		}
@@ -714,6 +776,7 @@ namespace sakura {
 				}
 				else {
 					//受信失敗
+#if defined(AOSORA_REQUIRED_WIN32)
 					int errorCode = WSAGetLastError();
 					if (errorCode == WSAEMSGSIZE) {
 						//サイズ不足なのでサイズを倍にして再試行する
@@ -725,6 +788,11 @@ namespace sakura {
 						//切断
 						break;
 					}
+#else
+					if (false) {
+						// nop
+					}
+#endif // AOSORA_REQUIRED_WIN32
 					else {
 						//切断？
 						assert(false);
@@ -770,7 +838,9 @@ namespace sakura {
 
 				//リッスンスレッドからやり直す
 				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
+#if defined(AOSORA_REQUIRED_WIN32)
 				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+#endif // AOSORA_REQUIRED_WIN32
 			}
 		}
 
@@ -787,7 +857,9 @@ namespace sakura {
 
 				//リッスンスレッド起動
 				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
+#if defined(AOSORA_REQUIRED_WIN32)
 				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+#endif // AOSORA_REQUIRED_WIN32
 			}
 		}
 
@@ -1201,7 +1273,12 @@ namespace sakura {
 			}
 			else {
 				//TODO: 必要に応じて停止する仕組みが必要そう
+#if defined(AOSORA_REQUIRED_WIN32)
 				Sleep(1);
+#else
+				timespec t = {0, 1000000};
+				nanosleep(&t, NULL);
+#endif // AOSORA_REQUIRED_WIN32
 			}
 		}
 	}
@@ -1774,8 +1851,13 @@ namespace sakura {
 
 	void Debugger::TerminateProcess() {
 		//プロセス強制停止
+#if defined(AOSORA_REQUIRED_WIN32)
 		HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, GetCurrentProcessId());
 		::TerminateProcess(hProcess, 0);
+#else
+		pid_t pid = getpid();
+		kill(pid, SIGTERM);
+#endif // AOSORA_REQUIRED_WIN32
 	}
 }
 

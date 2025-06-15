@@ -1,11 +1,18 @@
 ﻿#pragma once
 
+#if !defined(AOSORA_REQUIRED_WIN32)
+
+#include <mutex>
+
+#endif // not(AOSORA_REQUIRED_WIN32)
+
 #include "Base.h"
 #include "AST/AST.h"
 #include "Interpreter/Interpreter.h"
 
 namespace sakura {
 
+#if defined(AOSORA_REQUIRED_WIN32)
 	class ILock {
 	public:
 		virtual void Lock() = 0;
@@ -34,6 +41,9 @@ namespace sakura {
 			lock.Unlock();
 		}
 	};
+#else
+	using LockScope = std::unique_lock<std::mutex>;
+#endif
 
 	//デバッグインターフェース
 	class Debugger {
