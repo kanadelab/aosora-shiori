@@ -129,17 +129,17 @@ namespace sakura
 		instance = nullptr;
 	}
 #else
-    // X11に依存するの気持ち悪いので対応予定無し
+	// X11に依存するの気持ち悪いので対応予定無し
 	class DebugBootstrapWindow
 	{
 	public:
 		static void Run();
 	};
-    void DebugBootstrapWindow::Run() {
-        while (!Debugger::IsConnected()) {
-            sleep(1);
-        }
-    }
+	void DebugBootstrapWindow::Run() {
+		while (!Debugger::IsConnected()) {
+			sleep(1);
+		}
+	}
 #endif // AOSORA_REQUIRED_WIN32
 
 	void Debugger::Bootstrap() {	
