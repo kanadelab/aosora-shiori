@@ -1,10 +1,14 @@
-﻿#ifndef WIN32_LEAN_AND_MEAN
+﻿#include "Base.h"
+
+#if defined(AOSORA_REQUIRED_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 
 #include <windows.h>
 #include <winsock2.h>
 #include <WS2tcpip.h>
+#endif // AOSORA_REQUIRED_WIN32
 #include <thread>
 #include <cassert>
 #include <list>
@@ -20,7 +24,9 @@
 #include "Misc/Json.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
+#if defined(AOSORA_REQUIRED_WIN32)
 #pragma comment(lib, "Ws2_32.lib")
+#endif // AOSORA_REQUIRED_WIN32
 
 //デバッグ通信系。
 namespace sakura {

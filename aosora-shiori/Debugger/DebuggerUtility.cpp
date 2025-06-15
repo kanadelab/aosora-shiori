@@ -1,11 +1,17 @@
-﻿#include <vector>
+﻿#include "Base.h"
+
+#include <vector>
 #include <string_view>
 #include <string>
+#if defined(AOSORA_REQUIRED_WIN32)
 #include "Windows.h"
+#endif // AOSORA_REQUIRED_WIN32
 #include "Debugger/DebuggerUtility.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
+#if defined(AOSORA_REQUIRED_WIN32)
 #pragma comment(lib, "Bcrypt.lib")
+#endif // AOSORA_REQUIRED_WIN32
 
 namespace sakura {
 

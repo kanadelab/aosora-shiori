@@ -1,7 +1,10 @@
-﻿
+﻿#include "Base.h"
+
 #include <cassert>
+#if defined(AOSORA_REQUIRED_WIN32)
 #include <windows.h>
 #include <CommCtrl.h>
+#endif // AOSORA_REQUIRED_WIN32
 #include "Debugger/DebuggerCore.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
