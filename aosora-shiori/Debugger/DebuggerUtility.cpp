@@ -58,18 +58,18 @@ namespace sakura {
 #else
 	std::string MD5Hash(const std::string& fileBody)
 	{
-        unsigned char md[EVP_MAX_MD_SIZE + 1] = {};
-        size_t mdlen = 0;
-        if (EVP_Q_digest(NULL, "MD5", NULL, fileBody.c_str(), fileBody.size(), md, &mdlen)) {
-            std::ostringstream oss;
-            for (int i = 0; i < mdlen; i++) {
-                oss << std::setfill('0') << std::right << std::setw(2) << static_cast<int>(md[i]);
-            }
-            return oss.str();
-        }
-        std::string empty;
-        return empty;
-    }
+		unsigned char md[EVP_MAX_MD_SIZE + 1] = {};
+		size_t mdlen = 0;
+		if (EVP_Q_digest(NULL, "MD5", NULL, fileBody.c_str(), fileBody.size(), md, &mdlen)) {
+			std::ostringstream oss;
+			for (int i = 0; i < mdlen; i++) {
+				oss << std::setfill('0') << std::right << std::setw(2) << static_cast<int>(md[i]);
+			}
+			return oss.str();
+		}
+		std::string empty;
+		return empty;
+	}
 #endif // AOSORA_REQUIRED_WIN32
 
 	void LoadedSourceManager::AddSource(const std::string& body, const std::string& fullName)
