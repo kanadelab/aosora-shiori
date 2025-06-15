@@ -8,7 +8,8 @@ AR  = llvm-ar
 #CXX = i686-w64-mingw32-g++
 #AR	= i686-w64-mingw32-ar
 
-CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori
+CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori -fPIC
+#CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori
 LDFLAGS	= -shared
 #LDFLAGS	= -shared -static-libgcc -static-libstdc++
 
