@@ -41,7 +41,7 @@ export class DebugSendProvider implements vscode.CodeLensProvider {
                     const codeLens = new vscode.CodeLens(range);
                     codeLens.command = {
                         title: "<< ゴーストに送信",
-                        command: "aosora-shiori.helloWorld",
+                        command: "aosora-shiori.sendToGhost",
                         tooltip: "この関数を実行してゴーストに送信します。",
                         arguments: [item.sendScriptBody]
                     };
@@ -53,14 +53,4 @@ export class DebugSendProvider implements vscode.CodeLensProvider {
 
         return result;
     }
-
-    /*
-    resolveCodeLens?(codeLens: vscode.CodeLens, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens> {
-        codeLens.command = {
-            title: "<< ゴーストに送信",
-            command: "aosora-shiori.helloWorld"
-        };
-        return codeLens;
-    }
-    */
 }

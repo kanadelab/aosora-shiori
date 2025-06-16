@@ -9,6 +9,13 @@ import { DebugAdapterFactory, DebugConfigurationProvider } from './debugger';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
+	let disposable = vscode.commands.registerCommand('aosora-shiori.sendToGhost', async (scriptBody:string) => {
+		if(scriptBody){
+			await SendPreviewFunction(scriptBody, context.extensionPath);
+		}
+	});
+
+	context.subscriptions.push(disposable);
 	context.subscriptions.push(vscode.languages.registerCodeLensProvider('*', new DebugSendProvider()));
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('aosora', new DebugAdapterFactory(context.extensionPath)));
 	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('aosora', new DebugConfigurationProvider() ));
