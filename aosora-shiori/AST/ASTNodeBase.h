@@ -147,10 +147,11 @@ namespace sakura {
 
 		//再帰的にノードを全部取得
 		void GetChildrenRecursive(std::vector<ConstASTNodeRef>& node) const {
-			size_t beginIndex = node.size();
+			const size_t beginIndex = node.size();
 			GetChildren(node);
-			//さらに子をたどる
-			for (size_t i = beginIndex; i < node.size(); i++) {
+			const size_t endIndex = node.size();
+			//今回追加した範囲をたどる
+			for (size_t i = beginIndex; i < endIndex; i++) {
 				node[i]->GetChildrenRecursive(node);
 			}
 		}
