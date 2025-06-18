@@ -14,6 +14,9 @@ int main(int argc, char* argv[]) {
 	//オプション解析してテストスクリプトとワークスペースを取得
 	sakura::Shiori shiori;
 
+	//デバッグ機能の無効化(ゴーストが起動していると競合するため回避させる)
+	shiori.SetForceDisableDebugSystem(true);
+
 	const char* scriptPath = argv[1];
 
 	if (argc >= 3) {

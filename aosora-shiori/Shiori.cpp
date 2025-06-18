@@ -11,8 +11,10 @@ namespace sakura {
 	const std::string ERROR_SHIORI_002 = "S002";
 
 	Shiori::Shiori():
+		isBooted(false),
 		isResponsedLoadError(false),
-		isBooted(false){
+		isForceDisableDebugSystem(false)
+	{
 
 		//テキストシステム作成
 		//TODO: これのせいで複数インスタンス対応が微妙になってるので注意
@@ -233,26 +235,29 @@ namespace sakura {
 					continue;
 				}
 
-				//デバッグモード
-				if (settingsKey == "debug") {
-					projectSettings.enableDebug = StringToSettingsBool(settingsValue);
-					continue;
-				}
+				//デバッグシステムが無効な場合は無視する
+				if (!isForceDisableDebugSystem) {
+					//デバッグモード
+					if (settingsKey == "debug") {
+						projectSettings.enableDebug = StringToSettingsBool(settingsValue);
+						continue;
+					}
 
-				if (settingsKey == "debug.logfile.name") {
-					projectSettings.debugOutputFilename = settingsValue;
-					continue;
-				}
+					if (settingsKey == "debug.logfile.name") {
+						projectSettings.debugOutputFilename = settingsValue;
+						continue;
+					}
 
-				if (settingsKey == "debug.logfile.enable") {
-					projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
-					continue;
-				}
+					if (settingsKey == "debug.logfile.enable") {
+						projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
+						continue;
+					}
 
-				if (settingsKey == "debug.debugger.port") {
-					size_t port;
-					if (StringToIndex(settingsValue, port)) {
-						projectSettings.debuggerPort = static_cast<uint32_t>(port);
+					if (settingsKey == "debug.debugger.port") {
+						size_t port;
+						if (StringToIndex(settingsValue, port)) {
+							projectSettings.debuggerPort = static_cast<uint32_t>(port);
+						}
 					}
 				}
 			}

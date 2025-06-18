@@ -43,6 +43,7 @@ namespace sakura {
 		std::string bootingExecuteErrorGuide;
 		std::string lastExecuteErrorLog;
 		bool isResponsedLoadError;
+		bool isForceDisableDebugSystem;
 
 	private:
 		void RequestInternal(const ShioriRequest& request, ShioriResponse& response);
@@ -87,5 +88,9 @@ namespace sakura {
 		//コンソール出力用のエラー情報取得
 		std::string GetErrorsString();
 		const std::string& GetGhostMasterPath() const { return ghostMasterPath; }
+
+		//デバッグ機能の強制的な無効化（aosora-sstpでデバッグ機能を動作させないようにするためのもの）
+		void SetForceDisableDebugSystem(bool isDisable) { isForceDisableDebugSystem = isDisable; }
+		bool IsForceDisableDebugSystem() const { return isForceDisableDebugSystem; }
 	};
 }
