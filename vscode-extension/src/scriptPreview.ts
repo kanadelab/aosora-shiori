@@ -10,30 +10,46 @@ const ERROR_CODE_GHOST_NOT_FOUND = 2;
 const ERROR_CODE_GHOST_SCRIPT_ERROR = 3;
 const ERROR_CODE_PREVIEW_SCRIPT_ERROR = 4;
 
+let isExecuting = false;
+
 //スクリプトプレビューイング
 export async function SendPreviewFunction(functionBody:string, extensionPath:string){
-
-	const outPath = extensionPath + "/" + '_aosora_send_script_.as';
-	const executablePath = extensionPath + "/" + "aosora-sstp.exe";
-	let command = `"${executablePath}" "${outPath}"`;
-
-	//ワークスペースがあればパスに足す
-	const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
-	if(projFiles.length > 0){
-		const workspace = path.dirname(projFiles[0].fsPath);
-		command += ` ${workspace}\\\\`;
+	if(isExecuting){
+		vscode.window.showErrorMessage("トーク送信がすでに実行中です。しばらく待ってお試しください。");
 	}
 
-	//一時ファイルを用意して呼び出す
-	fs.writeFileSync(outPath, functionBody, 'utf-8');
-	
-	childProcess.exec(command, (error, stdout, stderr) => {
-		fs.rmSync(outPath);
-		if(error){
-			vscode.window.showErrorMessage(ExitCodeToString(error.code) + stderr);
+	isExecuting = true;
+	try{
+		const outPath = extensionPath + "/" + '_aosora_send_script_.as';
+		const executablePath = extensionPath + "/" + "aosora-sstp.exe";
+		let command = `"${executablePath}" "${outPath}"`;
+
+		//ワークスペースがあればパスに足す
+		const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
+		if(projFiles.length > 0){
+			const workspace = path.dirname(projFiles[0].fsPath);
+			command += ` ${workspace}\\\\`;
 		}
-	});
-	
+
+		//一時ファイルを用意して呼び出す
+		await fs.promises.writeFile(outPath, functionBody, 'utf-8');
+
+		//実行待ち
+		await new Promise<void>(r  => {
+			childProcess.exec(command, (error, stdout, stderr) => {
+				if(error){
+					vscode.window.showErrorMessage(ExitCodeToString(error.code) + stderr);
+				}
+				r();
+			});
+		});
+
+		await fs.promises.rm(outPath);
+	}
+	catch{}
+	finally{
+		isExecuting = false;
+	}
 }
 
 function ExitCodeToString(code?:number){
