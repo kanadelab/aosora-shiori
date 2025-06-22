@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as childProcess from 'child_process';
+import * as os from 'os';
+
+const isWindows = (os.type() === 'Windows_NT');
 
 //ランタイム（SSP）を起動
 export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, ghostPath:string, projPath:string, onProcessExit?:()=>void){
@@ -10,7 +13,7 @@ export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, 
 	if(!path.isAbsolute(runtimePath)){
 		runtimeResolvedPath = path.join(projPath, runtimePath);
 	}
-	if(!fs.existsSync(runtimeResolvedPath)){
+	if(isWindows && !fs.existsSync(runtimeResolvedPath)){
 		throw new Error(`debug.debugger.runtime で設定されたパスにファイルが見つかりませんでした: ${runtimeResolvedPath}`);
 	}
 
@@ -23,7 +26,8 @@ export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, 
 	}
 
 	//プロセス終了検出？
-	const command = `"${extensionPath}\\launch.bat" "${runtimePath}" "${ghostPath}" "${projPath}"`;
+	const scriptPath = extensionPath + ((isWindows) ? ("\\launch.bat") : ("/launch.sh"));
+	const command = `"${scriptPath}" "${runtimePath}" "${ghostPath}" "${projPath}"`;
 	childProcess.exec(command, (error, stdout, stderr) => {
 		if(error){
 			console.error(error);
