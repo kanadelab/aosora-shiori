@@ -25,7 +25,7 @@ const SOCKET INVALID_SOCKET = -1;
 const int SOCKET_ERROR = -1;
 
 inline int closesocket(SOCKET fd) {
-	close(fd);
+	return close(fd);
 }
 #endif // AOSORA_REQUIRED_WIN32
 #include <thread>
