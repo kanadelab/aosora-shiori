@@ -14,6 +14,7 @@
 #include <csignal>
 #include <cstring>
 #include <ctime>
+#include <fcntl.h>
 #include <mutex>
 #include <netdb.h>
 #include <sys/types.h>
@@ -613,6 +614,11 @@ namespace sakura {
 				return;
 			}
 
+#if !defined(AOSORA_REQUIRED_WIN32)
+			int old = fcntl(listenSocket, F_GETFL);
+			fcntl(listenSocket, F_SETFL, old | O_NONBLOCK);
+#endif // not AOSORA_REQUIRED_WIN32
+
 			//accept
 			while(!isClosing) {
 				auto acceptedSocket = accept(listenSocket, nullptr, nullptr);
@@ -621,6 +627,10 @@ namespace sakura {
 					auto errorCode = WSAGetLastError();
 					if (errorCode != WSAECONNRESET) {
 						//相手側のエラーなど再リッスンでよさそうなものは続行
+						continue;
+					}
+#else
+					if (errno == EAGAIN || errno == EWOULDBLOCK) {
 						continue;
 					}
 #endif // AOSORA_REQUIRED_WIN32
