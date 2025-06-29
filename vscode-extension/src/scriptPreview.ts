@@ -24,7 +24,7 @@ export async function SendPreviewFunction(functionBody:string, extensionPath:str
 	isExecuting = true;
 	try{
 		const outPath = extensionPath + "/" + '_aosora_send_script_.as';
-		const executablePath = extensionPath + "/" + (isWindows ? ("aosora-sstp.exe") : ("aosora-sstp"));
+		const executablePath = (isWindows ? (extensionPath + "/" + "aosora-sstp.exe") : ("aosora-sstp.sh"));
 		let command = `"${executablePath}" "${outPath}"`;
 
 		//ワークスペースがあればパスに足す
