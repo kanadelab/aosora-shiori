@@ -2,8 +2,9 @@ SRC	= $(shell find aosora-shiori -name '*.cpp' | sed -e 's@\(.*\)\.cpp@\1.o@g')
 SRCDLL	= $(shell find aosora-shiori-dll -name '*.cpp' | sed -e 's@\(.*\)\.cpp@\1.o@g')
 SRCSSTP	= $(shell find aosora-sstp -name '*.cpp' | sed -e 's@\(.*\)\.cpp@\1.o@g')
 
-LIBRARY	= aosora.dll
-PROGRAM	= aosora-sstp-posix
+LIB_A	= aosora-shiori/libaosora.a
+LIBRARY	= ninix/libaosora.so
+PROGRAM	= ninix/aosora-sstp
 
 CXX = clang++
 AR  = llvm-ar
@@ -22,17 +23,17 @@ LDFLAGS	= $(shell pkg-config -libs openssl)
 
 all: $(LIBRARY) $(PROGRAM)
 
-$(LIBRARY): $(SRCDLL) libaosora.a
+$(LIBRARY): $(SRCDLL) $(LIB_A)
 	$(CXX) $(SO_LDFLAGS) -o $@ $^
 
-$(PROGRAM): $(SRCSSTP) libaosora.a
+$(PROGRAM): $(SRCSSTP) $(LIB_A)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-libaosora.a: $(SRC)
+$(LIB_A): $(SRC)
 	$(AR) cr $@ $^
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
 
 clean:
-	$(RM) $(LIBRARY) $(PROGRAM) libaosora.a $(SRC) $(SRCDLL) $(SRCSSTP)
+	$(RM) $(LIBRARY) $(PROGRAM) $(LIB_A) $(SRC) $(SRCDLL) $(SRCSSTP)
