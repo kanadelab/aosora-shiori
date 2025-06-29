@@ -631,6 +631,8 @@ namespace sakura {
 					}
 #else
 					if (errno == EAGAIN || errno == EWOULDBLOCK) {
+						timespec t = {0, 1000000};
+						nanosleep(&t, NULL);
 						continue;
 					}
 #endif // AOSORA_REQUIRED_WIN32
