@@ -11,9 +11,7 @@
 #define AOSORA_ENABLE_SAORI_LOADER
 
 //aosoraデバッガ(VSCodeに対する通信)の有効化
-#if defined(AOSORA_REQUIRED_WIN32)
 #define AOSORA_ENABLE_DEBUGGER
-#endif
 
 //型定義
 namespace sakura {

@@ -2,11 +2,34 @@
 #include <map>
 #include <sstream>
 
+#if !defined(AOSORA_REQUIRED_WIN32)
+#include <climits>
+#include <cstdint>
+#include <cstring>
+#include <fcntl.h>
+#include <semaphore.h>
+#include <sys/mman.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+struct shm_t {
+	uint32_t size;
+	sem_t sem;
+	char buf[PATH_MAX];
+};
+
+const int BUFFER_SIZE = 1024;
+
+#endif // not AOSORA_REQUIRED_WIN32
+
 namespace sakura {
 
 
 	bool ReadSakuraFMO(std::vector<FMORecord>& items)
 	{
+#if defined(AOSORA_REQUIRED_WIN32)
 		const char* MutexName = "SakuraFMO";
 		const char* FMOName = "Sakura";
 		const std::string Delimiter = "\r\n";
@@ -25,6 +48,69 @@ namespace sakura {
 			MEMORY_BASIC_INFORMATION memInfo;
 			if (VirtualQuery(fmoData, &memInfo, sizeof(memInfo)) != 0)
 			{
+#else
+		shm_t *shm;
+		int fd = shm_open("/ninix", O_RDWR, 0);
+		if (fd == -1) {
+			return false;
+		}
+		shm = static_cast<shm_t *>(mmap(NULL, sizeof(shm_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+		close(fd);
+		if (shm == MAP_FAILED) {
+			return false;
+		}
+		if (sem_wait(&shm->sem) == -1) {
+			return false;
+		}
+		std::string path(shm->buf, shm->size);
+		if (sem_post(&shm->sem) == -1) {
+			return false;
+		}
+		path.append("ninix");
+		sockaddr_un addr;
+		if (path.length() >= sizeof(addr.sun_path)) {
+			return false;
+		}
+		int soc = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (soc == -1) {
+			return false;
+		}
+		memset(&addr, 0, sizeof(sockaddr_un));
+		addr.sun_family = AF_UNIX;
+		// null-terminatedも書き込ませる
+		strncpy(addr.sun_path, path.c_str(), path.length() + 1);
+		if (connect(soc, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) == -1) {
+			return false;
+		}
+		char buffer[BUFFER_SIZE] = {};
+		if (read(soc, buffer, sizeof(uint32_t)) != sizeof(uint32_t)) {
+			close(soc);
+			return false;
+		}
+		uint32_t remain = *reinterpret_cast<uint32_t *>(buffer);
+		std::string data(buffer, sizeof(uint32_t));
+		while (true) {
+			int ret = read(soc, buffer, BUFFER_SIZE);
+			if (ret == -1) {
+				close(soc);
+				return false;
+			}
+			if (ret == 0) {
+				close(soc);
+				break;
+			}
+			if (remain > ret) {
+				data.append(buffer, ret);
+			}
+			else {
+				data.append(buffer, remain);
+			}
+			remain -= ret;
+		}
+		const std::string Delimiter = "\r\n";
+		std::map<std::string, FMORecord> fmoMap;
+		const void *fmoData = reinterpret_cast<const void *>(data.c_str());
+#endif // AOSORA_REQUIRED_WIN32
 				//先頭4バイトがfmoのサイズになっているのでその範囲で読み取る
 				const uint32_t* size = static_cast<const uint32_t*>(fmoData);
 
@@ -69,7 +155,9 @@ namespace sakura {
 
 					//かきこみ
 					if (key == "hwnd") {
+#if defined(AOSORA_REQUIRED_WIN32)
 						fmoMap[id].hWnd = reinterpret_cast<HWND>(std::stoull(value));
+#endif // AOSORA_REQUIRED_WIN32
 					}
 					else if (key == "name") {
 						fmoMap[id].sakuraName = value;
@@ -87,6 +175,7 @@ namespace sakura {
 						fmoMap[id].executablePath = value;
 					}
 				}
+#if defined(AOSORA_REQUIRED_WIN32)
 			}
 
 			ReleaseMutex(hMutex);
@@ -96,6 +185,8 @@ namespace sakura {
 		}
 
 		CloseHandle(hMutex);
+
+#endif // AOSORA_REQUIRED_WIN32
 
 		//出力
 		for (auto item : fmoMap) {
@@ -112,6 +203,7 @@ namespace sakura {
 		ost << "SEND SSTP/1.4\r\nCharset: UTF-8\r\nSender: Aosora SHIORI\r\nScript: " << script << "\\e\r\n\r\n";
 		std::string str = ost.str();
 
+#if defined(AOSORA_REQUIRED_WIN32)
 		//ゴーストにデータを送信する
 		COPYDATASTRUCT cds = {};
 		cds.dwData = 9801;	//Direct SSTP
@@ -119,6 +211,59 @@ namespace sakura {
 		cds.lpData = &str[0];
 
 		SendMessageTimeoutA(target.hWnd, WM_COPYDATA, 0, (LPARAM)&cds, SMTO_ABORTIFHUNG, 5000, NULL);
+#else
+		shm_t *shm;
+		int fd = shm_open("/ninix", O_RDWR, 0);
+		if (fd == -1) {
+			return;
+		}
+		shm = static_cast<shm_t *>(mmap(NULL, sizeof(shm_t), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
+		close(fd);
+		if (shm == MAP_FAILED) {
+			return;
+		}
+		if (sem_wait(&shm->sem) == -1) {
+			return;
+		}
+		std::string path(shm->buf, shm->size);
+		if (sem_post(&shm->sem) == -1) {
+			return;
+		}
+		path.append(target.id);
+		sockaddr_un addr;
+		if (path.length() >= sizeof(addr.sun_path)) {
+			return;
+		}
+		int soc = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (soc == -1) {
+			return;
+		}
+		memset(&addr, 0, sizeof(sockaddr_un));
+		addr.sun_family = AF_UNIX;
+		// null-terminatedも書き込ませる
+		strncpy(addr.sun_path, path.c_str(), path.length() + 1);
+		if (connect(soc, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) == -1) {
+			return;
+		}
+		if (write(soc, str.c_str(), str.length()) == -1) {
+			close(soc);
+			return;
+		}
+		char buffer[BUFFER_SIZE] = {};
+		std::string data;
+		while (true) {
+			int ret = read(soc, buffer, BUFFER_SIZE);
+			if (ret == -1) {
+				close(soc);
+				return;
+			}
+			if (ret == 0) {
+				close(soc);
+				break;
+			}
+			data.append(buffer, ret);
+		}
+#endif // AOSORA_REQUIRED_WIN32
 	}
 };
 

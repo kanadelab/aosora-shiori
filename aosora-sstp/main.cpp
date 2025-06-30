@@ -1,4 +1,5 @@
-﻿#include "Shiori.h"
+﻿#include "Base.h"
+#include "Shiori.h"
 #include "SakuraFMOReader.h"
 #include <iostream>
 
@@ -47,8 +48,10 @@ int main(int argc, char* argv[]) {
 	if (fmoRecords.size() > 0) {
 
 		std::string wsPath = shiori.GetGhostMasterPath();
+#if defined(AOSORA_REQUIRED_WIN32)
 		sakura::Replace(wsPath, "/", "\\");
 		sakura::ToLower(wsPath);
+#endif // AOSORA_REQUIRED_WIN32
 		const sakura::FMORecord* targetGhost = nullptr;
 
 		//FMOから処理対象のゴーストを探す
@@ -56,11 +59,13 @@ int main(int argc, char* argv[]) {
 			//ゴーストの絶対パスがワークスペースの絶対パスに含まれているかどうかをチェック
 			std::string fmoPath = record.ghostPath;
 
+#if defined(AOSORA_REQUIRED_WIN32)
 			//パス区切りを統一
 			sakura::Replace(fmoPath, "/", "\\");
 
 			//小文字に揃える(windows前提で、小文字ドライブレターをサポートしつつ）
 			sakura::ToLower(fmoPath);
+#endif // AOSORA_REQUIRED_WIN32
 
 			if (wsPath.starts_with(fmoPath)) {
 				targetGhost = &record;
