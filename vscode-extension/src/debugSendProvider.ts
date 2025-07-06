@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {Analyze, AnalyzedSourceRange, AnalyzeResult} from './scriptAnalyzer';
 import {IsBinaryExecutablePlatform} from './utility';
+import GetMessage from './messages';
 
 const functionPattern = /(function|talk)/g;
 
@@ -69,9 +70,9 @@ export class DebugSendProvider implements vscode.CodeLensProvider{
 				if(keyWordRange){
 					const codeLens = new vscode.CodeLens(keyWordRange);
 					codeLens.command = {
-						title: "<< ゴーストに送信",
+						title: GetMessage().scriptPreview003,
 						command: "aosora-shiori.sendToGhost",
-						tooltip: !analyzeResult.error ? "この関数を実行してゴーストに送信します。" : "スクリプトが読み込み失敗する状態のため送信できません。",
+						tooltip: !analyzeResult.error ? GetMessage().scriptPreview004 : GetMessage().scriptPreview005,
 						arguments: [script, analyzeResult.error]                        
 					};
 					result.push(codeLens);

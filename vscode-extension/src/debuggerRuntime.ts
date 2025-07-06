@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as childProcess from 'child_process';
 import * as os from 'os';
+import GetMessage from './messages';
 
 const isWindows = (os.type() === 'Windows_NT');
 
@@ -14,18 +15,18 @@ export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, 
 		runtimeResolvedPath = path.join(projPath, runtimePath);
 	}
 	if(isWindows && !fs.existsSync(runtimeResolvedPath)){
-		throw new Error(`debug.debugger.runtime で設定されたパスにファイルが見つかりませんでした: ${runtimeResolvedPath}`);
+		throw new Error(`${GetMessage().debugger001}: ${runtimeResolvedPath}`);
 	}
 
 	if(!fs.existsSync(ghostPath)){
-		throw new Error('ゴーストフォルダを検出できませんでした。');
+		throw new Error(GetMessage().debugger002);
 	}
 
 	if(!fs.existsSync(projPath)){
-		throw new Error('aosora プロジェクトフォルダを検出できませんでした。');
+		throw new Error(GetMessage().debugger003);
 	}
 
-	//プロセス終了検出？
+	//プロセス起動
 	const scriptPath = extensionPath + ((isWindows) ? ("\\launch.bat") : ("/launch.sh"));
 	const command = `"${scriptPath}" "${runtimePath}" "${ghostPath}" "${projPath}"`;
 	childProcess.exec(command, (error, stdout, stderr) => {

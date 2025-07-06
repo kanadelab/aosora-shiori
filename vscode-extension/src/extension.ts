@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import {DebugSendProvider} from "./debugSendProvider";
 import {SendPreviewFunction} from './scriptPreview';
 import { DebugAdapterFactory, DebugConfigurationProvider } from './debugger';
+import GetMessage from './messages';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -13,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		}
 		else{
-			vscode.window.showErrorMessage("スクリプトの読み込みに失敗しました。エラーを修正してから試してみてください。");
+			vscode.window.showErrorMessage(GetMessage().scriptPreview002);
 		}
 	});
 

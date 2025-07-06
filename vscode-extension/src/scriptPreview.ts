@@ -5,6 +5,7 @@ import * as childProcess from 'child_process';
 import * as iconv from 'iconv-lite';
 import { MessageOptions } from 'vscode';
 import * as os from 'os';
+import GetMessage from './messages';
 
 const ERROR_CODE_INVALID_ARGS = 1;
 const ERROR_CODE_GHOST_NOT_FOUND = 2;
@@ -18,7 +19,7 @@ let isExecuting = false;
 //スクリプトプレビューイング
 export async function SendPreviewFunction(functionBody:string, extensionPath:string){
 	if(isExecuting){
-		vscode.window.showErrorMessage("トーク送信がすでに実行中です。しばらく待ってお試しください。");
+		vscode.window.showErrorMessage(GetMessage().scriptPreview001);
 	}
 
 	isExecuting = true;

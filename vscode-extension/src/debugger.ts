@@ -8,6 +8,7 @@ import { LogLevel, LogOutputEvent } from '@vscode/debugadapter/lib/logger';
 import { ProjectParser } from './projectParser';
 import * as crypto from 'crypto';
 import path = require('path');
+import GetMessage from './messages';
 
 const DEFAULT_PORT_NUMBER = 27016;
 
@@ -105,8 +106,8 @@ class AosoraDebugSession extends DebugSession {
 			supportedChecksumAlgorithms: ['MD5'],
 			exceptionBreakpointFilters: [
 				{
-					label: "すべてのエラー",
-					description: "実行時にエラーが発生したとき、キャッチされるかどうかにかかわらず実行中断します。",
+					label: GetMessage().debugger004,
+					description: GetMessage().debugger005,
 					filter: "all",
 					default: false
 				}
@@ -148,14 +149,14 @@ class AosoraDebugSession extends DebugSession {
 
 			//起動する
 			if(!project.enableDebug){
-				vscode.window.showErrorMessage("asprojファイルで debug 設定が有効化されていません。");
+				vscode.window.showErrorMessage(GetMessage().debugger006);
 				this.sendEvent(new TerminatedEvent());
 			}
 			else if(project.runtimePath){
 				const aosoraDir = path.dirname(projPath);
 				const ghostPath = path.dirname(path.dirname(aosoraDir));	//プロジェクトの２階層上
 				try{
-					this.sendEvent(new OutputEvent("SSPを起動して接続しています...\n", "stdout"));
+					this.sendEvent(new OutputEvent(`${GetMessage().debugger007}\n`, "stdout"));
 					LaunchDebuggerRuntime(this.extensionPath, project.runtimePath, ghostPath, aosoraDir, () => {
 						this.sendEvent(new TerminatedEvent());
 					});
@@ -171,25 +172,25 @@ class AosoraDebugSession extends DebugSession {
 					await this.debugInterface.Connect();
 				}
 				catch{
-					vscode.window.showErrorMessage("デバッガはゴーストへの接続に失敗しました。");
+					vscode.window.showErrorMessage(GetMessage().debugger008);
 					this.sendEvent(new TerminatedEvent());	
 					return;
 				}
 			}
 			else {
-				vscode.window.showErrorMessage("asprojファイルに debug.debugger.runtime 設定が見つかりません。");
+				vscode.window.showErrorMessage(GetMessage().debugger009);
 				this.sendEvent(new TerminatedEvent());
 			}
 		}
 		else if(ghostProj.length == 0) {
 			//terminateイベントを出す
-			vscode.window.showErrorMessage("ワークスペースに ghost.asproj が見つからないため起動できませんでした。");
+			vscode.window.showErrorMessage(GetMessage().debugger010);
 			this.sendEvent(new TerminatedEvent());
 			return;
 		}
 		else {
 			//terminateイベントを出す
-			vscode.window.showErrorMessage("ワークスペースに複数のghost.asprojがあるため起動に使用する１つを特定できませんでした。");
+			vscode.window.showErrorMessage(GetMessage().debugger011);
 			this.sendEvent(new TerminatedEvent());
 			return;
 		}
@@ -200,14 +201,14 @@ class AosoraDebugSession extends DebugSession {
 	//アタッチ
 	protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
 
-		this.sendEvent(new OutputEvent("起動中のゴーストにアタッチしています...\n", "stdout"));
+		this.sendEvent(new OutputEvent(`${GetMessage().debugger012}\n`, "stdout"));
 
 		//純粋に接続する形
 		try{
 			await this.debugInterface.Connect();
 		}
 		catch{
-			vscode.window.showErrorMessage("デバッガはゴーストへの接続に失敗しました。");
+			vscode.window.showErrorMessage(GetMessage().debugger008);
 			this.sendEvent(new TerminatedEvent());	
 			return;
 		}
@@ -318,7 +319,7 @@ class AosoraDebugSession extends DebugSession {
 	}
 
 	protected pauseRequest(response: DebugProtocol.PauseResponse, args: DebugProtocol.PauseArguments, request?: DebugProtocol.Request): void {
-		vscode.window.showErrorMessage("Aosora Debugger は Pause をサポートしていません。");
+		vscode.window.showErrorMessage(GetMessage().debugger013);
 		this.sendResponse(response);
 	}
 
