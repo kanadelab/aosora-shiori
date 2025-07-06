@@ -529,6 +529,11 @@ namespace sakura {
 			}
 		}
 
+		//loopmodeを初期状態に戻す
+		void ClearLoopMode() {
+			loopMode = LoopMode::Normal;
+		}
+
 		bool IsBreak() const {
 			return loopMode == LoopMode::Break;
 		}
