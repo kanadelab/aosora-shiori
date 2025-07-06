@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import {Analyze, AnalyzedSourceRange, AnalyzeResult} from './scriptAnalyzer2';
+import {Analyze, AnalyzedSourceRange, AnalyzeResult} from './scriptAnalyzer';
 import {IsBinaryExecutablePlatform} from './utility';
 
 const functionPattern = /(function|talk)/g;
