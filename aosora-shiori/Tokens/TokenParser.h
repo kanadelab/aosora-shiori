@@ -143,8 +143,8 @@ namespace sakura {
 			sourcePath = begin.sourcePath;
 			beginLineIndex = begin.beginLineIndex;
 			beginColumnIndex = begin.beginColumnIndex;
-			endLineIndex = begin.endLineIndex;
-			endColumnIndex = begin.endColumnIndex;
+			endLineIndex = includedEnd.endLineIndex;
+			endColumnIndex = includedEnd.endColumnIndex;
 		}
 
 		std::string ToString() const {
@@ -167,16 +167,32 @@ namespace sakura {
 			return beginLineIndex;
 		}
 
+		void SetBeginLineIndex(uint32_t index) {
+			beginLineIndex = index;
+		}
+
 		uint32_t GetBeginColumnIndex() const {
 			return beginColumnIndex;
+		}
+
+		void SetBeginColumnIndex(uint32_t index) {
+			beginColumnIndex = index;
 		}
 
 		uint32_t GetEndLineIndex() const {
 			return endLineIndex;
 		}
 
+		void SetEndLineIndex(uint32_t index) {
+			endLineIndex = index;
+		}
+
 		uint32_t GetEndColumnIndex() const {
 			return endColumnIndex;
+		}
+
+		void SetEndColumnIndex(uint32_t index) {
+			endColumnIndex = index;
 		}
 	};
 

@@ -282,24 +282,34 @@ namespace sakura {
 		//トークンのプッシュ
 		void PushToken(size_t size, ScriptTokenType type) {
 			//トークンを追加
-			result.tokens.push_back(ScriptToken(document.substr(charIndex, size), type, sourceFilePath, lineIndex, columnIndex, lineIndex, columnIndex+size));	//UTF-8文字数を考える必要がありそう
+			const std::string pushString = document.substr(charIndex, size);
+			const size_t unicodeCount = CountUnicodeCharacters(pushString);
+			result.tokens.push_back(ScriptToken(pushString, type, sourceFilePath, lineIndex, columnIndex, lineIndex, columnIndex + unicodeCount));	//UTF-8文字数を考える必要がありそう
 
 			//文字数を加算
 			charIndex += size;
-			columnIndex += size;
+			columnIndex += unicodeCount;
 		}
 
 		//最後にプッシュしたトークンに追記
 		void AppendLastToken(size_t size) {
 			//トークンを追加
-			result.tokens.rbegin()->body.append(document.substr(charIndex, size));
-			//文字数を加算
+			const std::string pushString = document.substr(charIndex, size);
+			const size_t unicodeCount = CountUnicodeCharacters(pushString);
+			result.tokens.rbegin()->body.append(pushString);
+			result.tokens.rbegin()->sourceRange.SetEndColumnIndex(result.tokens.rbegin()->sourceRange.GetEndColumnIndex() + unicodeCount);
+
 			charIndex += size;
-			columnIndex += size;
+			columnIndex += unicodeCount;
 		}
 
 		void AppendLastToken(const std::string_view& view, size_t size) {
-			result.tokens.rbegin()->body.append(view.substr(size));
+			const std::string pushString(view.substr(size));
+			const size_t unicodeCount = CountUnicodeCharacters(pushString);
+			result.tokens.rbegin()->body.append(pushString);
+			result.tokens.rbegin()->sourceRange.SetEndColumnIndex(result.tokens.rbegin()->sourceRange.GetEndColumnIndex() + unicodeCount);
+
+			//NOTE: 改行処理のために使われていて、別途charIndexの更新が入り、columnIndexがリセットされるのでそこは書き換えない
 		}
 
 		//スペースと改行ぶんのシーク
