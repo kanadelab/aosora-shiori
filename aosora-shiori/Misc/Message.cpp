@@ -90,6 +90,9 @@ namespace sakura {
 
 			.Register("AOSORA_BUILTIN_ERROR_001", "1リクエスト内の実行処理数が制限を超えました。無限ループになってませんか？")
 			.Register("AOSORA_BUILTIN_ERROR_002", "関数またはトークではないため、関数呼び出しができません。")
+
+			.Register("AOSORA_DEBUGGER_001", "ゴーストに接続しました。")
+			.Register("AOSORA_DEBUGGER_002", "ローカル変数")
 			;
 
 

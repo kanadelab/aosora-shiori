@@ -42,6 +42,7 @@ inline int closesocket(SOCKET fd) {
 #include "Debugger/DebuggerCore.h"
 #include "Debugger/DebuggerUtility.h"
 #include "Misc/Json.h"
+#include "Misc/Message.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
 #if defined(AOSORA_REQUIRED_WIN32)
@@ -1069,7 +1070,7 @@ namespace sakura {
 					GetInstance()->ClearState();
 				}
 				else {
-					GetInstance()->NotifyLog("ゴーストに接続しました。", false);
+					GetInstance()->NotifyLog(TextSystem::Find("AOSORA_DEBUGGER_001"), false);
 				}
 			}
 		}
@@ -1574,7 +1575,7 @@ namespace sakura {
 
 			const uint32_t handle = breakSession.MetadataToHandle(meta);
 			obj->Add("handle", JsonSerializer::From(handle));
-			obj->Add("name", JsonSerializer::From("ローカル変数"));
+			obj->Add("name", JsonSerializer::From(TextSystem::Find("AOSORA_DEBUGGER_002")));
 			result->Add(obj);
 		}
 
