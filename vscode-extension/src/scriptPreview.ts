@@ -4,11 +4,14 @@ import * as path from 'path';
 import * as childProcess from 'child_process';
 import * as iconv from 'iconv-lite';
 import { MessageOptions } from 'vscode';
+import * as os from 'os';
 
 const ERROR_CODE_INVALID_ARGS = 1;
 const ERROR_CODE_GHOST_NOT_FOUND = 2;
 const ERROR_CODE_GHOST_SCRIPT_ERROR = 3;
 const ERROR_CODE_PREVIEW_SCRIPT_ERROR = 4;
+
+const isWindows = (os.type() === 'Windows_NT');
 
 let isExecuting = false;
 
@@ -21,14 +24,19 @@ export async function SendPreviewFunction(functionBody:string, extensionPath:str
 	isExecuting = true;
 	try{
 		const outPath = extensionPath + "/" + '_aosora_send_script_.as';
-		const executablePath = extensionPath + "/" + "aosora-sstp.exe";
+		const executablePath = (isWindows ? (extensionPath + "/" + "aosora-sstp.exe") : ("aosora-sstp.sh"));
 		let command = `"${executablePath}" "${outPath}"`;
 
 		//ワークスペースがあればパスに足す
 		const projFiles = await vscode.workspace.findFiles("**/ghost.asproj", null, 1);
 		if(projFiles.length > 0){
 			const workspace = path.dirname(projFiles[0].fsPath);
-			command += ` ${workspace}\\\\`;
+			if (isWindows) {
+				command += ` ${workspace}\\\\`;
+			}
+			else {
+				command += ` "${workspace}/"`;
+			}
 		}
 
 		//一時ファイルを用意して呼び出す

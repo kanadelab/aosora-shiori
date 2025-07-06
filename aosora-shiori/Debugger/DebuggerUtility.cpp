@@ -1,14 +1,25 @@
-﻿#include <vector>
+﻿#include "Base.h"
+
+#include <vector>
 #include <string_view>
 #include <string>
+#if defined(AOSORA_REQUIRED_WIN32)
 #include "Windows.h"
+#else
+#include <iomanip>
+#include <sstream>
+#include <openssl/evp.h>
+#endif // AOSORA_REQUIRED_WIN32
 #include "Debugger/DebuggerUtility.h"
 
 #if defined(AOSORA_ENABLE_DEBUGGER)
+#if defined(AOSORA_REQUIRED_WIN32)
 #pragma comment(lib, "Bcrypt.lib")
+#endif // AOSORA_REQUIRED_WIN32
 
 namespace sakura {
 
+#if defined(AOSORA_REQUIRED_WIN32)
 	std::string MD5Hash(const std::string& fileBody)
 	{
 		BCRYPT_ALG_HANDLE hAlg = nullptr;
@@ -44,6 +55,22 @@ namespace sakura {
 
 		return result;
 	}
+#else
+	std::string MD5Hash(const std::string& fileBody)
+	{
+		unsigned char md[EVP_MAX_MD_SIZE + 1] = {};
+		size_t mdlen = 0;
+		if (EVP_Q_digest(NULL, "MD5", NULL, fileBody.c_str(), fileBody.size(), md, &mdlen)) {
+			std::ostringstream oss;
+			for (int i = 0; i < mdlen; i++) {
+				oss << std::setfill('0') << std::right << std::setw(2) << static_cast<int>(md[i]);
+			}
+			return oss.str();
+		}
+		std::string empty;
+		return empty;
+	}
+#endif // AOSORA_REQUIRED_WIN32
 
 	void LoadedSourceManager::AddSource(const std::string& body, const std::string& fullName)
 	{
