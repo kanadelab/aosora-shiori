@@ -25,7 +25,7 @@ export function LaunchDebuggerRuntime(extensionPath:string, runtimePath:string, 
 	}
 
 	//プロセス起動
-	const scriptPath = extensionPath + ((IsBinaryExecutablePlatform()) ? ("\\launch.bat") : ("/launch.sh"));
+	const scriptPath = ((IsBinaryExecutablePlatform()) ? (extensionPath + "\\launch.bat") : ("aosora-launch.sh"));
 	const command = `"${scriptPath}" "${runtimePath}" "${ghostPath}" "${projPath}"`;
 	childProcess.exec(command, (error, stdout, stderr) => {
 		if(error){
