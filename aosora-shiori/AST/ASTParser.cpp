@@ -11,6 +11,7 @@
 
 namespace sakura {
 
+	const std::string ERROR_AST_000 = "A000";
 	const std::string ERROR_AST_001 = "A001";
 	const std::string ERROR_AST_002 = "A002";
 	const std::string ERROR_AST_003 = "A003";
@@ -690,9 +691,15 @@ namespace sakura {
 		}
 
 		//オペランドをポップ
-		ASTNodeRef PopOperand() {
-			//オペランドじゃなかったらとりあえずアサートで
-			assert(expressionStack[expressionStack.size() - 1].operandNode != nullptr);
+		ASTNodeRef PopOperand(ASTParseContext& parseContext) {
+			if (expressionStack.empty()) {
+				return parseContext.Error(ERROR_AST_000, parseContext.GetPrev());
+			}
+
+			if (expressionStack[expressionStack.size() - 1].operandNode == nullptr) {
+				return parseContext.Error(ERROR_AST_000, expressionStack[expressionStack.size() - 1].operatorToken);
+			}
+
 			ASTNodeRef r = expressionStack[expressionStack.size() - 1].operandNode;
 			expressionStack.pop_back();
 			return r;
@@ -817,7 +824,10 @@ namespace sakura {
 					parseStack.Reduce(OPERATOR_INDEX, parseContext);
 
 					//２要素を求める
-					auto arrayExpression = parseStack.PopOperand();
+					auto arrayExpression = parseStack.PopOperand(parseContext);
+					if (parseContext.HasError()) {
+						return arrayExpression;
+					}
 					auto indexExpression = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_ARRAY_BLACKET);
 
 					//アクセスノードを作成
@@ -854,7 +864,10 @@ namespace sakura {
 				keyNode->SetSourceRange(parseContext.GetCurrent());
 				parseContext.FetchNext();
 
-				ASTNodeRef target = parseStack.PopOperand();
+				ASTNodeRef target = parseStack.PopOperand(parseContext);
+				if (parseContext.HasError()) {
+					return target;
+				}
 				parseStack.PushOperand(ASTNodeRef(new ASTNodeResolveMember(target, keyNode)));
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
@@ -910,7 +923,10 @@ namespace sakura {
 				parseContext.FetchNext();
 
 				//後置インクリメント
-				auto operand = parseStack.PopOperand();
+				auto operand = parseStack.PopOperand(parseContext);
+				if (parseContext.HasError()) {
+					return operand;
+				}
 
 				//1を足すように構成
 				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0));
@@ -925,7 +941,10 @@ namespace sakura {
 				parseContext.FetchNext();
 
 				//後置デクリメント
-				auto operand = parseStack.PopOperand();
+				auto operand = parseStack.PopOperand(parseContext);
+				if (parseContext.HasError()) {
+					return operand;
+				}
 
 				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0));
 				literalNode->SetSourceRange(parseContext.GetCurrent());
@@ -951,7 +970,10 @@ namespace sakura {
 						std::vector<ConstASTNodeRef> args;
 						ParseASTExpressionList(parseContext, args, SEQUENCE_END_FLAG_BLACKET);
 
-						ASTNodeRef func = parseStack.PopOperand();
+						ASTNodeRef func = parseStack.PopOperand(parseContext);
+						if (parseContext.HasError()) {
+							return func;
+						}
 						std::shared_ptr<ASTNodeFunctionCall> call(new ASTNodeFunctionCall(func, args));
 						call->SetSourceRange(rangeBegin, parseContext.GetPrev());
 						parseStack.PushOperand(call);
