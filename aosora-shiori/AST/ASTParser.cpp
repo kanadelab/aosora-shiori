@@ -2033,7 +2033,7 @@ namespace sakura {
 		}
 		parseContext.FetchNext();
 
-		ASTNodeRef result(new ASTNodeBreak());
+		ASTNodeRef result(new ASTNodeContinue());
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
 		return result;
 	}

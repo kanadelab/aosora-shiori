@@ -247,7 +247,7 @@ namespace sakura {
 					ExecuteInternal(*node.GetLoopStatement(), loopScopeContext);
 
 					//return/throwの脱出の場合は最優先で終わり
-					if (loopScopeContext.GetStack().IsLeave()) {
+					if (loopScopeContext.GetStack().IsStackLeave()) {
 						return ScriptValue::Null;
 					}
 
@@ -255,6 +255,9 @@ namespace sakura {
 					if (loopScopeContext.GetStack().IsBreak()) {
 						return ScriptValue::Null;
 					}
+
+					//continue指示で離脱してきている可能性があるので指示をクリア
+					loopScopeContext.GetStack().ClearLoopMode();
 
 					//continueか通常の離脱の場合、インクリメント部を実行
 					if (node.GetIncrementExpression() != nullptr) {
@@ -295,13 +298,16 @@ namespace sakura {
 					ExecuteInternal(*node.GetTrueStatement(), loopScopeContext);
 					
 					//return/throwの脱出の場合は最優先で終わり
-					if (loopScopeContext.GetStack().IsLeave()) {
+					if (loopScopeContext.GetStack().IsStackLeave()) {
 						return ScriptValue::Null;
 					}
 					//break対応
 					if (loopScopeContext.GetStack().IsBreak()) {
 						return ScriptValue::Null;
 					}
+
+					//continue指示で離脱してきている可能性があるので指示をクリア
+					loopScopeContext.GetStack().ClearLoopMode();
 				}
 			}
 			else {
