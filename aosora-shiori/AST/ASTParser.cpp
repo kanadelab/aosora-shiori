@@ -1037,6 +1037,11 @@ namespace sakura {
 			return parseContext.Error(ERROR_AST_040, parseContext.GetPrev());
 		}
 
+		//最後がオペランドを要求しているなら打ち切ると問題になる
+		if (parseStack.IsRequireOperandNext()) {
+			return parseContext.Error(ERROR_AST_002, parseContext.GetPrev());
+		}
+
 		//出揃ったので最終的にまとめて終了
 		return parseStack.ReduceAll(parseContext);
 	}
