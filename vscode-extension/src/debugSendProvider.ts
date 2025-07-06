@@ -22,11 +22,6 @@ export class DebugSendProvider implements vscode.CodeLensProvider{
 	}
 	
 	async provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): Promise<vscode.CodeLens[]> {
-
-		//windowsプラットフォームではない場合に機能を使用できないようにする
-		if(!IsBinaryExecutablePlatform()){
-			return [];
-		}
 		
 		//aosora-analyzerを起動
 		const analyzeResult = await Analyze(document, this.extensionPath);

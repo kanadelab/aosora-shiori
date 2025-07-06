@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import {z} from 'zod';
-import {IsJapaneseLanguage} from './utility';
+import {IsBinaryExecutablePlatform, IsJapaneseLanguage} from './utility';
 
 const AnalyzedSourceRange = z.object({
 	line: z.number(),
@@ -25,7 +25,7 @@ export type AnalyzeResult = z.infer<typeof AnalyzeResult>;
 
 function AnalyzeScript(script:string, extensionPath:string):Promise<AnalyzeResult>{
 
-	const executablePath = extensionPath + "/" + "aosora-analyzer.exe";
+	const executablePath = ((IsBinaryExecutablePlatform()) ? (extensionPath + "/" + "aosora-analyzer.exe") : ("aosora-analyzer"));
 	let command = executablePath;
 
 	//日本語以外だったら英語で起動する
