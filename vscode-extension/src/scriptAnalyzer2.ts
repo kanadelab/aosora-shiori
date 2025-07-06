@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import {z} from 'zod';
+import {IsJapaneseLanguage} from './utility';
 
 const AnalyzedSourceRange = z.object({
 	line: z.number(),
@@ -25,9 +26,18 @@ export type AnalyzeResult = z.infer<typeof AnalyzeResult>;
 function AnalyzeScript(script:string, extensionPath:string):Promise<AnalyzeResult>{
 
 	const executablePath = extensionPath + "/" + "aosora-analyzer.exe";
+	let command = executablePath;
+
+	//日本語以外だったら英語で起動する
+	if(IsJapaneseLanguage()){
+		command += " --language ja-jp";
+	}
+	else {
+		command += " --language en-us";
+	}
 
 	return new Promise<string>((resolve, reject) => {
-		const child = exec(executablePath, (error, stdout) => {
+		const child = exec(command, (error, stdout) => {
 			if (error) {
 				reject(error);
 				return;
