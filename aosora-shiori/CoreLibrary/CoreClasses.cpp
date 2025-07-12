@@ -51,27 +51,19 @@ namespace sakura {
 			}
 		}
 	}
-
-	void ClassData::SetToInstance(const std::string& key, const ScriptValueRef& value, ScriptObject& instance, ScriptExecuteContext& executeContext) {
+	
+	
+	void ClassData::SetToInstance(const std::string& key, const ScriptValueRef& value, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext) {
 
 		if (metadata->IsScriptClass()) {
-			//スクリプトクラスを示している場合はそちらから検索する
-			const ScriptClass& scriptMetadata = static_cast<const ScriptClass&>(*metadata);
-			if (scriptMetadata.ContainsMember(key)) {
-				//キーが有効であれば中身をつかってよい
-				instance.RawSet(key, value);
-				return;
-			}
-			else if (methods.contains(key)) {
-				//メソッドとして存在していたら書き込み無効
-				return;
-			}
-
+			//スクリプトクラスではこないはず（キーバリューストアへのアクセスになるため）
+			assert(false);
+			return;
 		}
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
-			assert(instance.GetNativeBaseInstance() != nullptr);
-			instance.GetNativeBaseInstance()->Set(instance.GetNativeBaseInstance(), key, value, executeContext);
+			assert(instance->GetNativeBaseInstance() != nullptr);
+			instance->GetNativeBaseInstance()->Set(instance->GetNativeBaseInstance(), key, value, executeContext);
 			return;
 		}
 
@@ -81,25 +73,17 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ClassData::GetFromInstance(const std::string& key, ScriptObject& instance, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ClassData::GetFromInstance(const std::string& key, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext) {
 
 		if (metadata->IsScriptClass()) {
-			//スクリプトクラスを示している場合はそちらから検索する
-			const ScriptClass& scriptMetadata = static_cast<const ScriptClass&>(*metadata);
-			if (scriptMetadata.ContainsMember(key)) {
-				//キーが有効であれば中身をつかってよい
-				return instance.RawGet(key);
-			}
-			else if (methods.contains(key)) {
-				//WARN: ObjectRefを作り直しているのがまずそう
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], 
-					ScriptValue::Make(ObjectRef(&instance))));
+			if (methods.contains(key)) {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], ScriptValue::Make(instance)));
 			}
 		}
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
-			assert(instance.GetNativeBaseInstance() != nullptr);
-			return instance.GetNativeBaseInstance()->Get(instance.GetNativeBaseInstance(), key, executeContext);
+			assert(instance->GetNativeBaseInstance() != nullptr);
+			return instance->GetNativeBaseInstance()->Get(instance->GetNativeBaseInstance(), key, executeContext);
 		}
 
 		//見つからない場合さらに親を見る
@@ -109,6 +93,7 @@ namespace sakura {
 
 		return nullptr;
 	}
+	
 
 	void ClassData::FetchReferencedItems(std::list<CollectableBase*>& result) {
 		result.push_back(parentClass.Get());

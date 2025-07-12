@@ -1464,13 +1464,10 @@ namespace sakura {
 	}
 
 	//クラスインスタンス生成
-	ObjectRef ScriptInterpreter::NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ScriptObject> scriptObjInstance) {
+	ObjectRef ScriptInterpreter::NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance) {
 
-		//スクリプトかどうかで分岐してしまう
+		//スクリプトクラスとネイティブクラスで初期化が異なる
 		if (classData->GetMetadata().IsScriptClass()) {
-			//スクリプトクラスの場合は継承元をもてる
-			//ネイティブはC++側で継承関係をもてばいいからいらない？
-
 			const ScriptClass& scriptClassData = static_cast<const ScriptClass&>(classData->GetMetadata());
 
 			Reference<ClassData> parentClass = classData->GetParentClass();
@@ -1484,6 +1481,7 @@ namespace sakura {
 
 			//初期化関数があれば引数を作成
 			//TODO: なくても評価が必要かも
+			//引数評価の仕組みを統一する必要ありそう
 			if (initFunc != nullptr) {
 				for (size_t i = 0; i < initFunc->GetArguments().size(); i++) {
 
@@ -1496,10 +1494,10 @@ namespace sakura {
 				}
 			}
 
-			Reference<ScriptObject> createdObject = scriptObjInstance;
+			Reference<ClassInstance> createdObject = scriptObjInstance;
 			if (createdObject == nullptr) {
 				//呼び出し元からオブジェクトを渡されていたらそれを使う、なければ新規
-				createdObject = CreateObject();
+				createdObject = CreateNativeObject<ClassInstance>(classData, context);
 			}
 
 			if (parentClass != nullptr) {
@@ -1521,24 +1519,7 @@ namespace sakura {
 				//TODO: NewClassInstanceが例外を出した場合に初期化を中断して離脱する
 			}
 
-			//クラス情報を割り当て
-			createdObject->SetClassInfo(classData);
-
-			//ここからコンストラクタ
-
-			//まずメンバ初期化子
-			for (size_t i = 0; i < scriptClassData.GetMemberCount(); i++) {
-				//コンストラクタの空間使っていいかがちょっと気になるけどそのままいく
-				ScriptClassMemberRef m = scriptClassData.GetMember(i);
-				ASTNodeRef init = m->GetInitializer();
-				ScriptValueRef a = ScriptValue::Null;
-				if (init != nullptr) {
-					a = ScriptExecutor::ExecuteASTNode(*init, funcContext);
-				}
-				createdObject->RawSet(m->GetName(), a);
-			}
-
-			//初期化子まで実行するとthisアクセスが可能になるのでスタックフレームにthisを設定する
+			//thisを指定
 			initScope->SetThisValue(ScriptValue::Make(createdObject));
 
 			//コンストラクタ実行
@@ -1601,6 +1582,14 @@ namespace sakura {
 			}
 		}
 
+		for (auto u : units) {
+			for (auto kv : u.second.unitVariables) {
+				if (kv.second->IsObject()) {
+					rootCollectables.push_back(kv.second->GetObjectRef().Get());
+				}
+			}
+		}
+
 		for (auto kv : classMap) {
 			rootCollectables.push_back(kv.second.Get());
 		}
@@ -1649,6 +1638,8 @@ namespace sakura {
 		ScriptValueRef result = nullptr;
 
 		//this
+		//NOTE: thisスコープの暗黙参照は無し
+		/*
 		ScriptValueRef thisValue = blockScope->GetThisValue();
 		if (thisValue != nullptr) {
 			if (thisValue->IsObject()) {
@@ -1659,6 +1650,7 @@ namespace sakura {
 				}
 			}
 		}
+		*/
 
 		//ローカル
 		result = blockScope->GetLocalVariable(name);
@@ -1671,6 +1663,8 @@ namespace sakura {
 		if (result != nullptr) {
 			return result;
 		}
+
+		//モジュール
 
 		//グローバルよりシステムレジストリが先
 		result = interpreter.GetSystemRegistryValue(name);
@@ -1700,6 +1694,8 @@ namespace sakura {
 			assert(false);
 			return;
 		}
+
+		//モジュール
 
 		//グローバル
 		interpreter.SetGlobalVariable(name, value);

@@ -91,48 +91,38 @@ namespace sakura {
 	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
 
 		//クラスデータが設定されている場合そちらに設定する
-		if (scriptClass != nullptr) {
-			scriptClass->SetToInstance(key, value, *this, executeContext);
-		}
-		else {
-			members[key] = value;
-		}
+		members[key] = value;
 	}
 
 	ScriptValueRef ScriptObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 
 		//クラスデータが設定されている場合そちら経由で取得する
-		if (scriptClass != nullptr) {
-			return scriptClass->GetFromInstance(key, *this, executeContext);
+		auto rawgetResult = RawGet(key);
+		if (rawgetResult != nullptr) {
+			return rawgetResult;
 		}
-		else {
-			auto rawgetResult = RawGet(key);
-			if (rawgetResult != nullptr) {
-				return rawgetResult;
-			}
 			
-			//組み込みフィールド
-			if (key == "length") {
-				return ScriptValue::Make(static_cast<number>(members.size()));
-			}
-			else if (key == "Add") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
-			}
-			else if (key == "Contains") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
-			}
-			else if (key == "Clear") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
-			}
-			else if (key == "Remove") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
-			}
-			else if (key == "Keys") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
-			}
-
-			return nullptr;
+		//組み込みフィールド
+		if (key == "length") {
+			return ScriptValue::Make(static_cast<number>(members.size()));
 		}
+		else if (key == "Add") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
+		}
+		else if (key == "Contains") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
+		}
+		else if (key == "Clear") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
+		}
+		else if (key == "Remove") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
+		}
+		else if (key == "Keys") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
+		}
+
+		return nullptr;
 	}
 
 	std::string ScriptObject::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
@@ -173,13 +163,55 @@ namespace sakura {
 		}
 	}
 
-	void ScriptObject::SetClassInfo(const Reference<ClassData>& classData) {
-		scriptClass = classData;
+	ClassInstance::ClassInstance(const Reference<ClassData>& classType, ScriptExecuteContext& executeContext)
+	{
+		//内部ストレージを生成
+		//TODO: ネイティブクラスの場合は不要
+		scriptStore = executeContext.GetInterpreter().CreateObject();
 
-		//タイプIDをScriptObjectからクラスへ上書き
-		SetInstanceTypeId(scriptClass->GetClassTypeId());
+		//タイプIDを指定
+		classData = classType;
+		SetInstanceTypeId(classData->GetClassTypeId());
 	}
 
+	void ClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		
+		if (classData->GetMetadata().IsScriptClass()) {
+			//スクリプトクラスの場合、ストレージを直接書き換える
+			//NOTE: 機能的にこれをつかうのは悪手だけど、シンプルなつくりになるように？ ふさぎたいかも？
+			const ScriptClass& classInfo = static_cast<const ScriptClass&>(classData->GetMetadata());
+		}
+		else {
+			//ネイティブなら型領域へセット
+			//NOTE: この制約により継承を許容するネイティブクラスはプロパティ書き込みは不可
+			return classData->SetToInstance(key, value, self.Cast<ClassInstance>(), executeContext);
+		}
+	}
+
+	ScriptValueRef ClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+
+		//スクリプトクラスであれば内部ストレージから検索
+		if (classData->GetMetadata().IsScriptClass()) {
+			if (scriptStore->Contains(key)) {
+				return scriptStore->RawGet(key);
+			}
+		}
+
+		//見つかってなければ型領域から検索
+		return classData->GetFromInstance(key, self.Cast<ClassInstance>(), executeContext);
+	}
+
+	void ClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (classData != nullptr) {
+			result.push_back(classData.Get());
+		}
+		if (scriptStore != nullptr) {
+			result.push_back(scriptStore.Get());
+		}
+		if (nativeClassInstance != nullptr) {
+			result.push_back(nativeClassInstance.Get());
+		}
+	}
 
 	ScriptValueRef ScriptValue::MakeObject(ScriptInterpreter& interpreter) {
 		return ScriptValueRef(new ScriptValue(interpreter.CreateObject()));

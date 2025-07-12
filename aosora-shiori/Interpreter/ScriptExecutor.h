@@ -77,6 +77,9 @@ namespace sakura {
 		static ScriptValueRef ExecuteASTNode(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 	};
 
+	struct UnitData {
+		std::map<std::string, ScriptValueRef> unitVariables;	//ユニット変数
+	};
 
 	//スクリプト実行インタプリタ
 	class ScriptInterpreter {
@@ -89,6 +92,7 @@ namespace sakura {
 		//システムレジストリ(書き込み禁止)
 		std::map<std::string, ScriptValueRef> systemRegistry;
 		std::map<std::string, ScriptValueRef> globalVariables;
+		std::map<std::string, UnitData> units;
 
 		//クラス型情報
 		std::map<std::string, Reference<ClassData>> classMap;
@@ -215,6 +219,32 @@ namespace sakura {
 			}
 		}
 
+		//現在のユニット変数を取得
+		ScriptValueRef GetUnitVariable(const std::string& name, const ScriptUnitRef& scriptUnit) {
+			auto& variables = units.find(name)->second.unitVariables;
+			auto it = variables.find(name);
+			if (it != variables.end()) {
+				return it->second;
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		//現在のユニット変数を設定
+		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const ScriptUnitRef& scriptUnit) {
+			auto& variables = units.find(name)->second.unitVariables;
+			auto it = variables.find(name);
+			if (it != variables.end()) {
+				it->second = value;
+			}
+			else {
+				variables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
+			}
+		}
+
+
+
 		//クラス取得
 		ScriptValueRef GetClass(const std::string& name);
 
@@ -260,7 +290,7 @@ namespace sakura {
 
 		//クラスインスタンス生成
 		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context);
-		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ScriptObject> scriptObjInstance);
+		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance);
 
 
 		//オブジェクト型判定

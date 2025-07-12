@@ -118,6 +118,9 @@
     <ClInclude Include="Debugger\DebuggerUtility.h">
       <Filter>Debugger</Filter>
     </ClInclude>
+    <ClInclude Include="CommonLibrary\StandardLibrary.h">
+      <Filter>CommonLibrary</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">

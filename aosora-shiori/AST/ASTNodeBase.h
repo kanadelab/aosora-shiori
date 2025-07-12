@@ -36,6 +36,7 @@ namespace sakura {
 		BooleanLiteral,
 		ResolveSymbol,
 		AssignSymbol,
+		ContextValue,
 		ArrayInitializer,
 		ObjectInitializer,
 		FunctionStatement,
@@ -109,12 +110,39 @@ namespace sakura {
 		const char* preview;
 	};
 
+	//スクリプトユニット
+	//namespaceのようなものとしてモジュール分離のために
+	class ScriptUnit {
+	private:
+		std::vector<std::string> unitPath;
+		std::string unitName;
+
+	public:
+		bool HasUnit() const {
+			return !unitName.empty();
+		}
+
+		void SetUnit(const std::string& unit) {
+			unitName = unit;
+		}
+
+		const std::string& GetUnit() const {
+			return unitName;
+		}
+	};
+	using ScriptUnitRef = std::shared_ptr<ScriptUnit>;
+
 	//ASTノード基底
 	class ASTNodeBase {
 	private:
 		SourceCodeRange sourceRange;
+		ScriptUnitRef scriptUnit;
 
 	public:
+		ASTNodeBase(const ScriptUnitRef& unit):
+			scriptUnit(unit)
+		{ }
+
 		//ソースコード範囲を追加
 		void SetSourceRange(const ScriptToken& begin, const ScriptToken& includedEnd) {
 			sourceRange.SetRange(begin.sourceRange, includedEnd.sourceRange);
@@ -154,6 +182,11 @@ namespace sakura {
 			for (size_t i = beginIndex; i < endIndex; i++) {
 				node[i]->GetChildrenRecursive(node);
 			}
+		}
+
+		//スクリプトユニット取得
+		const ScriptUnitRef& GetScriptUnit() const {
+			return scriptUnit;
 		}
 	};
 
@@ -360,9 +393,6 @@ namespace sakura {
 	//スクリプトクラス
 	class ScriptClass : public ClassBase {
 	private:
-		//メンバ
-		std::vector<ScriptClassMemberRef> members;
-
 		//関数
 		std::vector<ScriptFunctionDef> functions;
 
@@ -377,30 +407,6 @@ namespace sakura {
 		}
 
 		virtual bool IsScriptClass() const override { return true; }
-
-
-		//メンバの追加
-		void AddMember(const std::string& name, const ASTNodeRef& initNode) {
-			members.push_back(ScriptClassMemberRef(new ScriptClassMember(name, initNode)));
-		}
-
-		size_t GetMemberCount() const {
-			return members.size();
-		}
-
-		ScriptClassMemberRef GetMember(size_t index) const {
-			return members[index];
-		}
-
-		bool ContainsMember(const std::string& name) const {
-			//TODO: 高速化
-			for (const auto& item : members) {
-				if (item->GetName() == name) {
-					return true;
-				}
-			}
-			return false;
-		}
 
 		void AddFunction(const ScriptFunctionDef& def) {
 			functions.push_back(def);

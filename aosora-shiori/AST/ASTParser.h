@@ -40,7 +40,7 @@ namespace sakura {
 
 	public:
 		static const OperatorInformation* TokenToOperator(const ScriptToken& token, bool isRequireOperand);
-		static ASTNodeRef ParseASTStatement(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock);
 		static ASTNodeRef ParseASTExpression(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
 
 		static void ParseASTExpressionList(ASTParseContext& parseContext, std::vector<ConstASTNodeRef>& result, uint32_t sequenceEndFlags);
@@ -62,21 +62,23 @@ namespace sakura {
 		static ASTNodeRef ParseASTNumberLiteral(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTString(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTStringLiteral(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTContextValue(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTSymbol(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTArrayInitializer(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTObjectInitializer(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTFunctionInitializer(ASTParseContext& parseContext);
-		static ASTNodeRef ParseASTFunctionStatement(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTFunctionStatement(ASTParseContext& parseContext, bool isRootBlockStatement);
 		static ASTNodeRef ParseASTTalkInitializer(ASTParseContext& parseContext);
-		static ASTNodeRef ParseASTTalkStatement(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTTalkStatement(ASTParseContext& parseContext, bool isRootBlockStatement);
 
 		static ScriptFunctionDef ParseFunctionDef(ASTParseContext& parseContext, BlockType blockType);
 
 		static ASTNodeRef ParseASTSet(ASTParseContext& parseContext, const ASTNodeRef& target, const ASTNodeRef& value);
 		static ASTNodeRef ParseASTNew(ASTParseContext& parseContext, const ScriptToken& operatorToken, const ASTNodeRef& target);
 
-		//クラスはASTを返さない
+		//クラス、ユニットはASTを返さない
 		static void ParseASTClass(ASTParseContext& parseContext);
+		static void ParseASTUnit(ASTParseContext& parseContext);
 
 		//例外系
 		static ASTNodeRef ParseASTTry(ASTParseContext& parseContext);

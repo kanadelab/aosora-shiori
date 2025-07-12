@@ -219,8 +219,8 @@ namespace sakura {
 			return upcastTypes.contains(objectClassId);
 		}
 
-		void SetToInstance(const std::string& key, const ScriptValueRef& value, ScriptObject& instance, ScriptExecuteContext& executeContext);
-		ScriptValueRef GetFromInstance(const std::string& key, ScriptObject& instance, ScriptExecuteContext& executeContext);
+		void SetToInstance(const std::string& key, const ScriptValueRef& value, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext);
+		ScriptValueRef GetFromInstance(const std::string& key, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext);
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;

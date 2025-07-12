@@ -478,12 +478,6 @@ namespace sakura {
 		//連想配列の実体
 		std::map<std::string, ScriptValueRef> members;
 
-		//スクリプトクラス型
-		Reference<ClassData> scriptClass;
-
-		//ネイティブクラスインスタンス。スクリプトの基底型から１つ継承したネイティブ型
-		ObjectRef nativeClassInstance;
-
 	public:
 
 		ScriptObject() {
@@ -519,19 +513,52 @@ namespace sakura {
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 
-		//クラス情報の設定、初期化時にしか呼ばない
-		void SetClassInfo(const Reference<ClassData>& classData);
+
+	};
+
+	//スクリプトクラスインスタンス
+	//クラスインスタンスがMapとして振る舞うのはやっぱりいろいろ違う気がするので⋯
+	class ClassInstance : public Object<ClassInstance> {
+
+	private:
+		//スクリプトクラス型
+		Reference<ClassData> classData;
+
+		//スクリプト向けの領域、thisに相当するキーバリューストア
+		Reference<ScriptObject> scriptStore;
+
+		//ネイティブクラスインスタンス。スクリプトの基底型から１つ継承したネイティブ型
+		ObjectRef nativeClassInstance;
+
+	public:
+
+		ClassInstance(const Reference<ClassData>& classType, ScriptExecuteContext& executeContext);
 
 		//継承元のネイティブオブジェクトを設定
 		void SetNativeBaseInstance(const ObjectRef& nativeInstance) {
 			nativeClassInstance = nativeInstance;
 		}
+		const ObjectRef& GetNativeBaseInstance() const { return nativeClassInstance; }
 
-		const ObjectRef& GetNativeBaseInstance() const {
-			return nativeClassInstance;
-		}
+		const Reference<ScriptObject>& GetScriptStore() const { return scriptStore; }
+		
 
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 	};
+
+	//インスタンス化したスクリプトクラスのScriptClassInstanceのアップキャスト型指定参照
+	//baseキーワードなどでインスタンス型とは別に参照する型を指定した形式の参照として
+	/*
+	class UpcastScriptClassInstance : public Object<UpcastScriptClassInstance> {
+	private:
+		Reference<ClassInstance> target;
+
+	public:
+	};
+	*/
 
 
 	//関数リクエスト

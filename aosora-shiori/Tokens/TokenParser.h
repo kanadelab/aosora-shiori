@@ -67,9 +67,11 @@ namespace sakura {
 		Finally,
 		Throw,
 		Class,
-		Member,
 		Init,
 		New,
+		Unit,
+		This,
+		Base,
 
 		BlockBegin,
 		BlockEnd,
