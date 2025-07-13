@@ -286,7 +286,7 @@ namespace sakura {
 		std::string name;
 
 		//クラスID
-		const uint32_t typeId;
+		uint32_t typeId;
 
 	public:
 		ClassBase(uint32_t classTypeId):
@@ -323,6 +323,15 @@ namespace sakura {
 		uint32_t GetTypeId() const {
 			return typeId;
 		}
+
+		//スクリプトクラスのための後付けID指定
+		void SetTypeId(uint32_t classTypeId) {
+			assert(typeId == 0);	//後付け専用なのですでに設定されていたら使用禁止
+			if (typeId != 0) {
+				return;
+			}
+			typeId = classTypeId;
+		}	
 	};
 
 	//ネイティブクラス

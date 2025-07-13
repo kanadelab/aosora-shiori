@@ -56,6 +56,7 @@ namespace sakura {
 	const std::string ERROR_AST_041 = "A041";
 	const std::string ERROR_AST_042 = "A042";
 	const std::string ERROR_AST_043 = "A043";
+	const std::string ERROR_AST_044 = "A044";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -116,11 +117,29 @@ namespace sakura {
 
 	//ASTパース
 	class ASTParseContext {
+	public:
+		//クラス解析中スコープ指定用
+		class ClassScope {
+		private:
+			ASTParseContext& context;
+		public:
+			ClassScope(ASTParseContext& parseContext, const ScriptClassRef& classRef) :context(parseContext) {
+				assert(context.scriptClass == nullptr);
+				assert(classRef != nullptr);
+				context.scriptClass = classRef;
+			}
+			~ClassScope() {
+				assert(context.scriptClass != nullptr);
+				context.scriptClass = nullptr;
+			}
+		};
+
 	private:
 		ASTParseResult& result;
 		const std::list<ScriptToken>& tokens;
 		std::list<ScriptToken>::const_iterator current;
 		ScriptUnitRef scriptUnit;
+		ScriptClassRef scriptClass;	//現在解析中のクラス
 
 		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
@@ -161,6 +180,11 @@ namespace sakura {
 		//クラスのセット
 		void AddClass(const ScriptClassRef& classData) {
 			result.classMap[classData->GetName()] = classData;
+		}
+
+		//解析中のクラスを取得
+		const ScriptClassRef& GetParsingClass() const {
+			return scriptClass;
 		}
 
 		//エラーのセット
@@ -831,7 +855,6 @@ namespace sakura {
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::This || parseContext.GetCurrent().type == ScriptTokenType::Base) {
 				//コンテキスト値
-				//NEXT:
 				parseStack.PushOperand(ParseASTContextValue(parseContext));
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
@@ -1255,6 +1278,32 @@ namespace sakura {
 		return r;
 	}
 
+	//コンテキスト値取得
+	ASTNodeRef ASTParser::ParseASTContextValue(ASTParseContext& parseContext) {
+
+		//クラスパースのコンテキストでないと使用不可
+		if (parseContext.GetParsingClass() == nullptr) {
+			return parseContext.Error(ERROR_AST_044, parseContext.GetCurrent());
+		}
+
+		ASTNodeRef result = nullptr;
+		if (parseContext.GetCurrent().type == ScriptTokenType::This) {
+			result.reset(new ASTNodeContextValue(ASTNodeContextValue::ValueType::This, parseContext.GetParsingClass(), parseContext.GetScriptUnit()));
+		}
+		else if (parseContext.GetCurrent().type == ScriptTokenType::Base) {
+			result.reset(new ASTNodeContextValue(ASTNodeContextValue::ValueType::Base, parseContext.GetParsingClass(), parseContext.GetScriptUnit()));
+		}
+		else {
+			//存在しないタイプ
+			assert(false);
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+
+		result->SetSourceRange(parseContext.GetCurrent());
+		parseContext.FetchNext();
+		return result;
+	}
+
 	//シンボル解決
 	ASTNodeRef ASTParser::ParseASTSymbol(ASTParseContext& parseContext) {
 
@@ -1633,6 +1682,7 @@ namespace sakura {
 
 		parseContext.FetchNext();
 		ScriptClassRef result(new ScriptClass());
+		ASTParseContext::ClassScope classScope(parseContext, result);
 
 		//クラス名
 		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {

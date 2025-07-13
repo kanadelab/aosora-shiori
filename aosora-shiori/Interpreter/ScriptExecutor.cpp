@@ -77,6 +77,8 @@ namespace sakura {
 			return ExecuteNewClassInstance(static_cast<const ASTNodeNewClassInstance&>(node), executeContext);
 		case ASTNodeType::FunctionCall:
 			return ExecuteFunctionCall(static_cast<const ASTNodeFunctionCall&>(node), executeContext);
+		case ASTNodeType::ContextValue:
+			return ExecuteContextValue(static_cast<const ASTNodeContextValue&>(node), executeContext);
 		case ASTNodeType::ResolveMember:
 			return ExecuteResolveMember(static_cast<const ASTNodeResolveMember&>(node), executeContext);
 		case ASTNodeType::AssignMember:
@@ -165,6 +167,34 @@ namespace sakura {
 	//boolリテラル
 	ScriptValueRef ScriptExecutor::ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext) {
 		return node.GetValue() ? ScriptValue::True : ScriptValue::False;
+	}
+
+	//コンテキスト値
+	ScriptValueRef ScriptExecutor::ExecuteContextValue(const ASTNodeContextValue& node, ScriptExecuteContext& executeContext) {
+		switch (node.GetValueType()) {
+			case ASTNodeContextValue::ValueType::This:
+				//そのままthisをかえす
+				return executeContext.GetBlockScope()->GetThisValue();
+				
+			case ASTNodeContextValue::ValueType::Base:
+				{
+					//実行中のthis、ASTノードのクラスを使用してbaseを返す
+					ScriptValueRef self = executeContext.GetBlockScope()->GetThisValue();
+					if (self->IsObject()) {
+						ObjectRef obj = self->GetObjectRef();
+						if (obj->GetNativeInstanceTypeId() == ClassInstance::TypeId()) {
+							return ScriptValue::Make(obj.Cast<ClassInstance>()->MakeBase(obj.Cast<ClassInstance>(), node.GetClass(), executeContext));
+						}
+					}
+					//相当するオブジェクトが存在しない場合
+					return ScriptValue::Null;
+				}	 
+				break;
+		}
+
+		//こないはず
+		assert(false);
+		return ScriptValue::Null;
 	}
 
 	//シンボル解決
@@ -1208,6 +1238,16 @@ namespace sakura {
 		}
 	}
 
+	ScriptValueRef ScriptInterpreter::GetClass(uint32_t typeId) {
+		auto it = classIdMap.find(typeId);
+		if (it != classIdMap.end()) {
+			return ScriptValue::Make(it->second);
+		}
+		else {
+			return nullptr;
+		}
+	}
+
 	uint32_t ScriptInterpreter::GetClassId(const std::string& name) {
 		auto it = classMap.find(name);
 		if (it != classMap.end()) {
@@ -1319,11 +1359,12 @@ namespace sakura {
 		}
 	}
 
-	void ScriptInterpreter::ImportClass(const std::shared_ptr<const ClassBase>& cls){
+	void ScriptInterpreter::ImportClass(const std::shared_ptr<ClassBase>& cls){
 		//スクリプトクラスの場合はこのタイミングでID発行
 		uint32_t classId = cls->GetTypeId();
 		if (cls->IsScriptClass()) {
 			classId = ObjectTypeIdGenerator::GenerateScriptClassId(scriptClassCount);
+			cls->SetTypeId(classId);
 			scriptClassCount++;
 		}
 

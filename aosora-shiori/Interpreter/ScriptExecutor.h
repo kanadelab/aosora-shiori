@@ -22,6 +22,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteStringLiteral(const ASTNodeStringLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteNumberLiteral(const ASTNodeNumberLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteContextValue(const ASTNodeContextValue& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteAssignSymbol(const ASTNodeAssignSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteArrayInitializer(const ASTNodeArrayInitializer& node, ScriptExecuteContext& executeContext);
@@ -169,7 +170,7 @@ namespace sakura {
 
 		//クラスの登録
 		void ImportClasses(const std::map<std::string, ScriptClassRef>& classMap);
-		void ImportClass(const std::shared_ptr<const ClassBase>& nativeClass);
+		void ImportClass(const std::shared_ptr<ClassBase>& nativeClass);
 		void CommitClasses();
 
 		//システムレジストリ値を追加
@@ -247,6 +248,7 @@ namespace sakura {
 
 		//クラス取得
 		ScriptValueRef GetClass(const std::string& name);
+		ScriptValueRef GetClass(const uint32_t typeId);
 
 		//クラス取得
 		template<typename T>

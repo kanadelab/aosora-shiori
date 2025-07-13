@@ -216,13 +216,16 @@ namespace sakura {
 		};
 
 	private:
+		ScriptClassRef classRef;
 		ValueType valueType;
 
 	public:
-		ASTNodeContextValue(const ValueType type, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeContextValue(const ValueType type, const ScriptClassRef& scriptClass, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+			classRef(scriptClass),
 			valueType(type)
 		{}
 
+		const ScriptClassRef& GetClass() const { return classRef; }
 		const ValueType GetValueType() const { return valueType; }
 		virtual ASTNodeType GetType() const override { return ASTNodeType::ContextValue; }
 

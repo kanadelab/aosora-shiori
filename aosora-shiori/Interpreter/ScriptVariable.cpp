@@ -174,31 +174,46 @@ namespace sakura {
 		SetInstanceTypeId(classData->GetClassTypeId());
 	}
 
-	void ClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
-		
-		if (classData->GetMetadata().IsScriptClass()) {
-			//スクリプトクラスの場合、ストレージを直接書き換える
-			//NOTE: 機能的にこれをつかうのは悪手だけど、シンプルなつくりになるように？ ふさぎたいかも？
-			const ScriptClass& classInfo = static_cast<const ScriptClass&>(classData->GetMetadata());
+	void ClassInstance::SetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		if (classType->GetMetadata().IsScriptClass()) {
+			//スクリプトクラスの場合は中身を書き換える
+			scriptStore->RawSet(key, value);
 		}
 		else {
-			//ネイティブなら型領域へセット
-			//NOTE: この制約により継承を許容するネイティブクラスはプロパティ書き込みは不可
-			return classData->SetToInstance(key, value, self.Cast<ClassInstance>(), executeContext);
+			//ネイティブならインスタンス領域にセット
+			classType->SetToInstance(key, value, self, executeContext);
 		}
 	}
 
-	ScriptValueRef ClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
-
-		//スクリプトクラスであれば内部ストレージから検索
-		if (classData->GetMetadata().IsScriptClass()) {
+	ScriptValueRef ClassInstance::GetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, ScriptExecuteContext& executeContext) {
+		//スクリプトクラスであればストレージを検索
+		//TODO: 検索順を反転させるべきかも？　クラスから検索すると多段検索がどうしても必要になるのでとりあえず効率からこうしているけれど･･･
+		if (classType->GetMetadata().IsScriptClass()) {
 			if (scriptStore->Contains(key)) {
 				return scriptStore->RawGet(key);
 			}
 		}
 
 		//見つかってなければ型領域から検索
-		return classData->GetFromInstance(key, self.Cast<ClassInstance>(), executeContext);
+		return classType->GetFromInstance(key, self, executeContext);
+	}
+
+	Reference<UpcastClassInstance> ClassInstance::MakeBase(const Reference<ClassInstance>& self, const ScriptClassRef& contextClass, ScriptExecuteContext& executeContext) {
+		//baseキーワードで取得できるupcastedインスタンスを取得する
+		//contextClassがbaseキーワードのASTノードが所属するクラスを示しているのでその親クラスを取得する
+		//(classData->GetParentClass() を使うとthisに対するbaseとなるので多段継承で問題が出るためNG)
+
+		//インタプリタからクラスデータを取得
+		auto classRef = executeContext.GetInterpreter().GetClass(contextClass->GetTypeId());
+		return executeContext.GetInterpreter().CreateNativeObject<UpcastClassInstance>(self, classRef->GetObjectRef().Cast<ClassData>()->GetParentClass());
+	}
+
+	void ClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		SetInternal(self.Cast<ClassInstance>(), classData, key, value, executeContext);
+	}
+
+	ScriptValueRef ClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		return GetInternal(self.Cast<ClassInstance>(), classData, key, executeContext);
 	}
 
 	void ClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
@@ -210,6 +225,24 @@ namespace sakura {
 		}
 		if (nativeClassInstance != nullptr) {
 			result.push_back(nativeClassInstance.Get());
+		}
+	}
+
+	void UpcastClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		//ClassInstanceに対して型指定形式で問い合わせる
+		classInstance->SetInternal(classInstance, upcastedClassData, key, value, executeContext);
+	}
+
+	ScriptValueRef UpcastClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		return classInstance->GetInternal(classInstance, upcastedClassData, key, executeContext);
+	}
+
+	void UpcastClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (classInstance != nullptr) {
+			result.push_back(classInstance.Get());
+		}
+		if (upcastedClassData != nullptr) {
+			result.push_back(upcastedClassData.Get());
 		}
 	}
 

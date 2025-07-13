@@ -215,8 +215,7 @@ namespace sakura {
 	}
 
 	void OverloadedFunctionList::ThisCall(const FunctionRequest& request, FunctionResponse& response, const ScriptValueRef& thisValue) {
-		//TODO: thisの考慮が必要な場合の検討
-		auto selectedItem = SelectItem(request.GetContext(), nullptr);
+		auto selectedItem = SelectItem(request.GetContext(), thisValue);
 		if (selectedItem->IsObject()) {
 			//関数呼び出しを実行、そのままレスポンスをもらって帰る
 			std::vector<ScriptValueRef> args = request.GetArgumentCollection();
@@ -242,12 +241,10 @@ namespace sakura {
 		}
 
 		//デリゲートを返す
-		if (item->nativeFunc == nullptr)
-		{
+		if (item->nativeFunc == nullptr) {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->scriptFunc, thisValue, item->blockScope));
 		}
-		else
-		{
+		else {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->nativeFunc, thisValue, item->blockScope));
 		}
 	}
