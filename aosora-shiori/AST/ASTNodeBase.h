@@ -132,15 +132,37 @@ namespace sakura {
 	};
 	using ScriptUnitRef = std::shared_ptr<ScriptUnit>;
 
+	//スクリプトユニットエイリアス usingのような
+	class ScriptUnitAlias {
+	private:
+		std::map<std::string, std::string> aliasMap;
+
+	public:
+
+	};
+
+	//ソーススコープのメタデータのこと
+	class ScriptSourceMetadata {
+	private:
+		ScriptUnitRef scriptUnit;
+		ScriptUnitAlias alias;
+
+	public:
+		const ScriptUnitRef& GetScriptUnit() const {
+			return scriptUnit;
+		}
+	};
+	using ScriptSourceMetadataRef = std::shared_ptr<ScriptSourceMetadata>;
+
 	//ASTノード基底
 	class ASTNodeBase {
 	private:
 		SourceCodeRange sourceRange;
-		ScriptUnitRef scriptUnit;
+		ScriptSourceMetadataRef sourceMetadata;
 
 	public:
-		ASTNodeBase(const ScriptUnitRef& unit):
-			scriptUnit(unit)
+		ASTNodeBase(const ScriptSourceMetadataRef& sourceMeta):
+			sourceMetadata(sourceMeta)
 		{ }
 
 		//ソースコード範囲を追加
@@ -184,9 +206,14 @@ namespace sakura {
 			}
 		}
 
+		//スクリプトソースメタデータ
+		const ScriptSourceMetadataRef& GetSourceMetadata() const {
+			return sourceMetadata;
+		}
+
 		//スクリプトユニット取得
 		const ScriptUnitRef& GetScriptUnit() const {
-			return scriptUnit;
+			return sourceMetadata->GetScriptUnit();
 		}
 	};
 

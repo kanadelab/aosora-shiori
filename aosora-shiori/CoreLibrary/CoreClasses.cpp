@@ -268,7 +268,16 @@ namespace sakura {
 	}
 
 	//リフレクション
+	ScriptSourceMetadataRef Reflection::GetCallingSourceMetadata(const FunctionRequest& request) {
+		//スタックの1段上を参照して呼び出し元のデータを取得
+		//取得できない場合、リフレクションは例外を送る
+
+	}
+
 	void Reflection::ScopeGet(const FunctionRequest& request, FunctionResponse& response) {
+		//スクリプト呼び出し元のユニットを取得
+		auto sourcemeta = GetCallingSourceMetadata(request);
+
 		//スコープから指定された文字列で検索する
 		if (request.GetArgumentCount() >= 1) {
 			response.SetReturnValue(request.GetContext().GetSymbol(request.GetArgument(0)->ToString()));

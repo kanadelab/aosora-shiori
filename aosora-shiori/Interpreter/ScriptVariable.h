@@ -584,7 +584,6 @@ namespace sakura {
 	private:
 		std::vector<ScriptValueRef> args;
 		ScriptExecuteContext& executeContext;
-		const ASTNodeBase* callingNode;
 
 	public:
 

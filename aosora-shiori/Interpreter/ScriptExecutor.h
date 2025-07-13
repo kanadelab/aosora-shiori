@@ -222,7 +222,12 @@ namespace sakura {
 
 		//現在のユニット変数を取得
 		ScriptValueRef GetUnitVariable(const std::string& name, const ScriptUnitRef& scriptUnit) {
-			auto& variables = units.find(name)->second.unitVariables;
+			if (!scriptUnit->HasUnit()) {
+				//無名ユニットはグローバル空間を示す
+				return GetGlobalVariable(name);
+			}
+
+			auto& variables = units.find(scriptUnit->GetUnit())->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
 				return it->second;
@@ -234,7 +239,12 @@ namespace sakura {
 
 		//現在のユニット変数を設定
 		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const ScriptUnitRef& scriptUnit) {
-			auto& variables = units.find(name)->second.unitVariables;
+			if (!scriptUnit->HasUnit()) {
+				//無名ユニットはグローバル空間を示す
+				SetGlobalVariable(name, value);
+			}
+
+			auto& variables = units.find(scriptUnit->GetUnit())->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
 				it->second = value;
@@ -721,8 +731,8 @@ namespace sakura {
 		//新しいブロックスコープのコンテキストを作る
 		ScriptExecuteContext CreateChildBlockScopeContext();
 
-		ScriptValueRef GetSymbol(const std::string& name);
-		void SetSymbol(const std::string& name, const ScriptValueRef& value);
+		ScriptValueRef GetSymbol(const std::string& name, const ScriptSourceMetadata& metadata);
+		void SetSymbol(const std::string& name, const ScriptValueRef& value, const ScriptSourceMetadata& metadata);
 
 		//スタックトレースの取得
 		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& currentFuncName);

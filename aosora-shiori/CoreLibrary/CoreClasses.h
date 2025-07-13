@@ -362,6 +362,9 @@ namespace sakura {
 
 	//リフレクション
 	class Reflection : public Object<Reflection> {
+	private:
+		static ScriptSourceMetadataRef GetCallingSourceMetadata(const FunctionRequest& request);
+
 	public:
 		static void ScopeGet(const FunctionRequest& request, FunctionResponse& response);
 		static void ScopeSet(const FunctionRequest& request, FunctionResponse& response);

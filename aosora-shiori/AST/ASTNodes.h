@@ -23,7 +23,7 @@ namespace sakura {
 		bool isTalkBlock;
 
 	public:
-		ASTNodeCodeBlock(const ScriptUnitRef& unit): ASTNodeBase(unit),
+		ASTNodeCodeBlock(const ScriptSourceMetadataRef& metadata): ASTNodeBase(metadata),
 			isTalkBlock(false)
 		{}
 
@@ -75,7 +75,7 @@ namespace sakura {
 		std::vector<Item> items;
 
 	public:
-		ASTNodeFormatString(const std::vector<Item>& formatItems, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeFormatString(const std::vector<Item>& formatItems, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			items(formatItems) {
 		}
 
@@ -109,7 +109,7 @@ namespace sakura {
 		std::string value;
 
 	public:
-		ASTNodeStringLiteral(const std::string& stringValue, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeStringLiteral(const std::string& stringValue, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			value(stringValue)
 		{}
 
@@ -128,7 +128,7 @@ namespace sakura {
 		number value;
 
 	public:
-		ASTNodeNumberLiteral(number numberValue, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeNumberLiteral(number numberValue, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			value(numberValue) {}
 
 		number GetValue() const {
@@ -146,7 +146,7 @@ namespace sakura {
 		bool value;
 
 	public:
-		ASTNodeBooleanLiteral(bool booleanValue, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeBooleanLiteral(bool booleanValue, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			value(booleanValue)
 		{}
 
@@ -165,7 +165,7 @@ namespace sakura {
 		std::string name;
 
 	public:
-		ASTNodeResolveSymbol(const std::string& symbolName, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeResolveSymbol(const std::string& symbolName, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			name(symbolName) {}
 
 		const std::string& GetSymbolName() const { return name; }
@@ -185,7 +185,7 @@ namespace sakura {
 		ConstASTNodeRef value;
 
 	public:
-		ASTNodeAssignSymbol(const std::string& symbolName, const ConstASTNodeRef& valueNode, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeAssignSymbol(const std::string& symbolName, const ConstASTNodeRef& valueNode, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			name(symbolName),
 			value(valueNode)
 		{}
@@ -220,7 +220,7 @@ namespace sakura {
 		ValueType valueType;
 
 	public:
-		ASTNodeContextValue(const ValueType type, const ScriptClassRef& scriptClass, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeContextValue(const ValueType type, const ScriptClassRef& scriptClass, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			classRef(scriptClass),
 			valueType(type)
 		{}
@@ -241,7 +241,7 @@ namespace sakura {
 
 	public:
 
-		ASTNodeArrayInitializer(const std::vector<ConstASTNodeRef>& items, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeArrayInitializer(const std::vector<ConstASTNodeRef>& items, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			values(items)
 		{}
 
@@ -279,7 +279,7 @@ namespace sakura {
 
 	public:
 
-		ASTNodeObjectInitializer(const std::vector<Item>& items, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeObjectInitializer(const std::vector<Item>& items, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			items(items)
 		{}
 
@@ -312,7 +312,7 @@ namespace sakura {
 		bool isRootBlockFunction;
 
 	public:
-		ASTNodeFunctionStatement(const std::vector<std::string>& funcNames, const ConstScriptFunctionRef& function, const ConstASTNodeRef& conditionNode, bool isRootBlock, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeFunctionStatement(const std::vector<std::string>& funcNames, const ConstScriptFunctionRef& function, const ConstASTNodeRef& conditionNode, bool isRootBlock, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			names(funcNames),
 			func(function),
 			condition(conditionNode),
@@ -343,7 +343,7 @@ namespace sakura {
 		ConstScriptFunctionRef func;
 
 	public:
-		ASTNodeFunctionInitializer(const ConstScriptFunctionRef& function, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeFunctionInitializer(const ConstScriptFunctionRef& function, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			func(function)
 		{}
 
@@ -368,7 +368,7 @@ namespace sakura {
 		ConstASTNodeRef initialValue;
 
 	public:
-		ASTNodeLocalVariableDeclaration(const std::string& localVariableName, const ConstASTNodeRef& value, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeLocalVariableDeclaration(const std::string& localVariableName, const ConstASTNodeRef& value, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			name(localVariableName),
 			initialValue(value) {
 		}
@@ -400,7 +400,7 @@ namespace sakura {
 		std::list<std::shared_ptr<const ASTNodeLocalVariableDeclaration>> variables;
 
 	public:
-		ASTNodeLocalVariableDeclarationList(const ScriptUnitRef& unit): ASTNodeBase(unit) {}
+		ASTNodeLocalVariableDeclarationList(const ScriptSourceMetadataRef& metadata): ASTNodeBase(metadata) {}
 
 		//変数の追加
 		void AddVariable(const std::shared_ptr<const ASTNodeLocalVariableDeclaration>& item) {
@@ -436,7 +436,7 @@ namespace sakura {
 		ConstASTNodeRef loopStatement;
 
 	public:
-		ASTNodeFor(const ConstASTNodeRef& init, const ConstASTNodeRef& cond, const ConstASTNodeRef& inc, const ConstASTNodeRef& stmt, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeFor(const ConstASTNodeRef& init, const ConstASTNodeRef& cond, const ConstASTNodeRef& inc, const ConstASTNodeRef& stmt, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			initExpression(init),
 			ifExpression(cond),
 			incrementExpression(inc),
@@ -490,7 +490,7 @@ namespace sakura {
 		ConstASTNodeRef trueStatement;
 
 	public:
-		ASTNodeWhile(const ConstASTNodeRef& expr, const ConstASTNodeRef& block, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeWhile(const ConstASTNodeRef& expr, const ConstASTNodeRef& block, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			ifExpression(expr),
 			trueStatement(block)
 		{}
@@ -521,13 +521,13 @@ namespace sakura {
 
 	public:
 
-		ASTNodeIf(const ConstASTNodeRef& expr, const ConstASTNodeRef& t, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeIf(const ConstASTNodeRef& expr, const ConstASTNodeRef& t, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			ifExpression(expr),
 			trueStatement(t),
 			falseStatement(nullptr)
 		{}
 
-		ASTNodeIf(const ConstASTNodeRef& expr, const ConstASTNodeRef& t, const ConstASTNodeRef& f, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeIf(const ConstASTNodeRef& expr, const ConstASTNodeRef& t, const ConstASTNodeRef& f, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			ifExpression(expr),
 			trueStatement(t),
 			falseStatement(f)
@@ -560,7 +560,7 @@ namespace sakura {
 	//break
 	class ASTNodeBreak : public ASTNodeBase {
 	public:
-		ASTNodeBreak(const ScriptUnitRef& unit): ASTNodeBase(unit){}
+		ASTNodeBreak(const ScriptSourceMetadataRef& metadata): ASTNodeBase(metadata){}
 		virtual ASTNodeType GetType() const override { return ASTNodeType::Break; }
 		virtual const char* DebugName() const override { return "Break"; }
 	};
@@ -568,7 +568,7 @@ namespace sakura {
 	//break
 	class ASTNodeContinue : public ASTNodeBase {
 	public:
-		ASTNodeContinue(const ScriptUnitRef& unit):ASTNodeBase(unit) {}
+		ASTNodeContinue(const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata) {}
 		virtual ASTNodeType GetType() const override { return ASTNodeType::Continue; }
 		virtual const char* DebugName() const override { return "Continue"; }
 	};
@@ -579,11 +579,11 @@ namespace sakura {
 		ConstASTNodeRef returnValueNode;
 
 	public:
-		ASTNodeReturn(const ConstASTNodeRef& returnValue, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeReturn(const ConstASTNodeRef& returnValue, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			returnValueNode(returnValue)
 		{}
 
-		ASTNodeReturn(const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeReturn(const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			returnValueNode(nullptr)
 		{}
 
@@ -613,7 +613,7 @@ namespace sakura {
 		ConstASTNodeRef operandRight;
 
 	public:
-		ASTNodeEvalOperator2(const OperatorInformation& info, const ConstASTNodeRef& left, const ConstASTNodeRef& right, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeEvalOperator2(const OperatorInformation& info, const ConstASTNodeRef& left, const ConstASTNodeRef& right, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			operatorInfo(info),
 			operandLeft(left),
 			operandRight(right)
@@ -647,7 +647,7 @@ namespace sakura {
 		ConstASTNodeRef operand;
 
 	public:
-		ASTNodeEvalOperator1(const OperatorInformation& info, const ASTNodeRef& value, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeEvalOperator1(const OperatorInformation& info, const ASTNodeRef& value, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			operatorInfo(info),
 			operand(value)
 		{}
@@ -675,7 +675,7 @@ namespace sakura {
 		std::vector<ConstASTNodeRef> args;
 
 	public:
-		ASTNodeNewClassInstance(const ConstASTNodeRef& classObject, const std::vector<ConstASTNodeRef>& arguments, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeNewClassInstance(const ConstASTNodeRef& classObject, const std::vector<ConstASTNodeRef>& arguments, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			classObj(classObject),
 			args(arguments) {
 		}
@@ -708,7 +708,7 @@ namespace sakura {
 		std::vector<ConstASTNodeRef> args;
 
 	public:
-		ASTNodeFunctionCall(const ConstASTNodeRef& function, const std::vector<ConstASTNodeRef>& arguments, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeFunctionCall(const ConstASTNodeRef& function, const std::vector<ConstASTNodeRef>& arguments, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			func(function),
 			args(arguments) {
 		}
@@ -741,7 +741,7 @@ namespace sakura {
 		ConstASTNodeRef key;
 
 	public:
-		ASTNodeResolveMember(const ConstASTNodeRef& obj, const ConstASTNodeRef& member, const ScriptUnitRef& unit) :ASTNodeBase(unit),
+		ASTNodeResolveMember(const ConstASTNodeRef& obj, const ConstASTNodeRef& member, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
 			target(obj),
 			key(member) {
 			SetSourceRange(obj->GetSourceRange(), member->GetSourceRange());
@@ -775,7 +775,7 @@ namespace sakura {
 		ConstASTNodeRef key;
 
 	public:
-		ASTNodeAssignMember(const ConstASTNodeRef& obj, const ConstASTNodeRef& member, const ConstASTNodeRef& valueNode, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeAssignMember(const ConstASTNodeRef& obj, const ConstASTNodeRef& member, const ConstASTNodeRef& valueNode, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			target(obj),
 			value(valueNode),
 			key(member)
@@ -815,7 +815,7 @@ namespace sakura {
 		ConstASTNodeRef finallyBlock;
 
 	public:
-		ASTNodeTry(const ConstASTNodeRef& tryNode, const ScriptUnitRef& unit): ASTNodeBase(unit),
+		ASTNodeTry(const ConstASTNodeRef& tryNode, const ScriptSourceMetadataRef& metadata): ASTNodeBase(metadata),
 			tryBlock(tryNode),
 			finallyBlock(nullptr)
 		{}
@@ -862,11 +862,11 @@ namespace sakura {
 		ConstASTNodeRef throwValueNode;
 
 	public:
-		ASTNodeThrow(const ConstASTNodeRef& throwValue, const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeThrow(const ConstASTNodeRef& throwValue, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			throwValueNode(throwValue)
 		{}
 
-		ASTNodeThrow(const ScriptUnitRef& unit) : ASTNodeBase(unit),
+		ASTNodeThrow(const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
 			throwValueNode(nullptr)
 		{}
 
@@ -899,7 +899,7 @@ namespace sakura {
 		int32_t speakerIndex;
 
 	public:
-		ASTNodeTalkSetSpeaker(int32_t speaker, const ScriptUnitRef& unit): ASTNodeBase(unit),
+		ASTNodeTalkSetSpeaker(int32_t speaker, const ScriptSourceMetadataRef& metadata): ASTNodeBase(metadata),
 			speakerIndex(speaker)
 		{}
 
@@ -924,13 +924,13 @@ namespace sakura {
 		ConstASTNodeRef condition;
 
 	public:
-		ASTNodeTalkJump(const ConstASTNodeRef& jumpTarget, const std::vector<ConstASTNodeRef>& arguments, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeTalkJump(const ConstASTNodeRef& jumpTarget, const std::vector<ConstASTNodeRef>& arguments, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			func(jumpTarget),
 			args(arguments),
 			condition(nullptr)
 		{}
 
-		ASTNodeTalkJump(const ConstASTNodeRef& jumpTarget, const std::vector<ConstASTNodeRef>& arguments, const ConstASTNodeRef& jumpCondition, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeTalkJump(const ConstASTNodeRef& jumpTarget, const std::vector<ConstASTNodeRef>& arguments, const ConstASTNodeRef& jumpCondition, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			func(jumpTarget),
 			args(arguments),
 			condition(jumpCondition)
@@ -971,7 +971,7 @@ namespace sakura {
 		ConstASTNodeRef body;
 
 	public:
-		ASTNodeTalkSpeak(const ConstASTNodeRef& talkBody, const ScriptUnitRef& unit):ASTNodeBase(unit),
+		ASTNodeTalkSpeak(const ConstASTNodeRef& talkBody, const ScriptSourceMetadataRef& metadata):ASTNodeBase(metadata),
 			body(talkBody)
 		{}
 

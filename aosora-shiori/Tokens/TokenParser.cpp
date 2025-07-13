@@ -72,6 +72,7 @@ namespace sakura {
 	const std::string TOKEN_KEYWORD_INIT = "init";
 	const std::string TOKEN_KEYWORD_NEW = "new";
 	const std::string TOKEN_KEYWORD_UNIT = "unit";
+	const std::string TOKEN_KEYWORD_USE = "use";
 	const std::string TOKEN_KEYWORD_THIS = "this";
 	const std::string TOKEN_KEYWORD_BASE = "base";
 
@@ -167,6 +168,7 @@ namespace sakura {
 		{TOKEN_KEYWORD_INIT, ScriptTokenType::Init},
 		{TOKEN_KEYWORD_NEW, ScriptTokenType::New},
 		{TOKEN_KEYWORD_UNIT, ScriptTokenType::Unit},
+		{TOKEN_KEYWORD_USE, ScriptTokenType::Use},
 		{TOKEN_KEYWORD_THIS, ScriptTokenType::This},
 		{TOKEN_KEYWORD_BASE, ScriptTokenType::Base},
 	};

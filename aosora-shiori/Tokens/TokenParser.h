@@ -70,6 +70,7 @@ namespace sakura {
 		Init,
 		New,
 		Unit,
+		Use,
 		This,
 		Base,
 

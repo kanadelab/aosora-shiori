@@ -199,7 +199,7 @@ namespace sakura {
 
 	//シンボル解決
 	ScriptValueRef ScriptExecutor::ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext) {
-		return executeContext.GetSymbol(node.GetSymbolName());
+		return executeContext.GetSymbol(node.GetSymbolName(), node.GetScriptUnit());
 	}
 
 	//シンボル設定
@@ -210,7 +210,7 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		executeContext.SetSymbol(node.GetSymbolName(), v);
+		executeContext.SetSymbol(node.GetSymbolName(), v, node.GetScriptUnit());
 		return v;
 	}
 
@@ -862,7 +862,7 @@ namespace sakura {
 		for (const std::string& funcName : node.GetNames()) {
 
 			//グローバルから探す(ローカル指定も可能にできると良い?)
-			ScriptValueRef item = executeContext.GetInterpreter().GetGlobalVariable(funcName);
+			ScriptValueRef item = executeContext.GetInterpreter().GetUnitVariable(funcName, node.GetScriptUnit());
 			OverloadedFunctionList* functionList = nullptr;
 			
 			if (item != nullptr) {
@@ -878,7 +878,7 @@ namespace sakura {
 				Reference<OverloadedFunctionList> funcList = executeContext.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
 				funcList->SetName(funcName);
 				funcList->Add(node.GetFunction(), node.GetConditionNode(), executeContext.GetBlockScope());
-				executeContext.GetInterpreter().SetGlobalVariable(funcName, ScriptValue::Make(funcList));
+				executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetScriptUnit());
 			}
 		}
 
@@ -1480,7 +1480,6 @@ namespace sakura {
 	//実行コンテキストから新しいスタックフレームで関数を実行
 	void ScriptInterpreter::CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName) {
 		ScriptInterpreterStack funcStack = executeContext.GetStack().CreateChildStackFrame(callingAstNode, executeContext.GetBlockScope(), funcName);
-
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
 
@@ -1673,25 +1672,10 @@ namespace sakura {
 	}
 
 	//実行
-	ScriptValueRef ScriptExecuteContext::GetSymbol(const std::string& name) {
+	ScriptValueRef ScriptExecuteContext::GetSymbol(const std::string& name, const ScriptSourceMetadata& sourcemeta) {
 
 		//優先順位にしたがってシンボルを検索する
 		ScriptValueRef result = nullptr;
-
-		//this
-		//NOTE: thisスコープの暗黙参照は無し
-		/*
-		ScriptValueRef thisValue = blockScope->GetThisValue();
-		if (thisValue != nullptr) {
-			if (thisValue->IsObject()) {
-				ObjectRef thisObj = thisValue->GetObjectRef();
-				result = thisObj->Get(thisObj, name, *this);
-				if (result != nullptr) {
-					return result;
-				}
-			}
-		}
-		*/
 
 		//ローカル
 		result = blockScope->GetLocalVariable(name);
@@ -1705,16 +1689,16 @@ namespace sakura {
 			return result;
 		}
 
-		//モジュール
-
 		//グローバルよりシステムレジストリが先
 		result = interpreter.GetSystemRegistryValue(name);
 		if (result != nullptr) {
 			return result;
 		}
 
-		//グローバル
-		result = interpreter.GetGlobalVariable(name);
+		//ユニットインポートなど
+
+		//ローカルユニット
+		result = interpreter.GetUnitVariable(name, scriptUnit);
 		if (result != nullptr) {
 			return result;
 		}
@@ -1724,7 +1708,7 @@ namespace sakura {
 	}
 
 	//シンボルの書き込み
-	void ScriptExecuteContext::SetSymbol(const std::string& name, const ScriptValueRef& value) {
+	void ScriptExecuteContext::SetSymbol(const std::string& name, const ScriptValueRef& value, const ScriptUnitRef& scriptUnit) {
 		//ローカルにあれば書き込み
 		if (blockScope->SetLocalVariable(name, value)) {
 			return;
@@ -1736,10 +1720,8 @@ namespace sakura {
 			return;
 		}
 
-		//モジュール
-
-		//グローバル
-		interpreter.SetGlobalVariable(name, value);
+		//ユニット
+		interpreter.SetUnitVariable(name, value, scriptUnit);
 	}
 
 	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string & currentFuncName) {
