@@ -407,4 +407,10 @@ namespace sakura {
 	const std::string& TalkBuilder::GetScriptHead(ScriptInterpreter& interpreter) {
 		return GetCurrentSettings(interpreter).GetScriptHead();
 	}
+
+	//ユニットオブジェクト
+	ScriptValueRef UnitObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		//ユニット基準参照となるはず・・・
+		//executeContext.GetInterpreter().GetUnitVariable()
+	}
 }

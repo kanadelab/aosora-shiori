@@ -1227,6 +1227,16 @@ namespace sakura {
 		return true;
 	}
 
+	//ユニット取得
+	Reference<UnitObject> ScriptInterpreter::GetUnit(const std::string& unitName) {
+		//存在してないユニットはnullを返す
+		if (!units.contains(unitName)) {
+			return nullptr;
+		}
+
+		return CreateNativeObject<UnitObject>(unitName);
+	}
+
 	//クラス取得
 	ScriptValueRef ScriptInterpreter::GetClass(const std::string& name) {
 		auto it = classMap.find(name);
@@ -1695,10 +1705,26 @@ namespace sakura {
 			return result;
 		}
 
-		//ユニットインポートなど
+		//エイリアス
+		const AliasItem* unitAlias = sourcemeta.GetAlias().FindAlias(name);
+		if (unitAlias) {
+			//ユニットエイリアスを解決してその中身を取得
+			Reference<UnitObject> unit = interpreter.GetUnit(unitAlias->targetName);
+			if (unit != nullptr) {
+				return unit->Get(unit, unitAlias->targetName, *this);
+			}
+		}
+
+		//階層ユニット
+		//親ユニットは全部展開されているし、兄弟ユニットと子ユニットは名前で参照できる形になるはず
+		
+		//兄弟ユニット・子ユニット
+		//TODO: 親階層以下、ユニットをたどりたい
+
+		//同階層ユニット・ワイルドカード展開済みユニット
 
 		//ローカルユニット
-		result = interpreter.GetUnitVariable(name, scriptUnit);
+		result = interpreter.GetUnitVariable(name, sourcemeta.GetScriptUnit());
 		if (result != nullptr) {
 			return result;
 		}

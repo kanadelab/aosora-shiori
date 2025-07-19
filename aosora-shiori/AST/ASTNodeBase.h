@@ -129,16 +129,72 @@ namespace sakura {
 		const std::string& GetUnit() const {
 			return unitName;
 		}
+
+		std::string MakeChildUnitName(const char* nodeName) const {
+			return unitName + "." + nodeName;
+		}
+
+		/*
+		std::string MakeSiblingUnitName(const char* nodeName) const {
+			return 
+		}
+		*/
 	};
 	using ScriptUnitRef = std::shared_ptr<ScriptUnit>;
+
+	struct AliasItem {
+		//エイリアス１つあたりの情報。
+		std::string fullPath;	//フルエイリアス（{親ユニット}.{ターゲット名}）
+		std::string parentUnit;	//親ユニット
+		std::string targetName;	//ターゲット名
+	};
 
 	//スクリプトユニットエイリアス usingのような
 	class ScriptUnitAlias {
 	private:
-		std::map<std::string, std::string> aliasMap;
+		std::map<std::string, AliasItem> aliasMap;
+		std::vector<AliasItem> wildcardAliases;
 
 	public:
+		bool RegisterAlias(const std::string& key, const std::string& path) {
+			if (aliasMap.contains(key)) {
+				//多重追加は不可
+				return false;
+			}
 
+			//エイリアスを登録
+			AliasItem item;
+			item.fullPath = path;
+			const size_t dotPos = path.rfind(".");
+			if (dotPos != std::string::npos) {
+				//最後とそれまでとで切り離す
+				item.parentUnit = path.substr(0, dotPos);
+				item.targetName = path.substr(dotPos + 1);
+			}
+			else {
+				item.parentUnit = "";
+				item.targetName = path;
+			}
+
+			aliasMap.insert(decltype(aliasMap)::value_type(key, item));
+			return true;
+		}
+
+		const AliasItem* FindAlias(const std::string& key) const {
+			auto found = aliasMap.find(key);
+			if (found != aliasMap.end()) {
+				return &found->second;
+			}
+			return nullptr;
+		}
+
+		size_t GetWildcardAliasCount() {
+			return aliasMap.size();
+		}
+
+		const AliasItem* GetWildcardAlias(size_t index) {
+			return &wildcardAliases[index];
+		}
 	};
 
 	//ソーススコープのメタデータのこと
@@ -150,6 +206,12 @@ namespace sakura {
 	public:
 		const ScriptUnitRef& GetScriptUnit() const {
 			return scriptUnit;
+		}
+		ScriptUnitAlias& GetAlias() {
+			return alias;
+		}
+		const ScriptUnitAlias& GetAlias() const {
+			return alias;
 		}
 	};
 	using ScriptSourceMetadataRef = std::shared_ptr<ScriptSourceMetadata>;

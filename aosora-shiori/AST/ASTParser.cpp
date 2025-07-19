@@ -1813,6 +1813,52 @@ namespace sakura {
 		}
 	}
 
+	void ASTParser::ParseASTUse(ASTParseContext& parseContext) {
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Use);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Use) {
+			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+			return;
+		}
+
+		parseContext.FetchNext();
+
+		//useキーワードの対象を取得
+		std::string path;
+		const ScriptToken* lastPathToken = nullptr;
+		while (parseContext.IsEnd()) {
+			if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+				//シンボルをパスに追加
+				if (!path.empty()) {
+					path.append(".");
+				}
+				lastPathToken = &parseContext.GetCurrent();
+				path.append(lastPathToken->body);
+				parseContext.FetchNext();
+			}
+			else {
+				//err
+				return;
+			}
+
+			//セミコロンで終端するかピリオドで続ける
+			if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
+				//エイリアスを登録して終了
+				if (!parseContext.GetSourceMetadata()->GetAlias().RegisterAlias(lastPathToken->body, path)) {
+					//エイリアス重複のためエラー
+				}
+				parseContext.FetchNext();
+				return;
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+				parseContext.FetchNext();
+			}
+			else {
+				//err
+				return;
+			}
+		}
+	}
+
 	//ローカル変数宣言のパース
 	ASTNodeRef ASTParser::ParseASTLocalVariable(ASTParseContext& parseContext) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();

@@ -254,7 +254,8 @@ namespace sakura {
 			}
 		}
 
-
+		//ルート空間からユニットを取得
+		Reference<UnitObject> GetUnit(const std::string& unitName);
 
 		//クラス取得
 		ScriptValueRef GetClass(const std::string& name);

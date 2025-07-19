@@ -570,4 +570,20 @@ namespace sakura {
 		static const std::string& GetScriptHead(ScriptInterpreter& interpreter);
 	};
 
+	//ユニットオブジェクト
+	//ScriptUnit参照用の専用オブジェクト
+	class UnitObject : public Object<UnitObject> {
+	private:
+		std::string path;
+		//UnitData& unit;
+
+	public:
+		UnitObject(const std::string& unitPath):
+			path(unitPath)
+		{ }
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+	};
+
 }
