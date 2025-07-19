@@ -109,6 +109,7 @@ namespace sakura{
 	inline void SplitString(const std::string& input, std::vector<std::string>& result, char delimiter) {
 		std::istringstream ist(input);
 		std::string item;
+		result.clear();
 		while (std::getline(ist, item, delimiter)) {
 			result.push_back(item);
 		}

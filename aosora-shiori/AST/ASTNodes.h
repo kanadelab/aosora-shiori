@@ -159,6 +159,20 @@ namespace sakura {
 		virtual std::string DebugToString() const override { return std::to_string(value); }
 	};
 
+	//ユニットルート
+	class ASTNodeUnitRoot : public ASTNodeBase {
+	private:
+
+	public:
+		ASTNodeUnitRoot(const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata) {
+
+		}
+
+		virtual ASTNodeType GetType() const override { return ASTNodeType::UnitRoot; }
+		virtual const char* DebugName() const override { return "UnitRoot"; }
+		virtual std::string DebugToString() const override{ return DebugName(); }
+	};
+
 	//シンボルの解決
 	class ASTNodeResolveSymbol : public ASTNodeBase {
 	private:

@@ -4,8 +4,10 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <set>
 #include "Base.h"
 #include "Tokens/Tokens.h"
+#include "Misc/Utility.h"
 
 namespace sakura {
 
@@ -34,6 +36,7 @@ namespace sakura {
 		StringLiteral,
 		NumberLiteral,
 		BooleanLiteral,
+		UnitRoot,
 		ResolveSymbol,
 		AssignSymbol,
 		ContextValue,
@@ -116,14 +119,19 @@ namespace sakura {
 	private:
 		std::vector<std::string> unitPath;
 		std::string unitName;
+		bool explicitUnit;
 
 	public:
-		bool HasUnit() const {
-			return !unitName.empty();
+		ScriptUnit() {
+			//デフォルトで "main" が使用される
+			SetUnit("main");
+			explicitUnit = false;
 		}
 
 		void SetUnit(const std::string& unit) {
 			unitName = unit;
+			SplitString(unit, unitPath, '.');
+			explicitUnit = true;	//明示的な指定としてマーク
 		}
 
 		const std::string& GetUnit() const {
@@ -134,11 +142,17 @@ namespace sakura {
 			return unitName + "." + nodeName;
 		}
 
-		/*
-		std::string MakeSiblingUnitName(const char* nodeName) const {
-			return 
+		size_t GetUnitPathLevel() const {
+			return unitPath.size();
 		}
-		*/
+
+		const std::string& GetUnitPath(size_t index) const {
+			return unitPath[index];
+		}
+
+		bool IsExplicitUnit() const {
+			return explicitUnit;
+		}
 	};
 	using ScriptUnitRef = std::shared_ptr<ScriptUnit>;
 
@@ -153,7 +167,8 @@ namespace sakura {
 	class ScriptUnitAlias {
 	private:
 		std::map<std::string, AliasItem> aliasMap;
-		std::vector<AliasItem> wildcardAliases;
+		std::vector<std::string> wildcardAliases;
+		std::set<std::string> wildcardAliasKeys;
 
 	public:
 		bool RegisterAlias(const std::string& key, const std::string& path) {
@@ -180,6 +195,15 @@ namespace sakura {
 			return true;
 		}
 
+		bool RegisterWildcardAlias(const std::string& key) {
+			if (!wildcardAliasKeys.contains(key)) {
+				wildcardAliases.push_back(key);
+				wildcardAliasKeys.insert(key);
+				return true;
+			}
+			return false;
+		}
+
 		const AliasItem* FindAlias(const std::string& key) const {
 			auto found = aliasMap.find(key);
 			if (found != aliasMap.end()) {
@@ -188,12 +212,12 @@ namespace sakura {
 			return nullptr;
 		}
 
-		size_t GetWildcardAliasCount() {
-			return aliasMap.size();
+		size_t GetWildcardAliasCount() const {
+			return wildcardAliases.size();
 		}
 
-		const AliasItem* GetWildcardAlias(size_t index) {
-			return &wildcardAliases[index];
+		const std::string& GetWildcardAlias(size_t index) const {
+			return wildcardAliases[index];
 		}
 	};
 
@@ -204,6 +228,11 @@ namespace sakura {
 		ScriptUnitAlias alias;
 
 	public:
+		ScriptSourceMetadata() {
+			//TODO: ここをリファレンスにする必要ないと思われ
+			scriptUnit.reset(new ScriptUnit());
+		}
+
 		const ScriptUnitRef& GetScriptUnit() const {
 			return scriptUnit;
 		}
@@ -212,6 +241,24 @@ namespace sakura {
 		}
 		const ScriptUnitAlias& GetAlias() const {
 			return alias;
+		}
+
+		//メタデータの確定
+		void CommitMetadata() {
+
+			//今のユニットからエイリアスを決定
+			std::string unitName;
+			unitName.reserve(scriptUnit->GetUnit().size());
+
+			for (size_t i = 0; i < scriptUnit->GetUnitPathLevel(); i++) {
+				if (!unitName.empty()) {
+					unitName += ".";
+				}
+				unitName += scriptUnit->GetUnitPath(i);
+
+				//ワイルドカードに登録
+				alias.RegisterWildcardAlias(unitName);
+			}
 		}
 	};
 	using ScriptSourceMetadataRef = std::shared_ptr<ScriptSourceMetadata>;
@@ -225,7 +272,7 @@ namespace sakura {
 	public:
 		ASTNodeBase(const ScriptSourceMetadataRef& sourceMeta):
 			sourceMetadata(sourceMeta)
-		{ }
+		{}
 
 		//ソースコード範囲を追加
 		void SetSourceRange(const ScriptToken& begin, const ScriptToken& includedEnd) {
@@ -385,6 +432,9 @@ namespace sakura {
 		//スクリプトクラスかネイティブクラスか
 		virtual bool IsScriptClass() const = 0;
 
+		//ユニット名
+		virtual std::string GetUnitName() const = 0;
+
 		void SetName(const std::string& className) {
 			name = className;
 		}
@@ -431,6 +481,7 @@ namespace sakura {
 		ScriptNativeStaticSetFunction staticSetFunc;
 		ScriptNativeStaticInitFunction staticInitFunc;
 		ScriptNativeStaticDestructFunction staticDestructFunc;
+		std::string unitName;
 
 	public:
 		template<typename T>
@@ -457,7 +508,8 @@ namespace sakura {
 		}
 		
 		NativeClass(ScriptNativeFunction initFunction, uint32_t classId) : ClassBase(classId),
-			initFunc(initFunction)
+			initFunc(initFunction),
+			unitName("system")
 		{}
 
 		ScriptNativeFunction GetInitFunc() const {
@@ -481,6 +533,7 @@ namespace sakura {
 		}
 
 		virtual bool IsScriptClass() const override { return false; }
+		virtual std::string GetUnitName() const override { return unitName; }
 	};
 
 	class ScriptClassMember;
@@ -500,11 +553,16 @@ namespace sakura {
 		//親コンストラクタ
 		std::vector<ASTNodeRef> parentClassInitArguments;
 
+		//スクリプト情報
+		ScriptSourceMetadataRef sourceMetadata;
+
 	public:
-		ScriptClass() : ClassBase(0) {
+		ScriptClass(const ScriptSourceMetadataRef& sourcemeta) : ClassBase(0),
+			sourceMetadata(sourcemeta){
 		}
 
 		virtual bool IsScriptClass() const override { return true; }
+		virtual std::string GetUnitName() const override { return sourceMetadata->GetScriptUnit()->GetUnit(); }
 
 		void AddFunction(const ScriptFunctionDef& def) {
 			functions.push_back(def);

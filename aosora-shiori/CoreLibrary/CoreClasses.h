@@ -584,6 +584,7 @@ namespace sakura {
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 	};
 
 }

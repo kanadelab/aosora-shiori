@@ -270,17 +270,21 @@ namespace sakura {
 	//リフレクション
 	ScriptSourceMetadataRef Reflection::GetCallingSourceMetadata(const FunctionRequest& request) {
 		//スタックの1段上を参照して呼び出し元のデータを取得
-		//取得できない場合、リフレクションは例外を送る
-
+		return request.GetContext().GetStack().GetParentStackSourceMetadata();
 	}
 
 	void Reflection::ScopeGet(const FunctionRequest& request, FunctionResponse& response) {
 		//スクリプト呼び出し元のユニットを取得
 		auto sourcemeta = GetCallingSourceMetadata(request);
+		if (sourcemeta == nullptr) {
+			assert(false);
+			response.SetReturnValue(ScriptValue::Null);
+			return;
+		}
 
 		//スコープから指定された文字列で検索する
 		if (request.GetArgumentCount() >= 1) {
-			response.SetReturnValue(request.GetContext().GetSymbol(request.GetArgument(0)->ToString()));
+			response.SetReturnValue(request.GetContext().GetSymbol(request.GetArgument(0)->ToString(), *sourcemeta));
 		}
 		else {
 			//TODO: 例外投げるべき？
@@ -289,8 +293,15 @@ namespace sakura {
 	}
 
 	void Reflection::ScopeSet(const FunctionRequest& request, FunctionResponse& response) {
+		//スクリプト呼び出し元のユニットを取得
+		auto sourcemeta = GetCallingSourceMetadata(request);
+		if (sourcemeta == nullptr) {
+			assert(false);
+			return;
+		}
+
 		if (request.GetArgumentCount() >= 2) {
-			request.GetContext().SetSymbol(request.GetArgument(0)->ToString(), request.GetArgument(1));
+			request.GetContext().SetSymbol(request.GetArgument(0)->ToString(), request.GetArgument(1), *sourcemeta);
 		}
 	}
 
@@ -410,7 +421,10 @@ namespace sakura {
 
 	//ユニットオブジェクト
 	ScriptValueRef UnitObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
-		//ユニット基準参照となるはず・・・
-		//executeContext.GetInterpreter().GetUnitVariable()
+		return executeContext.GetInterpreter().GetUnitVariable(key, path);
+	}
+
+	void UnitObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		executeContext.GetInterpreter().SetUnitVariable(key, value, path);
 	}
 }

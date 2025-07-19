@@ -245,6 +245,10 @@ namespace sakura {
 		const ScriptUnitRef& GetScriptUnit() const {
 			return sourceMetaData->GetScriptUnit();
 		}
+
+		void CommitSourceMetadata() {
+			sourceMetaData->CommitMetadata();
+		}
 	};
 
 	//ソースコードとしてパース
@@ -296,6 +300,7 @@ namespace sakura {
 		}
 		std::sort(parseResult->breakableLines.begin(), parseResult->breakableLines.end());
 
+		parseContext.CommitSourceMetadata();
 		return parseResult;
 	}
 
@@ -1685,7 +1690,7 @@ namespace sakura {
 		}
 
 		parseContext.FetchNext();
-		ScriptClassRef result(new ScriptClass());
+		ScriptClassRef result(new ScriptClass(parseContext.GetSourceMetadata()));
 		ASTParseContext::ClassScope classScope(parseContext, result);
 
 		//クラス名
@@ -1698,14 +1703,37 @@ namespace sakura {
 		parseContext.FetchNext();
 
 		//継承
+		//TODO: 継承クラスの検索はローカル空間から検索することになるので、エイリアス検索等をかける必要あり
 		if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 			parseContext.FetchNext();
-			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
-				return;
+			
+			if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				//ユニットルート参照
+				parseContext.FetchNext();
 			}
-			result->SetParentClassName(parseContext.GetCurrent().body);
-			parseContext.FetchNext();
+
+			std::string parentClassPath;
+			while (!parseContext.IsEnd()) {
+				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+					parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
+					return;
+				}
+
+				parentClassPath.append(parseContext.GetCurrent().body);
+				parseContext.FetchNext();
+
+				if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+					parentClassPath.append(".");
+					parseContext.FetchNext();
+				}
+				else {
+					result->SetParentClassName(parentClassPath);
+					break;
+				}
+			}
+
+			//result->SetParentClassName(parseContext.GetCurrent().body);
+			//parseContext.FetchNext();
 		}
 
 		//開カッコ
@@ -1779,8 +1807,35 @@ namespace sakura {
 		}
 	}
 
-	//モジュール宣言のパース
-	void ASTParser::ParseASTUnit(ASTParseContext& parseContext) {
+	//unitキーワードのパース
+	ASTNodeRef ASTParser::ParseASTUnit(ASTParseContext& parseContext) {
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Unit);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Unit) {
+			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+			return;
+		}
+
+		parseContext.FetchNext();
+
+		//文脈によって宣言かオブジェクトかが変わる
+		if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+			//解決しようとしている場合はユニットオブジェクトを返す形になる
+			return ASTNodeRef(new ASTNodeUnitRoot(parseContext.GetSourceMetadata()));
+		}
+		else if(parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+			//シンボルが続く場合は宣言の形
+			ParseASTUnitDef(parseContext);
+			return nullptr;
+		}
+		else {
+			//そのどれでもない場合は構文としておかしいのでエラー
+			//TODO: 正しいエラーを新設すること
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+		}
+	}
+
+	//unit宣言のパース
+	void ASTParser::ParseASTUnitDef(ASTParseContext& parseContext) {
 
 		assert(parseContext.GetCurrent().type == ScriptTokenType::Unit);
 		if (parseContext.GetCurrent().type != ScriptTokenType::Unit) {
@@ -1789,7 +1844,7 @@ namespace sakura {
 		}
 
 		//ユニットを多重で設定不可
-		if (parseContext.GetScriptUnit()->HasUnit()) {
+		if (parseContext.GetScriptUnit()->IsExplicitUnit()) {
 			parseContext.Error(ERROR_AST_043, parseContext.GetCurrent());
 			return;
 		}

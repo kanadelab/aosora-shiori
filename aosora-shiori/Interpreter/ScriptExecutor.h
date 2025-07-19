@@ -11,6 +11,7 @@ namespace sakura {
 	class BlockScope;
 	class RuntimeError;
 	class ScriptInterpreterStack;
+	class UnitObject;
 
 	class ScriptExecutor {
 	private:
@@ -92,7 +93,7 @@ namespace sakura {
 
 		//システムレジストリ(書き込み禁止)
 		std::map<std::string, ScriptValueRef> systemRegistry;
-		std::map<std::string, ScriptValueRef> globalVariables;
+		//std::map<std::string, ScriptValueRef> globalVariables;
 		std::map<std::string, UnitData> units;
 
 		//クラス型情報
@@ -199,6 +200,10 @@ namespace sakura {
 
 		//グローバルから取得
 		ScriptValueRef GetGlobalVariable(const std::string& name) {
+#if 1
+			//メインユニットを使用する
+			return GetUnitVariable(name, "main");
+#else
 			//値を探して返す
 			auto it = globalVariables.find(name);
 			if (it != globalVariables.end()) {
@@ -207,10 +212,15 @@ namespace sakura {
 			else {
 				return nullptr;
 			}
+#endif
 		}
 
 		//グローバルに設定
 		void SetGlobalVariable(const std::string& name, const ScriptValueRef& value) {
+#if 1
+			//メインユニットを使用する
+			SetUnitVariable(name, value, "main");
+#else
 			auto it = globalVariables.find(name);
 			if (it != globalVariables.end()) {
 				it->second = value;
@@ -218,16 +228,13 @@ namespace sakura {
 			else {
 				globalVariables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
 			}
+#endif
 		}
 
 		//現在のユニット変数を取得
-		ScriptValueRef GetUnitVariable(const std::string& name, const ScriptUnitRef& scriptUnit) {
-			if (!scriptUnit->HasUnit()) {
-				//無名ユニットはグローバル空間を示す
-				return GetGlobalVariable(name);
-			}
+		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
 
-			auto& variables = units.find(scriptUnit->GetUnit())->second.unitVariables;
+			auto& variables = units.find(scriptUnit)->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
 				return it->second;
@@ -238,13 +245,9 @@ namespace sakura {
 		}
 
 		//現在のユニット変数を設定
-		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const ScriptUnitRef& scriptUnit) {
-			if (!scriptUnit->HasUnit()) {
-				//無名ユニットはグローバル空間を示す
-				SetGlobalVariable(name, value);
-			}
+		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
 
-			auto& variables = units.find(scriptUnit->GetUnit())->second.unitVariables;
+			auto& variables = units.find(scriptUnit)->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
 				it->second = value;
@@ -253,6 +256,9 @@ namespace sakura {
 				variables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
 			}
 		}
+
+		//ユニットを登録
+		void RegisterUnit(const std::string& unitName);
 
 		//ルート空間からユニットを取得
 		Reference<UnitObject> GetUnit(const std::string& unitName);
@@ -657,6 +663,17 @@ namespace sakura {
 			ScriptInterpreterStack childStack(this);
 			childStack.SetFunctionName(targetFunctionName);
 			return childStack;
+		}
+
+		//親スタックフレームのメタデータを取得
+		ScriptSourceMetadataRef GetParentStackSourceMetadata() const {
+			if (parent == nullptr) {
+				return nullptr;
+			}
+			if (parent->GetCallingASTNode() == nullptr) {
+				return nullptr;
+			}
+			return parent->GetCallingASTNode()->GetSourceMetadata();
 		}
 
 		//TalkBuilderで設定されたTalkHeaderを必要に応じて追加

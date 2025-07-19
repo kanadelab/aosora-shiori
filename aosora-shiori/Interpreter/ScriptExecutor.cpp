@@ -199,7 +199,7 @@ namespace sakura {
 
 	//シンボル解決
 	ScriptValueRef ScriptExecutor::ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext) {
-		return executeContext.GetSymbol(node.GetSymbolName(), node.GetScriptUnit());
+		return executeContext.GetSymbol(node.GetSymbolName(), *node.GetSourceMetadata());
 	}
 
 	//シンボル設定
@@ -210,7 +210,7 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		executeContext.SetSymbol(node.GetSymbolName(), v, node.GetScriptUnit());
+		executeContext.SetSymbol(node.GetSymbolName(), v, *node.GetSourceMetadata());
 		return v;
 	}
 
@@ -862,7 +862,7 @@ namespace sakura {
 		for (const std::string& funcName : node.GetNames()) {
 
 			//グローバルから探す(ローカル指定も可能にできると良い?)
-			ScriptValueRef item = executeContext.GetInterpreter().GetUnitVariable(funcName, node.GetScriptUnit());
+			ScriptValueRef item = executeContext.GetInterpreter().GetUnitVariable(funcName, node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
 			OverloadedFunctionList* functionList = nullptr;
 			
 			if (item != nullptr) {
@@ -878,7 +878,7 @@ namespace sakura {
 				Reference<OverloadedFunctionList> funcList = executeContext.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
 				funcList->SetName(funcName);
 				funcList->Add(node.GetFunction(), node.GetConditionNode(), executeContext.GetBlockScope());
-				executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetScriptUnit());
+				executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
 			}
 		}
 
@@ -1227,6 +1227,11 @@ namespace sakura {
 		return true;
 	}
 
+	//ユニットを登録
+	void ScriptInterpreter::RegisterUnit(const std::string& unitName) {
+		units.insert(decltype(units)::value_type(unitName, UnitData()));
+	}
+
 	//ユニット取得
 	Reference<UnitObject> ScriptInterpreter::GetUnit(const std::string& unitName) {
 		//存在してないユニットはnullを返す
@@ -1281,6 +1286,10 @@ namespace sakura {
 
 	//ルートステートメント実行
 	ToStringFunctionCallResult ScriptInterpreter::Execute(const ConstASTNodeRef& node, bool toStringResult) {
+
+		//ユニットを登録
+		RegisterUnit(node->GetScriptUnit()->GetUnit());
+
 		ScriptInterpreterStack rootStack;
 		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
 		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
@@ -1382,6 +1391,9 @@ namespace sakura {
 		auto classData = CreateNativeObject<ClassData>(cls, classId, this);
 		classMap[cls->GetName()] = classData;
 		classIdMap[classId] = classData;
+
+		//ユニット空間に登録
+		SetUnitVariable(cls->GetName(), ScriptValue::Make(classData), cls->GetUnitName());
 	}
 
 	//クラスのリレーションシップ構築
@@ -1626,11 +1638,13 @@ namespace sakura {
 			}
 		}
 
+		/*
 		for (auto kv : globalVariables) {
 			if (kv.second->IsObject()) {
 				rootCollectables.push_back(kv.second->GetObjectRef().Get());
 			}
 		}
+		*/
 
 		for (auto u : units) {
 			for (auto kv : u.second.unitVariables) {
@@ -1699,7 +1713,7 @@ namespace sakura {
 			return result;
 		}
 
-		//グローバルよりシステムレジストリが先
+		//システム
 		result = interpreter.GetSystemRegistryValue(name);
 		if (result != nullptr) {
 			return result;
@@ -1711,22 +1725,23 @@ namespace sakura {
 			//ユニットエイリアスを解決してその中身を取得
 			Reference<UnitObject> unit = interpreter.GetUnit(unitAlias->targetName);
 			if (unit != nullptr) {
-				return unit->Get(unit, unitAlias->targetName, *this);
+				result = unit->Get(unit, unitAlias->targetName, *this);
+				if (result != nullptr) {
+					return result;
+				}
 			}
 		}
 
-		//階層ユニット
-		//親ユニットは全部展開されているし、兄弟ユニットと子ユニットは名前で参照できる形になるはず
-		
-		//兄弟ユニット・子ユニット
-		//TODO: 親階層以下、ユニットをたどりたい
-
-		//同階層ユニット・ワイルドカード展開済みユニット
-
-		//ローカルユニット
-		result = interpreter.GetUnitVariable(name, sourcemeta.GetScriptUnit());
-		if (result != nullptr) {
-			return result;
+		//ワイルドカードエイリアスを検索
+		for (size_t i = 0; i < sourcemeta.GetAlias().GetWildcardAliasCount(); i++) {
+			Reference<UnitObject> unit = interpreter.GetUnit(sourcemeta.GetAlias().GetWildcardAlias(i));
+			if (unit != nullptr) {
+				//ユニット名から名前検索
+				result = unit->Get(unit, name, *this);
+				if (result != nullptr) {
+					return result;
+				}
+			}
 		}
 
 		//最終的に何も見つからなかったらnullが帰る
@@ -1734,7 +1749,7 @@ namespace sakura {
 	}
 
 	//シンボルの書き込み
-	void ScriptExecuteContext::SetSymbol(const std::string& name, const ScriptValueRef& value, const ScriptUnitRef& scriptUnit) {
+	void ScriptExecuteContext::SetSymbol(const std::string& name, const ScriptValueRef& value, const ScriptSourceMetadata& sourcemeta) {
 		//ローカルにあれば書き込み
 		if (blockScope->SetLocalVariable(name, value)) {
 			return;
@@ -1746,8 +1761,40 @@ namespace sakura {
 			return;
 		}
 
-		//ユニット
-		interpreter.SetUnitVariable(name, value, scriptUnit);
+		//エイリアス
+		const AliasItem* unitAlias = sourcemeta.GetAlias().FindAlias(name);
+		if (unitAlias) {
+			//ユニットエイリアスを解決してその中身を取得
+			Reference<UnitObject> unit = interpreter.GetUnit(unitAlias->targetName);
+			if (unit != nullptr) {
+				auto result = unit->Get(unit, unitAlias->targetName, *this);
+				if (result != nullptr) {
+					//参照先がある場合その名前で書きこむ
+					unit->Set(unit, unitAlias->targetName, value, *this);
+					return;
+				}
+			}
+		}
+
+		//ワイルドカードエイリアスを検索
+		for (size_t i = 0; i < sourcemeta.GetAlias().GetWildcardAliasCount(); i++) {
+			Reference<UnitObject> unit = interpreter.GetUnit(sourcemeta.GetAlias().GetWildcardAlias(i));
+			if (unit != nullptr) {
+				//ユニット名から名前検索
+				auto result = unit->Get(unit, name, *this);
+				if (result != nullptr) {
+					unit->Set(unit, name, value, *this);
+					return;
+				}
+			}
+		}
+
+		//最終的に無ければ現在ユニット空間に書き込む
+		Reference<UnitObject> currentUnit = interpreter.GetUnit(sourcemeta.GetScriptUnit()->GetUnit());
+		assert(currentUnit != nullptr);
+		if (currentUnit != nullptr) {
+			currentUnit->Set(currentUnit, name, value, *this);
+		}
 	}
 
 	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string & currentFuncName) {

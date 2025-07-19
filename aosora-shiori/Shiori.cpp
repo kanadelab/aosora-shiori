@@ -110,6 +110,7 @@ namespace sakura {
 			if (loadResult->success) {
 				parsedFileList.push_back(loadResult);
 				interpreter.ImportClasses(loadResult->classMap);
+				interpreter.RegisterUnit(loadResult->root->GetSourceMetadata()->GetScriptUnit()->GetUnit());
 			}
 			else {
 				scriptLoadErrors.push_back(*loadResult->error);
