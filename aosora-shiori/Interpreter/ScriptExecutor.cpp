@@ -1273,6 +1273,12 @@ namespace sakura {
 		}
 	}
 
+	//クラス参照の検索
+	ScriptValueRef FindClass(const std::string& classPath, const ScriptSourceMetadataRef& sourcemeta, bool isAbsolutePath) {
+		//TODO: 検索
+		return nullptr;
+	}
+
 	std::string ScriptInterpreter::GetClassTypeName(uint32_t typeId) {
 		auto item = classIdMap.find(typeId);
 		if (item != classIdMap.end()) {
@@ -1400,6 +1406,10 @@ namespace sakura {
 	void ScriptInterpreter::CommitClasses() {
 		for (auto item : classMap) {
 			if (item.second->GetMetadata().HasParentClass()) {
+
+				//親クラスを検索する
+				//item.second->GetMetadata().GetParentClassName();
+
 				auto found = classMap.find(item.second->GetMetadata().GetParentClassName());
 				assert(found != classMap.end());
 

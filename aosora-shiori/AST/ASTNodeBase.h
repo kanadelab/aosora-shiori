@@ -594,6 +594,10 @@ namespace sakura {
 			return parentClassInitArguments[index];
 		}
 
+		const ScriptSourceMetadataRef& GetSourceMetadata() const {
+			return sourceMetadata;
+		}
+
 	};
 
 }
