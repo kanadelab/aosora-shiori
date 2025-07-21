@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const createDiagnosticCollection = vscode.languages.createDiagnosticCollection("aosora-diagnostic");
 
 	context.subscriptions.push(sendToGhostCommand);
-	context.subscriptions.push(vscode.languages.registerCodeLensProvider('*', new DebugSendProvider(context.extensionPath, createDiagnosticCollection)));
+	context.subscriptions.push(vscode.languages.registerCodeLensProvider('aosora', new DebugSendProvider(context.extensionPath, createDiagnosticCollection)));
 
 	//デバッガ
 	context.subscriptions.push(vscode.debug.registerDebugAdapterDescriptorFactory('aosora', new DebugAdapterFactory(context.extensionPath)));
