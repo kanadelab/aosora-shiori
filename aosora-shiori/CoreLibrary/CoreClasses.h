@@ -225,6 +225,8 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+
+		
 	};
 
 	//エラーオブジェクト
@@ -263,7 +265,9 @@ namespace sakura {
 		const std::string ToString() const {
 			std::string r;
 			for (const auto& info : callStackInfo) {
-				r += info.sourceRange.ToString() + "\n";
+				if (info.hasSourceRange) {
+					r += info.sourceRange.ToString() + "\n";
+				}
 			}
 			r += message;
 			return r;
@@ -279,7 +283,15 @@ namespace sakura {
 		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 		static void CreateObject(const FunctionRequest& req, FunctionResponse& res);
+
+		//スクリプト向け実装
+		static void ScriptToString(const FunctionRequest& request, FunctionResponse& response) {
+			RuntimeError* obj = request.GetContext().GetInterpreter().InstanceAs<RuntimeError>(request.GetContext().GetBlockScope()->GetThisValue());
+			//スタックはなしでエラーメッセージだけにしておく
+			response.SetReturnValue(ScriptValue::Make(obj->message));
+		}
 	};
 
 

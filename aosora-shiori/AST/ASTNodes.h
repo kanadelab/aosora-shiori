@@ -820,7 +820,7 @@ namespace sakura {
 	public:
 		struct CatchItem {
 			ConstASTNodeRef catchBlock;
-			std::vector<std::string> catchClasses;	//catch対象のクラス
+			std::string catchVariable;
 		};
 
 	private:
@@ -834,8 +834,8 @@ namespace sakura {
 			finallyBlock(nullptr)
 		{}
 
-		void AddCatchBlock(const ConstASTNodeRef& catchNode, const std::vector<std::string>& catchClasses) {
-			catchBlocks.push_back({ catchNode, catchClasses });
+		void AddCatchBlock(const ConstASTNodeRef& catchNode, const std::string& variableName) {
+			catchBlocks.push_back({ catchNode, variableName });
 		}
 
 		void SetFinallyBlock(const ConstASTNodeRef& finallyNode) {

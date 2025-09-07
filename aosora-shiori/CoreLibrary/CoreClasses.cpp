@@ -141,6 +141,13 @@ namespace sakura {
 		//なし
 	}
 
+	ScriptValueRef RuntimeError::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "ToString") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&RuntimeError::ScriptToString, self));
+		}
+		return ScriptValue::Null;
+	}
+
 	void RuntimeError::CreateObject(const FunctionRequest& req, FunctionResponse& res) {
 		std::string message = "<no message>";
 		if (req.GetArgumentCount() > 0) {

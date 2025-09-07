@@ -247,6 +247,12 @@ namespace sakura {
 		//現在のユニット変数を設定
 		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
 
+			//unitがない場合は追加
+			//TODO: 追加を許容しなくなるかも
+			if (!units.contains(scriptUnit)) {
+				RegisterUnit(scriptUnit);
+			}
+
 			auto& variables = units.find(scriptUnit)->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
@@ -470,6 +476,20 @@ namespace sakura {
 				//ループをひとつ離脱したのでステータスをもとに戻す
 				st.loopDepth--;
 				st.loopMode = LoopMode::Normal;
+				assert(st.loopDepth >= 0);
+			}
+		};
+
+		class TryScope {
+		public:
+			ScriptInterpreterStack& st;
+			TryScope(ScriptInterpreterStack& stack) :
+				st(stack) {
+				st.tryDepth++;
+			}
+			~TryScope() {
+				st.tryDepth--;
+				assert(st.tryDepth >= 0);
 			}
 		};
 
@@ -486,6 +506,9 @@ namespace sakura {
 		int32_t loopDepth;
 		LoopMode loopMode;
 
+		//try
+		int32_t tryDepth;
+
 		//トーク
 		TalkStringCombiner::SpeakedSpeakers speakedCache;
 		std::string talkBody;
@@ -494,6 +517,7 @@ namespace sakura {
 
 		//このスタック位置の関数名
 		std::string funcName;
+
 
 	private:
 		ScriptInterpreterStack(ScriptInterpreterStack* parent) :
@@ -505,6 +529,7 @@ namespace sakura {
 			leaveMode(LeaveMode::None),
 			loopDepth(0),
 			loopMode(LoopMode::Normal),
+			tryDepth(0),
 			isTalkLineEnd(false),
 			isTalkJump(false)
 		{
@@ -652,6 +677,21 @@ namespace sakura {
 		//スタックフレームのブロックスコープ
 		const Reference<BlockScope>& GetCallingBlockScope() const {
 			return callingBlockScope;
+		}
+
+		//tryブロック内かどうか(例外を投げた場合catchされるかどうか)
+		bool IsTryBlock() const {
+			if (tryDepth > 0) {
+				return true;
+			}
+
+			//スタックをさかのぼってcatchスコープにあるかを確認する
+			if (parent != nullptr) {
+				return parent->IsTryBlock();
+			}
+			else {
+				return false;
+			}
 		}
 
 		//子スタックフレームの作成

@@ -1015,8 +1015,11 @@ namespace sakura {
 	ScriptValueRef ScriptExecutor::ExecuteTry(const ASTNodeTry& node, ScriptExecuteContext& executeContext) {
 
 		//まずtryブロックを実行
-		auto tryContext = executeContext.CreateChildBlockScopeContext();
-		ExecuteInternal(*node.GetTryBlock(), tryContext);
+		{
+			auto tryContext = executeContext.CreateChildBlockScopeContext();
+			ScriptInterpreterStack::TryScope tryScope(tryContext.GetStack());
+			ExecuteInternal(*node.GetTryBlock(), tryContext);
+		}
 
 		//throwされているかを確認
 		if (executeContext.GetStack().IsThrew()) {
@@ -1029,6 +1032,7 @@ namespace sakura {
 			}
 
 			const ASTNodeBase* catchBlock = nullptr;
+			const std::string* catchVariableName = nullptr;
 
 			if (canCatch) {
 				//catchブロックを選択する
@@ -1036,25 +1040,12 @@ namespace sakura {
 					bool isMatch = false;
 					const auto& cb = node.GetCatchBlocks()[i];
 
-					if (cb.catchClasses.size() > 0) {
-						//catchブロックに一致するクラスがあるか調べる
-						for (const std::string& className : cb.catchClasses) {
-
-							//クラスが合うか
-							uint32_t classId = executeContext.GetInterpreter().GetClassId(className);
-							if (executeContext.GetInterpreter().InstanceIs(err, classId)) {
-								isMatch = true;
-								break;
-							}
-						}
-					}
-					else {
-						//クラス指定のないcatchブロックなので絶対ヒットする
-						isMatch = true;
-					}
+					//TODO: 多段catchを想定していたときのなごり。javascriptのようにcatch型指定をなくすのでcatchブロックは1つのみの許容になるはず
+					isMatch = true;
 
 					if (isMatch) {
 						catchBlock = node.GetCatchBlocks()[i].catchBlock.get();
+						catchVariableName = &node.GetCatchBlocks()[i].catchVariable;
 						break;
 					}
 				}
@@ -1066,6 +1057,12 @@ namespace sakura {
 			//catchブロックが選択されていれば実行する
 			if (catchBlock != nullptr) {
 				auto catchContext = executeContext.CreateChildBlockScopeContext();
+
+				//エラー変数があればそれを使う
+				if (!catchVariableName->empty()) {
+					catchContext.GetBlockScope()->RegisterLocalVariable(*catchVariableName, ScriptValue::Make(err));
+				}
+
 				ExecuteInternal(*catchBlock, catchContext);
 			}
 

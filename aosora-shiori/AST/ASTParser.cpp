@@ -57,6 +57,8 @@ namespace sakura {
 	const std::string ERROR_AST_042 = "A042";
 	const std::string ERROR_AST_043 = "A043";
 	const std::string ERROR_AST_044 = "A044";
+	const std::string ERROR_AST_045 = "A045";
+	const std::string ERROR_AST_046 = "A046";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -1811,8 +1813,7 @@ namespace sakura {
 	ASTNodeRef ASTParser::ParseASTUnit(ASTParseContext& parseContext) {
 		assert(parseContext.GetCurrent().type == ScriptTokenType::Unit);
 		if (parseContext.GetCurrent().type != ScriptTokenType::Unit) {
-			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
-			return;
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
 		}
 
 		parseContext.FetchNext();
@@ -2288,23 +2289,24 @@ namespace sakura {
 		//catch
 		while (parseContext.GetCurrent().type == ScriptTokenType::Catch) {
 			parseContext.FetchNext();
-			
-			std::vector<std::string> catchClasses;
-			while (true) {
 
-				//catch型シンボルをチェック
-				if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+			//開カッコがあれば例外変数
+			std::string variableName;
+			if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
+				parseContext.FetchNext();
 
-					catchClasses.push_back(parseContext.GetCurrent().body);
-					parseContext.FetchNext();
-
-					//カンマで複数指定想定
-					if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
-						parseContext.FetchNext();
-						continue;
-					}
+				//変数名
+				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+					return parseContext.Error(ERROR_AST_045, parseContext.GetCurrent());
 				}
-				break;
+				variableName = parseContext.GetCurrent().body;
+				parseContext.FetchNext();
+
+				//閉じカッコ
+				if (parseContext.GetCurrent().type != ScriptTokenType::BracketEnd) {
+					return parseContext.Error(ERROR_AST_046, parseContext.GetCurrent());
+				}
+				parseContext.FetchNext();
 			}
 
 			//開カッコ
@@ -2315,7 +2317,7 @@ namespace sakura {
 
 			//catchブロック
 			ConstASTNodeRef catchBlock = ParseASTCodeBlock(parseContext, true);
-			resultNode->AddCatchBlock(catchBlock, catchClasses);
+			resultNode->AddCatchBlock(catchBlock, variableName);
 		}
 
 		//finally
