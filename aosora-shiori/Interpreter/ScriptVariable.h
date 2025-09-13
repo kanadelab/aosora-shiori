@@ -601,6 +601,11 @@ namespace sakura {
 			return executeContext;
 		}
 
+		//インタプリタ取得
+		ScriptInterpreter& GetInterpreter() const {
+			return executeContext.GetInterpreter();
+		}
+
 		//引数の数
 		size_t GetArgumentCount() const {
 			return args.size();

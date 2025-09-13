@@ -5,6 +5,7 @@
 #include "Interpreter/ScriptExecutor.h"
 #include "CoreLibrary/CoreLibrary.h"
 #include "CommonLibrary/CommonClasses.h"
+#include "CommonLibrary/StandardLibrary.h"
 #include "Misc/Message.h"
 #include "Debugger/Debugger.h"
 
@@ -1359,6 +1360,8 @@ namespace sakura {
 		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
 		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
 		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));
+
+		ImportClass(NativeClass::Make<ScriptJsonSerializer>("JsonSerializer", nullptr, "std"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {
@@ -1405,9 +1408,7 @@ namespace sakura {
 		for (auto item : classMap) {
 			if (item.second->GetMetadata().HasParentClass()) {
 
-				//親クラスを検索する
-				//item.second->GetMetadata().GetParentClassName();
-
+				//TODO: classMapはグローバル空間になっているためこれだと問題がある、ASTを読んでパス解決しないといけない
 				auto found = classMap.find(item.second->GetMetadata().GetParentClassName());
 				assert(found != classMap.end());
 

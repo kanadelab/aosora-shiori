@@ -99,6 +99,10 @@ namespace sakura {
 
 			.Register("AOSORA_DEBUGGER_001", "ゴーストに接続しました。")
 			.Register("AOSORA_DEBUGGER_002", "ローカル変数")
+
+			.Register("AOSORA_COMMON_ERROR_001", "引数の数が正しくありません。")
+
+			.Register("AOSORA_JSON_SERIALIZER_ERROR_001", "Deserializeに入力できるのは文字列だけです。")
 			;
 
 

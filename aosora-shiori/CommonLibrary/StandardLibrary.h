@@ -1,9 +1,17 @@
-#pragma once
+ï»¿#pragma once
+#include "Interpreter/Interpreter.h"
 
-//aosoraƒXƒ^ƒ“ƒ_[ƒhƒ‰ƒCƒuƒ‰ƒŠ
-//stdƒ†ƒjƒbƒg‚É‘¶İ‚·‚é‹@”\ŒQ‚Æ‚µ‚Äì¬
+//aosoraã‚¹ã‚¿ãƒ³ãƒ€ãƒ¼ãƒ‰ãƒ©ã‚¤ãƒ–ãƒ©ãƒª
+//stdãƒ¦ãƒ‹ãƒƒãƒˆã«å­˜åœ¨ã™ã‚‹æ©Ÿèƒ½ç¾¤ã¨ã—ã¦ä½œæˆ
 namespace sakura {
 
-	//PureMap?
+	//ã‚¹ã‚¯ãƒªãƒ—ãƒˆå‘ã‘jsonã‚·ãƒªã‚¢ãƒ©ã‚¤ã‚¶
+	class ScriptJsonSerializer : public Object<ScriptJsonSerializer> {
+	public:
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+
+		void ScriptSerialize(const FunctionRequest& request, FunctionResponse& response);
+		void ScriptDeserialize(const FunctionRequest& request, FunctionResponse& response);
+	};
 
 }

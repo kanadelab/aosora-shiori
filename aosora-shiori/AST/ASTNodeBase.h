@@ -485,8 +485,8 @@ namespace sakura {
 
 	public:
 		template<typename T>
-		static std::shared_ptr<NativeClass> Make(const std::string& name, ScriptNativeFunction initFunction = nullptr) {
-			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>()));
+		static std::shared_ptr<NativeClass> Make(const std::string& name, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
+			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>(), unitName));
 			result->SetName(name);
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
@@ -496,8 +496,8 @@ namespace sakura {
 		}
 
 		template<typename T>
-		static std::shared_ptr<NativeClass> Make(const std::string& name, const std::string& parentName, ScriptNativeFunction initFunction = nullptr) {
-			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>()));
+		static std::shared_ptr<NativeClass> Make(const std::string& name, const std::string& parentName, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
+			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>(), unitName));
 			result->SetName(name);
 			result->SetParentClassName(parentName);
 			result->staticGetFunc = &T::StaticGet;
@@ -507,9 +507,9 @@ namespace sakura {
 			return result;
 		}
 		
-		NativeClass(ScriptNativeFunction initFunction, uint32_t classId) : ClassBase(classId),
+		NativeClass(ScriptNativeFunction initFunction, uint32_t classId, const std::string& unitName) : ClassBase(classId),
 			initFunc(initFunction),
-			unitName("system")
+			unitName(unitName)
 		{}
 
 		ScriptNativeFunction GetInitFunc() const {
