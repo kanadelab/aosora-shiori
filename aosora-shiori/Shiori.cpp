@@ -693,7 +693,7 @@ namespace sakura {
 
 	//エラーをさくらスクリプトによるゴースト上での表示むけに整形
 	std::string Shiori::ToStringRuntimeErrorForSakuraScript(const ObjectRef& errObj, bool isBooting) {
-		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		auto* err = interpreter.InstanceAs<ScriptError>(errObj);
 		assert(err != nullptr);
 
 		std::string ghostErrorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_RUNTIME_ERROR_0") + "\\n" + TextSystem::Find("AOSORA_RUNTIME_ERROR_1") + "\\n\\n";
@@ -737,7 +737,7 @@ namespace sakura {
 
 	//エラーをエラーログ等の表示用に平文で整形
 	std::string Shiori::ToStringRuntimeErrorForErrorLog(const ObjectRef& errObj) {
-		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		auto* err = interpreter.InstanceAs<ScriptError>(errObj);
 		assert(err != nullptr);
 
 		std::string scriptErrorLog = TextSystem::Find("AOSORA_RUNTIME_ERROR_5");

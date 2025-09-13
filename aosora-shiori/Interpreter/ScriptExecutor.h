@@ -9,7 +9,7 @@ namespace sakura {
 	class ScriptExecuteContext;
 	class ClassData;
 	class BlockScope;
-	class RuntimeError;
+	class ScriptError;
 	class ScriptInterpreterStack;
 	class UnitObject;
 
@@ -800,8 +800,8 @@ namespace sakura {
 
 		//エラーのスローヘルパ
 		template<typename T>
-		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
-			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
+		Reference<ScriptError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
+			Reference<ScriptError> err = interpreter.CreateNativeObject<T>(message);
 			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err, context);
 			return err;
 		}

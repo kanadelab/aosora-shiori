@@ -1025,7 +1025,7 @@ namespace sakura {
 		if (executeContext.GetStack().IsThrew()) {
 			
 			ObjectRef err = executeContext.GetStack().GetThrewError();
-			RuntimeError* errObj = executeContext.GetInterpreter().InstanceAs<RuntimeError>(err);
+			ScriptError* errObj = executeContext.GetInterpreter().InstanceAs<ScriptError>(err);
 			bool canCatch = true;
 			if (errObj != nullptr) {
 				canCatch = errObj->CanCatch();
@@ -1346,7 +1346,8 @@ namespace sakura {
 		ImportClass(NativeClass::Make<ClassData>("ClassData"));
 		ImportClass(NativeClass::Make<Reflection>("Reflection"));
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));
-		ImportClass(NativeClass::Make<RuntimeError>("Error", &RuntimeError::CreateObject));
+		ImportClass(NativeClass::Make<ScriptError>("Error", &ScriptError::CreateObject));
+		ImportClass(NativeClass::Make<RuntimeError>("RuntimeError", "Error"));
 		ImportClass(NativeClass::Make<Time>("Time"));
 		ImportClass(NativeClass::Make<SaveData>("Save"));
 		ImportClass(NativeClass::Make<OverloadedFunctionList>("OverloadedFunctionList"));
@@ -1843,7 +1844,7 @@ namespace sakura {
 	void ScriptExecuteContext::ThrowError(const ASTNodeBase& throwAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& funcName, const ObjectRef& err, ScriptExecuteContext& executeContext) {
 
 		//エラーオブジェクトしかスローできないのでチェック
-		RuntimeError* e = interpreter.InstanceAs<RuntimeError>(err);
+		ScriptError* e = interpreter.InstanceAs<ScriptError>(err);
 		if (e == nullptr) {
 			ThrowError(throwAstNode, callingBlockScope, funcName, interpreter.CreateNativeObject<RuntimeError>("throwできるのはErrorオブジェクトのみです。"), executeContext);
 			return;

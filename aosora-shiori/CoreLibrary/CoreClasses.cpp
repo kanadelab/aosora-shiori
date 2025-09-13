@@ -137,23 +137,23 @@ namespace sakura {
 	}
 
 	//エラー基底
-	void RuntimeError::FetchReferencedItems(std::list<CollectableBase*>& result) {
+	void ScriptError::FetchReferencedItems(std::list<CollectableBase*>& result) {
 		//なし
 	}
 
-	ScriptValueRef RuntimeError::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ScriptError::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "ToString") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&RuntimeError::ScriptToString, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptError::ScriptToString, self));
 		}
 		return ScriptValue::Null;
 	}
 
-	void RuntimeError::CreateObject(const FunctionRequest& req, FunctionResponse& res) {
+	void ScriptError::CreateObject(const FunctionRequest& req, FunctionResponse& res) {
 		std::string message = "<no message>";
 		if (req.GetArgumentCount() > 0) {
 			message = req.GetArgument(0)->ToString();
 		}
-		res.SetReturnValue(ScriptValue::Make(req.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(message)));
+		res.SetReturnValue(ScriptValue::Make(req.GetContext().GetInterpreter().CreateNativeObject<ScriptError>(message)));
 	}
 
 	//呼出順のリストを作成

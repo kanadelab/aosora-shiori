@@ -230,7 +230,7 @@ namespace sakura {
 	};
 
 	//エラーオブジェクト
-	class RuntimeError : public Object<RuntimeError> {
+	class ScriptError : public Object<ScriptError> {
 	private:
 		bool canCatch;
 		bool hasCallstackInfo;
@@ -238,7 +238,7 @@ namespace sakura {
 		std::vector<CallStackInfo> callStackInfo;
 
 	public:
-		RuntimeError(const std::string& errorMessage):
+		ScriptError(const std::string& errorMessage):
 			canCatch(true),
 			hasCallstackInfo(false),
 			message(errorMessage)
@@ -288,10 +288,19 @@ namespace sakura {
 
 		//スクリプト向け実装
 		static void ScriptToString(const FunctionRequest& request, FunctionResponse& response) {
-			RuntimeError* obj = request.GetContext().GetInterpreter().InstanceAs<RuntimeError>(request.GetContext().GetBlockScope()->GetThisValue());
+			ScriptError* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptError>(request.GetContext().GetBlockScope()->GetThisValue());
 			//スタックはなしでエラーメッセージだけにしておく
 			response.SetReturnValue(ScriptValue::Make(obj->message));
 		}
+	};
+
+	//ランタイム側のエラー
+	class RuntimeError : public ScriptError {
+	public:
+		RuntimeError(const std::string& errorMessage) :ScriptError(errorMessage)
+		{
+		}
+
 	};
 
 
