@@ -130,7 +130,7 @@ namespace sakura {
 		assert(charset != Charset::UNKNOWN);
 
 		if (charset == Charset::SHIFT_JIS) {
-			SjisToUtf8(str);
+			str = SjisToUtf8(str);
 		}
 	}
 
@@ -139,7 +139,7 @@ namespace sakura {
 		assert(charset != Charset::UNKNOWN);
 
 		if (charset == Charset::SHIFT_JIS) {
-			Utf8ToSjis(str);
+			str = Utf8ToSjis(str);
 		}
 	}
 
@@ -345,7 +345,7 @@ namespace sakura {
 
 		//移動
 		std::error_code errCode;
-		std::filesystem::copy(srcPath, destPath, errCode);
+		std::filesystem::copy(srcPath, destPath, std::filesystem::copy_options::overwrite_existing, errCode);
 
 		if (!errCode) {
 			response.SetReturnValue(ScriptValue::True);
@@ -364,7 +364,7 @@ namespace sakura {
 			return;
 		}
 
-		if (!request.GetArgument(0)->IsString() || !request.GetArgument(1)->ToBoolean()) {
+		if (!request.GetArgument(0)->IsString() || !request.GetArgument(0)->ToBoolean()) {
 			// 入力が文字列でない
 			response.SetThrewError(
 				request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_FILE_ACCESS_ERROR_001"))
