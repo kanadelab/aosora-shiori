@@ -34,10 +34,6 @@ int main(int argc, char* argv[]) {
 		}
 	}
 	else {
-#if 0
-		//プロジェクトなしで起動
-		shiori.LoadWithoutProject();
-#endif
 		return ERROR_CODE_INVALID_ARGS;
 	}
 

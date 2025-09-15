@@ -2,6 +2,7 @@
 	メニュー関係。
 */
 
+
 talk MainMenu {
 	\s[4]なーあにっと。
 
@@ -9,6 +10,7 @@ talk MainMenu {
 	\![*]\q[喋り間隔変更,FirstTalk]
 	\![*]\q[呼ばれ方を変える,OnChangeUserName]
 	\![*]\q[かいものリスト,OnItemList]
+	\![*]\q[うかフィードを見る,OnUkafeed]
 	
 	\![*]\q[なんでもありません,OnMenuClose]
 }
@@ -23,6 +25,11 @@ talk OnMenuClose {
 
 talk OnMenuClose {
 	\s[0]うい。
+}
+
+//うかフィードを見る
+talk OnUkafeed {
+	>ukafeed.RequestUkafeed
 }
 
 /*
@@ -95,8 +102,88 @@ talk ユーザ名変更なし {
 	（技術デモ的な）
 */
 
+//買い物リストの基底
+class ListItem {
+	init(name) {
+		this.count = 0;
+		this.name = name;
+		this.maxCount = null;
+	}
+
+	function ToString(){
+		return "{this.count.ToString()} 個";
+	}
+}
+
+//かいものリストアイテム: おにく
+class ListItemMeat : ListItem {
+	init : base("おにく"){
+	}
+
+	function ToString() {
+		return "{(this.count * 100).ToString()} g";
+	}
+}
+
+//かいものリストアイテム: おさかな
+class ListItemFish : ListItem {
+	init{
+		this.name = "おさかな";
+	}
+
+	function ToString() {
+		return "{this.count.ToString()} 尾";
+	}
+}
+
+//かいものリストアイテム: くだもの
+class ListItemFruit : ListItem {
+	init{
+		this.name = "くだもの";
+		this.maxCount = 4;
+	}
+
+	function ToString(){
+		if(this.count == 0){
+			return "いらない";
+		}
+
+		local result = "";
+		
+		if(this.count >= 1){
+			result += "りんご ";
+		}
+
+		if(this.count >= 2){
+			result += "キウイ ";
+		}
+
+		if(this.count >= 3){
+			result += "バナナ ";
+		}
+
+		if(this.count >= 4){
+			result += "みかん ";
+		}
+
+		return result;
+	}
+}
+
 //かいものリスト
-local itemListCount = {};
+local itemListCount = {
+	おにく: new ListItemMeat(),
+	おさかな: new ListItemFish2(),
+	おやさい: new ListItem("おやさい"),
+	くだもの: new ListItemFruit()
+};
+
+local itemList = [
+	"おにく",
+	"おさかな",
+	"おやさい",
+	"くだもの"
+];
 
 talk OnItemList {
 	\_q\s[0]何を買うんだっけ？
@@ -106,48 +193,42 @@ talk OnItemList {
 
 function かいものリスト表示 {
 
-	local itemList = [
-		"おにく",
-		"おさかな",
-		"おやさい",
-		"くだもの",
-		"きのこ",
-		"とうふ"
-	];
-
 	local result = "";
 	for(local i = 0; i < itemList.length; i++){
 		local itemName = itemList[i];
-		local count = itemListCount[itemName];
-		if(!count){
-			count = 0;
-		}
-		result += "\q[▲増やす,OnIncrementItem,{itemName}] \q[▼減らす,OnDecrementItem,{itemName}] {itemName}: {count}個\n";
+		local item = itemListCount[itemName];
+		result += "\q[▲増やす,OnIncrementItem,{itemName}] \q[▼減らす,OnDecrementItem,{itemName}] {item.name}: {item.ToString()} {item.InstanceOf(ListItem)}\n";
 	}
 
 	result += "\n\![*]\q[とじる,OnMenuClose]";
 	return result;
 }
 
+//数をふやす
 function OnIncrementItem {
-	//ふやす
 	local itemName = Shiori.Reference[0];
-	if(!itemListCount[itemName]){
-		itemListCount[itemName] = 1; 
-	}
-	else {
-		itemListCount[itemName] ++;
+
+	//最大値考慮
+	local item = itemListCount[itemName];
+	item.count ++;
+	if(item.maxCount){
+		if(item.count > item.maxCount){
+			item.count = item.maxCount;
+		}
 	}
 	
 	//かいものリスト
 	return OnItemList();
 }
 
+//数をへらす
 function OnDecrementItem {
-	//へらす
 	local itemName = Shiori.Reference[0];
-	if(itemListCount[itemName]){
-		itemListCount[itemName] --;
+	local item = itemListCount[itemName];
+
+	item.count --;
+	if(item.count < 0){
+		item.count = 0;
 	}
 
 	//かいものリスト
