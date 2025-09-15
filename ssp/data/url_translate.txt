@@ -118,3 +118,6 @@
 2023/07/16 00:00:00	http://nanachi.sakura.ne.jp/narnaloader/	http://cherry.narnaloader.ukagaka.net/
 2023/07/16 00:00:01	https://nanachi.sakura.ne.jp/narnaloader/	https://cherry.narnaloader.ukagaka.net/
 2025/02/02 00:00:00	http://ukatorium.html.xdomain.jp/	http://ukatorium.cloudfree.jp/
+2025/08/15 00:00:00	http://dennziryoku.blog101.fc2.com/	https://denmemo31.blog.fc2.com/
+2025/08/15 00:00:01	https://stheskeleton.usite.pro/	https://zichqec.github.io/s-the-skeleton/updates/ghosts/
+2025/08/15 00:00:02	http://sosiremi.appspot.com/dl/ghost/whitesword/WhiteSword.nar	https://nanachi.sakura.ne.jp/narnaloader/nar/WhiteSword.nar
