@@ -17,7 +17,7 @@ function OnUkafeedLoaded {
 	try {
 		local filePath = Shiori.Reference[3];
 		local json = File.ReadAllText(filePath);
-		ukafeedData = null;// JsonSerializer.Deserialize(json);
+		ukafeedData = JsonSerializer.Deserialize(json);
 		if(!ukafeedData){
 			throw new Error();
 		}
