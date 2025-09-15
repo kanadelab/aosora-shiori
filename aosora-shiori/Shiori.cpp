@@ -120,6 +120,14 @@ namespace sakura {
 		//デバッグブートストラップはここで処理する
 		Debugger::Bootstrap();
 
+		if (scriptLoadErrors.empty()) {
+			//クラスのリレーションシップ構築
+			auto commitError = interpreter.CommitClasses();
+			if (commitError != nullptr) {
+				scriptLoadErrors.push_back(*commitError.get());
+			}
+		}
+
 		//エラーが発生していたら以降の処理を打ち切る
 		if (!scriptLoadErrors.empty()) {
 
@@ -132,9 +140,6 @@ namespace sakura {
 			}
 			return;
 		}
-
-		//クラスのリレーションシップ構築
-		interpreter.CommitClasses();
 
 		//ルートスクリプト実行
 		for (auto item : parsedFileList) {
@@ -269,12 +274,6 @@ namespace sakura {
 				projectSettings.scriptFiles.push_back(filename);
 			}
 		}
-	}
-
-	void Shiori::LoadWithoutProject() {
-
-		//クラスのリレーションシップ構築
-		interpreter.CommitClasses();
 	}
 
 	void Shiori::Unload() {
@@ -424,7 +423,7 @@ namespace sakura {
 		if (shioriObj == nullptr || shioriObj->GetObjectInstanceTypeId() != ScriptObject::TypeId()) {
 			//ScriptObjectになってなかったら上書き
 			shioriObj = ScriptValue::Make(interpreter.CreateObject());
-			interpreter.SetGlobalVariable("Shiori", shioriObj);
+			interpreter.SetUnitVariable("Shiori", shioriObj, "system");
 		}
 
 		//ReferenceListの作成

@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <fstream>
+#include <filesystem>
 #include "AST/AST.h"
 #include "Interpreter/ScriptVariable.h"
 #include "Misc/Utility.h"
@@ -24,6 +25,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteNumberLiteral(const ASTNodeNumberLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteContextValue(const ASTNodeContextValue& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteUnitRoot(const ASTNodeUnitRoot& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteAssignSymbol(const ASTNodeAssignSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteArrayInitializer(const ASTNodeArrayInitializer& node, ScriptExecuteContext& executeContext);
@@ -97,7 +99,7 @@ namespace sakura {
 		std::map<std::string, UnitData> units;
 
 		//クラス型情報
-		std::map<std::string, Reference<ClassData>> classMap;
+		//std::map<std::string, Reference<ClassData>> classMap;
 		std::map<uint32_t, Reference<ClassData>> classIdMap;
 
 		//ネイティブクラス用の、staticな情報ストア(クラスごとにScriptObject１個)
@@ -155,6 +157,12 @@ namespace sakura {
 			return securityLevel;
 		}
 
+		//セキュリティレベル的にローカルマシンデータにアクセスしていいかを確認
+		bool IsAllowLocalAccess() const {
+			//local時のみ
+			return GetSecurityLevel() == SecurityLevel::LOCAL;
+		}
+
 		//ワーキングディレクトリ(パス区切り文字終端)
 		void SetWorkingDirectory(const std::string& dir) {
 			workingDirectory = dir;
@@ -164,7 +172,12 @@ namespace sakura {
 			return workingDirectory;
 		}
 
+		//TODO: relativePathといいつつ絶対パスを考慮してるので考える⋯
 		std::string GetFileName(const std::string& relativePath) const {
+			if (std::filesystem::path(relativePath).is_absolute()) {
+				//絶対パスだったらなにもしない
+				return relativePath;
+			}
 			return workingDirectory + relativePath;
 		}
 
@@ -172,7 +185,8 @@ namespace sakura {
 		//クラスの登録
 		void ImportClasses(const std::map<std::string, ScriptClassRef>& classMap);
 		void ImportClass(const std::shared_ptr<ClassBase>& nativeClass);
-		void CommitClasses();
+		std::shared_ptr<ScriptParseError> CommitClasses();
+		ClassData* FindClass(const ClassPath& classPath, const ScriptUnitAlias* alias);
 
 		//システムレジストリ値を追加
 		void RegisterSystem(const std::string& name, const ScriptValueRef& value) {
@@ -234,6 +248,12 @@ namespace sakura {
 		//現在のユニット変数を取得
 		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
 
+			//unitがない場合は追加
+			//TODO: 追加を許容しなくなるかも?
+			if (!units.contains(scriptUnit)) {
+				RegisterUnit(scriptUnit);
+			}
+
 			auto& variables = units.find(scriptUnit)->second.unitVariables;
 			auto it = variables.find(name);
 			if (it != variables.end()) {
@@ -248,7 +268,7 @@ namespace sakura {
 		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
 
 			//unitがない場合は追加
-			//TODO: 追加を許容しなくなるかも
+			//TODO: 追加を許容しなくなるかも?
 			if (!units.contains(scriptUnit)) {
 				RegisterUnit(scriptUnit);
 			}
@@ -269,8 +289,11 @@ namespace sakura {
 		//ルート空間からユニットを取得
 		Reference<UnitObject> GetUnit(const std::string& unitName);
 
+		//エイリアス指定群から値の参照
+		ScriptValueRef GetFromAlias(const ScriptUnitAlias& alias, const std::string& name);
+
 		//クラス取得
-		ScriptValueRef GetClass(const std::string& name);
+		//ScriptValueRef GetClass(const std::string& name);
 		ScriptValueRef GetClass(const uint32_t typeId);
 
 		//クラス取得
@@ -287,7 +310,7 @@ namespace sakura {
 
 
 		//クラスID取得
-		uint32_t GetClassId(const std::string& name);
+		//uint32_t GetClassId(const std::string& name);
 
 		//クラス名取得
 		std::string GetClassTypeName(uint32_t typeId);
@@ -307,6 +330,8 @@ namespace sakura {
 			return objectManager.CreateObject<ScriptObject>();
 		}
 
+		//配列生成
+		Reference<ScriptArray> CreateArray();
 		//ネイティブオブジェクト作成
 		template<typename T, typename... Args>
 		Reference<T> CreateNativeObject(Args... args) {

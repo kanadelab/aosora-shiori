@@ -64,6 +64,7 @@ namespace sakura {
 	}
 
 	void ScriptObject::RawSet(const std::string& key, const ScriptValueRef& value) {
+		assert(value != nullptr);
 		members[key] = value;
 	}
 
@@ -91,6 +92,7 @@ namespace sakura {
 	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
 
 		//クラスデータが設定されている場合そちらに設定する
+		assert(value != nullptr);
 		members[key] = value;
 	}
 
@@ -247,7 +249,11 @@ namespace sakura {
 	}
 
 	ScriptValueRef ScriptValue::MakeObject(ScriptInterpreter& interpreter) {
-		return ScriptValueRef(new ScriptValue(interpreter.CreateObject()));
+		return Make(interpreter.CreateObject());
+	}
+
+	ScriptValueRef ScriptValue::MakeArray(ScriptInterpreter& interpreter) {
+		return Make(interpreter.CreateArray());
 	}
 
 	std::string ScriptValue::ToStringWithFunctionCall(ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode) {
@@ -302,5 +308,9 @@ namespace sakura {
 
 	ScriptValueRef FunctionRequest::GetThisValue() const {
 		return GetContext().GetBlockScope()->GetThisValue();
+	}
+
+	ScriptInterpreter& FunctionRequest::GetInterpreter() const {
+		return executeContext.GetInterpreter();
 	}
 }

@@ -259,6 +259,9 @@ namespace sakura {
 				//ワイルドカードに登録
 				alias.RegisterWildcardAlias(unitName);
 			}
+
+			//systemユニットを登録
+			alias.RegisterWildcardAlias("system");
 		}
 	};
 	using ScriptSourceMetadataRef = std::shared_ptr<ScriptSourceMetadata>;
@@ -412,14 +415,45 @@ namespace sakura {
 		}
 	};
 
+	//クラスパス
+	//クラスだけはスクリプト起動前に検索する形になるので、スクリプトは実行せずに階層検索するためのパス情報
+	class ClassPath {
+	private:
+		bool isFullPath;	//unitキーワードから始める場合はフルパス扱いになる
+		std::vector<std::string> pathList;
+
+	public:
+		ClassPath():
+			isFullPath(false)
+		{ }
+
+		//C++側向けに簡易的に親クラス指定できるタイプ
+		ClassPath(const char* className, const char* unit = "system") :
+			isFullPath(true)
+		{
+			pathList.push_back(unit);
+			pathList.push_back(className);
+		}
+
+		bool IsFullPath() const { return isFullPath; }
+		void SetFullPath(bool fullPath) { isFullPath = fullPath; }
+
+		void AddFullPath(const std::string& pathNode) { pathList.push_back(pathNode); }
+		size_t GetPathNodeCount() const { return pathList.size(); }
+		const std::string& GetPathNode(size_t index) const { return pathList[index]; }
+		const std::vector<std::string>& GetPathNodeCollection() const { return pathList; }
+
+		bool IsValid() const { return !pathList.empty(); }
+	};
+
 	//クラスベース
 	//ネイティブクラスとスクリプトクラスと両方でインスタンス化できる型情報
 	class ClassBase {
 	private:
 
 		//解析時に登録する情報
-		std::string parentClassName;
 		std::string name;
+		ClassPath parentClassPath;
 
 		//クラスID
 		uint32_t typeId;
@@ -443,20 +477,20 @@ namespace sakura {
 			return name;
 		}
 
-		const std::string& GetParentClassName() const {
-			return parentClassName;
-		}
-
-		void SetParentClassName(const std::string& className) {
-			parentClassName = className;
-		}
-
 		bool HasParentClass() const {
-			return !parentClassName.empty();
+			return parentClassPath.IsValid();
 		}
 
-		const std::string& GetParentClassName() {
-			return parentClassName;
+		const ClassPath& GetParentClassPath() const {
+			return parentClassPath;
+		}
+
+		ClassPath& GetParentClassPath() {
+			return parentClassPath;
+		}
+
+		void SetParentClassPath(const ClassPath& classPath) {
+			parentClassPath = classPath;
 		}
 
 		uint32_t GetTypeId() const {
@@ -496,10 +530,10 @@ namespace sakura {
 		}
 
 		template<typename T>
-		static std::shared_ptr<NativeClass> Make(const std::string& name, const std::string& parentName, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
+		static std::shared_ptr<NativeClass> Make(const std::string& name, const ClassPath& parentClassPath, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
 			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>(), unitName));
 			result->SetName(name);
-			result->SetParentClassName(parentName);
+			result->SetParentClassPath(parentClassPath);
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
 			result->staticInitFunc = &T::StaticInit;
@@ -550,11 +584,14 @@ namespace sakura {
 		//コンストラクタ
 		ScriptFunctionRef initFunc;
 
-		//親コンストラクタ
-		std::vector<ASTNodeRef> parentClassInitArguments;
+		//親コンストラクタ呼び出しAST
+		std::vector<ConstASTNodeRef> parentClassInitArguments;
 
 		//スクリプト情報
 		ScriptSourceMetadataRef sourceMetadata;
+
+		//宣言ソースレンジ
+		SourceCodeRange declareSourceRange;
 
 	public:
 		ScriptClass(const ScriptSourceMetadataRef& sourcemeta) : ClassBase(0),
@@ -590,12 +627,25 @@ namespace sakura {
 			return parentClassInitArguments.size();
 		}
 
-		ASTNodeRef GetParentClassInitArgument(size_t index) const {
+		ConstASTNodeRef GetParentClassInitArgument(size_t index) const {
 			return parentClassInitArguments[index];
+		}
+
+		void SetParentClassInitArguments(const std::vector<ConstASTNodeRef>& args) {
+			parentClassInitArguments = args;
 		}
 
 		const ScriptSourceMetadataRef& GetSourceMetadata() const {
 			return sourceMetadata;
+		}
+
+		//宣言部ソースレンジ
+		void SetDeclareSourceRange(const SourceCodeRange& sourceRange) {
+			declareSourceRange = sourceRange;
+		}
+
+		const SourceCodeRange& GetDeclareSourceRange() const {
+			return declareSourceRange;
 		}
 
 	};

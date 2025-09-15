@@ -17,6 +17,7 @@ namespace sakura {
 
 	class ClassData;
 	class ScriptObject;
+	class ScriptArray;
 	class ScriptInterpreter;
 	class ScriptExecuteContext;
 	class ObjectBase;
@@ -242,6 +243,7 @@ namespace sakura {
 		}
 
 		static ScriptValueRef MakeObject(ScriptInterpreter& interpreter);
+		static ScriptValueRef MakeArray(ScriptInterpreter& interpreter);
 
 		static ScriptValueRef MakeNull() {
 			return ScriptValueRef(new ScriptValue(ScriptValueType::Null));
@@ -259,6 +261,8 @@ namespace sakura {
 				return !stringValue.empty();	//カラでなければ true
 			case ScriptValueType::Boolean:
 				return boolValue;
+			case ScriptValueType::Object:		//オブジェクトは常にtrue
+				return true;
 			default:
 				//未知
 				assert(false);
@@ -602,9 +606,7 @@ namespace sakura {
 		}
 
 		//インタプリタ取得
-		ScriptInterpreter& GetInterpreter() const {
-			return executeContext.GetInterpreter();
-		}
+		ScriptInterpreter& GetInterpreter() const;
 
 		//引数の数
 		size_t GetArgumentCount() const {

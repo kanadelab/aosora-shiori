@@ -94,6 +94,9 @@ namespace sakura {
 			return ExecuteTalkSpeak(static_cast<const ASTNodeTalkSpeak&>(node), executeContext);
 		case ASTNodeType::TalkSetSpeaker:
 			return ExecuteTalkSetSpeaker(static_cast<const ASTNodeTalkSetSpeaker&>(node), executeContext);
+		case ASTNodeType::UnitRoot:
+			return ExecuteUnitRoot(static_cast<const ASTNodeUnitRoot&>(node), executeContext);
+
 		default:
 			assert(false);
 			return ScriptValue::Null;
@@ -196,6 +199,12 @@ namespace sakura {
 		//こないはず
 		assert(false);
 		return ScriptValue::Null;
+	}
+
+	//ユニットルート
+	ScriptValueRef ScriptExecutor::ExecuteUnitRoot(const ASTNodeUnitRoot& node, ScriptExecuteContext& executeContext) {
+		//ルート空間を示す
+		return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<UnitObject>(""));
 	}
 
 	//シンボル解決
@@ -1232,18 +1241,55 @@ namespace sakura {
 
 	//ユニット取得
 	Reference<UnitObject> ScriptInterpreter::GetUnit(const std::string& unitName) {
-		//存在してないユニットはnullを返す
+
+		if (unitName.empty()) {
+			//ユニットルートを示す
+			return CreateNativeObject<UnitObject>("");
+		}
+
+		//unitがない場合は追加
+		//TODO: 追加を許容しなくなるかも?
 		if (!units.contains(unitName)) {
-			return nullptr;
+			RegisterUnit(unitName);
 		}
 
 		return CreateNativeObject<UnitObject>(unitName);
 	}
 
+	ScriptValueRef ScriptInterpreter::GetFromAlias(const ScriptUnitAlias& alias, const std::string& name) {
+
+		//エイリアス
+		const AliasItem* unitAlias = alias.FindAlias(name);
+		if (unitAlias) {
+			//ユニットエイリアスを解決してその中身を取得
+			Reference<UnitObject> unit = GetUnit(unitAlias->parentUnit);
+			if (unit != nullptr) {
+				ScriptValueRef result = unit->Get(unitAlias->targetName, *this);
+				if (result != nullptr) {
+					return result;
+				}
+			}
+		}
+
+		//ワイルドカードエイリアスを検索
+		for (size_t i = 0; i < alias.GetWildcardAliasCount(); i++) {
+			Reference<UnitObject> unit = GetUnit(alias.GetWildcardAlias(i));
+			if (unit != nullptr) {
+				//ユニット名から名前検索
+				ScriptValueRef result = unit->Get(name, *this);
+				if (result != nullptr) {
+					return result;
+				}
+			}
+		}
+
+		return ScriptValue::Null;
+	}
+
 	//クラス取得
-	ScriptValueRef ScriptInterpreter::GetClass(const std::string& name) {
-		auto it = classMap.find(name);
-		if (it != classMap.end()) {
+	ScriptValueRef ScriptInterpreter::GetClass(uint32_t typeId) {
+		auto it = classIdMap.find(typeId);
+		if (it != classIdMap.end()) {
 			return ScriptValue::Make(it->second);
 		}
 		else {
@@ -1251,9 +1297,10 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ScriptInterpreter::GetClass(uint32_t typeId) {
-		auto it = classIdMap.find(typeId);
-		if (it != classIdMap.end()) {
+	/*
+	ScriptValueRef ScriptInterpreter::GetClass(const std::string& name) {
+		auto it = classMap.find(name);
+		if (it != classMap.end()) {
 			return ScriptValue::Make(it->second);
 		}
 		else {
@@ -1270,6 +1317,7 @@ namespace sakura {
 			return ObjectTypeIdGenerator::INVALID_ID;
 		}
 	}
+	*/
 
 	//クラス参照の検索
 	ScriptValueRef FindClass(const std::string& classPath, const ScriptSourceMetadataRef& sourcemeta, bool isAbsolutePath) {
@@ -1348,7 +1396,7 @@ namespace sakura {
 		ImportClass(NativeClass::Make<Reflection>("Reflection"));
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));
 		ImportClass(NativeClass::Make<ScriptError>("Error", &ScriptError::CreateObject));
-		ImportClass(NativeClass::Make<RuntimeError>("RuntimeError", "Error"));
+		ImportClass(NativeClass::Make<RuntimeError>("RuntimeError", ClassPath("Error")));
 		ImportClass(NativeClass::Make<Time>("Time"));
 		ImportClass(NativeClass::Make<SaveData>("Save"));
 		ImportClass(NativeClass::Make<OverloadedFunctionList>("OverloadedFunctionList"));
@@ -1362,12 +1410,13 @@ namespace sakura {
 		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));
 
 		ImportClass(NativeClass::Make<ScriptJsonSerializer>("JsonSerializer", nullptr, "std"));
+		ImportClass(NativeClass::Make<ScriptFileAccess>("File", nullptr, "std"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {
 
 		//各クラスの終了処理
-		for (auto item : classMap) {
+		for (auto item : classIdMap) {
 			//ネイティブクラスのstatic情報解放
 			if (!item.second->GetMetadata().IsScriptClass()) {
 				static_cast<const NativeClass&>(item.second->GetMetadata()).GetStaticDestructFunc()(*this);
@@ -1396,7 +1445,7 @@ namespace sakura {
 
 		//登録
 		auto classData = CreateNativeObject<ClassData>(cls, classId, this);
-		classMap[cls->GetName()] = classData;
+		//classMap[cls->GetName()] = classData;
 		classIdMap[classId] = classData;
 
 		//ユニット空間に登録
@@ -1404,23 +1453,111 @@ namespace sakura {
 	}
 
 	//クラスのリレーションシップ構築
-	void ScriptInterpreter::CommitClasses() {
-		for (auto item : classMap) {
+	std::shared_ptr<ScriptParseError> ScriptInterpreter::CommitClasses() {
+		for (auto item : classIdMap) {
 			if (item.second->GetMetadata().HasParentClass()) {
 
-				//TODO: classMapはグローバル空間になっているためこれだと問題がある、ASTを読んでパス解決しないといけない
-				auto found = classMap.find(item.second->GetMetadata().GetParentClassName());
-				assert(found != classMap.end());
+				//親クラス検索
+				ClassData* parentClass = nullptr;
+
+				const ClassBase& classMeta = item.second->GetMetadata();
+				if (classMeta.IsScriptClass()) {
+					//スクリプトクラスであればエイリアスから継承検索をかける
+					parentClass = FindClass(item.second->GetMetadata().GetParentClassPath(), &static_cast<const ScriptClass&>(classMeta).GetSourceMetadata()->GetAlias());
+				}
+				else {
+					parentClass = FindClass(item.second->GetMetadata().GetParentClassPath(), nullptr);
+				}
+
+				if (parentClass == nullptr) {
+					//パースエラーの一部ということにしておく
+					ScriptParseErrorData errData;
+					errData.errorCode = "A048";
+					errData.message = TextSystem::Find("ERROR_MESSAGEA048");
+					errData.hint = TextSystem::Find("ERROR_HINTA048");
+					if (classMeta.IsScriptClass()) {
+						return std::shared_ptr<ScriptParseError>(new ScriptParseError(errData, static_cast<const ScriptClass&>(classMeta).GetDeclareSourceRange()));
+					}
+					else {
+						return std::shared_ptr<ScriptParseError>(new ScriptParseError(errData, SourceCodeRange()));
+					}
+				}
 
 				//双方登録
-				found->second->AddChildClass(item.second);
-				item.second->SetParentClass(found->second);
+				//WARN: 参照が再作成されているので注意かも
+				item.second->SetParentClass(parentClass);
+
+				while (parentClass != nullptr) {
+					parentClass->AddUpcastType(item.second);
+					parentClass = parentClass->GetParentClass().Get();
+				}
 			}
 
 			//ネイティブクラスのstatic情報初期化
 			if (!item.second->GetMetadata().IsScriptClass()) {
 				static_cast<const NativeClass&>(item.second->GetMetadata()).GetStaticInitFunc()(*this);
 			}
+		}
+
+		return nullptr;
+	}
+
+	//クラスの検索
+	ClassData* ScriptInterpreter::FindClass(const ClassPath& classPath, const ScriptUnitAlias* alias) {
+		if (!classPath.IsValid()) {
+			return nullptr;
+		}
+
+		if (classPath.IsFullPath()) {
+
+			//パス指定形式に問題がある（ユニット指定なので最小でもユニット名＋クラス名の２要素以上にならないといけない）
+			if (classPath.GetPathNodeCount() < 2) {
+				return nullptr;
+			}
+
+			//unit. で指定するフルパスなのでユニットバスと中身に分離して検索
+			const std::string unitPath = JoinString(classPath.GetPathNodeCollection(), 0, classPath.GetPathNodeCount() - 1, ".");
+			return InstanceAs<ClassData>(
+				GetUnitVariable(classPath.GetPathNode(classPath.GetPathNodeCount() - 1), unitPath)
+			);
+		}
+		else {
+
+			//フルパスではない場合エイリアス指定が必須
+			if (alias == nullptr) {
+				assert(false);
+				return nullptr;
+			}
+
+			//エイリアスで検索
+			const std::string& firstNode = classPath.GetPathNode(0);
+			auto node = GetFromAlias(*alias, firstNode);
+
+			if (node == nullptr || !node->IsObject()) {
+				return nullptr;
+			}
+
+			auto nodeObj = node->GetObjectRef();
+
+			//ユニット階層をたどる
+			for (size_t i = 1; i < classPath.GetPathNodeCount(); i++) {
+				UnitObject* unit = InstanceAs<UnitObject>(nodeObj);
+				if (unit != nullptr) {
+					auto v = unit->Get(classPath.GetPathNode(i), *this);
+					if (v == nullptr || !v->IsObject()) {
+						return nullptr;
+					}
+					else {
+						nodeObj = v->GetObjectRef();
+					}
+				}
+				else {
+					return nullptr;
+				}
+			}
+
+			//最終的にclassDataが手に入るはず
+			return InstanceAs<ClassData>(nodeObj);
 		}
 	}
 
@@ -1521,6 +1658,10 @@ namespace sakura {
 		CallFunctionInternal(funcVariable, args, funcStack, response);
 	}
 
+	Reference<ScriptArray> ScriptInterpreter::CreateArray() {
+		return objectManager.CreateObject<ScriptArray>();
+	}
+
 	//クラスインスタンス生成
 	ObjectRef ScriptInterpreter::NewClassInstance(const ASTNodeBase& callingNode, const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context) {
 
@@ -1561,7 +1702,7 @@ namespace sakura {
 						//引数を設定
 						a = args[i];
 					}
-					initScope->SetLocalVariable(initFunc->GetArguments()[i], a);
+					initScope->RegisterLocalVariable(initFunc->GetArguments()[i], a);
 				}
 			}
 
@@ -1634,7 +1775,7 @@ namespace sakura {
 	}
 
 	bool ScriptInterpreter::InstanceIs(const ObjectRef& obj, uint32_t classId) {
-		return classIdMap[obj->GetInstanceTypeId()]->InstanceIs(classId);
+		return classIdMap[classId]->InstanceIs(obj->GetInstanceTypeId());
 	}
 
 	void ScriptInterpreter::CollectObjects() {
@@ -1647,14 +1788,6 @@ namespace sakura {
 			}
 		}
 
-		/*
-		for (auto kv : globalVariables) {
-			if (kv.second->IsObject()) {
-				rootCollectables.push_back(kv.second->GetObjectRef().Get());
-			}
-		}
-		*/
-
 		for (auto u : units) {
 			for (auto kv : u.second.unitVariables) {
 				if (kv.second->IsObject()) {
@@ -1663,7 +1796,7 @@ namespace sakura {
 			}
 		}
 
-		for (auto kv : classMap) {
+		for (auto kv : classIdMap) {
 			rootCollectables.push_back(kv.second.Get());
 		}
 
@@ -1716,45 +1849,14 @@ namespace sakura {
 			return result;
 		}
 
-		//クラス
-		result = interpreter.GetClass(name);
-		if (result != nullptr) {
-			return result;
-		}
-
 		//システム
 		result = interpreter.GetSystemRegistryValue(name);
 		if (result != nullptr) {
 			return result;
 		}
 
-		//エイリアス
-		const AliasItem* unitAlias = sourcemeta.GetAlias().FindAlias(name);
-		if (unitAlias) {
-			//ユニットエイリアスを解決してその中身を取得
-			Reference<UnitObject> unit = interpreter.GetUnit(unitAlias->targetName);
-			if (unit != nullptr) {
-				result = unit->Get(unit, unitAlias->targetName, *this);
-				if (result != nullptr) {
-					return result;
-				}
-			}
-		}
-
-		//ワイルドカードエイリアスを検索
-		for (size_t i = 0; i < sourcemeta.GetAlias().GetWildcardAliasCount(); i++) {
-			Reference<UnitObject> unit = interpreter.GetUnit(sourcemeta.GetAlias().GetWildcardAlias(i));
-			if (unit != nullptr) {
-				//ユニット名から名前検索
-				result = unit->Get(unit, name, *this);
-				if (result != nullptr) {
-					return result;
-				}
-			}
-		}
-
-		//最終的に何も見つからなかったらnullが帰る
-		return ScriptValue::Null;
+		//最後はユニット空間から探す
+		return interpreter.GetFromAlias(sourcemeta.GetAlias(), name);
 	}
 
 	//シンボルの書き込み

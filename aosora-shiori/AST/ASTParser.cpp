@@ -7,7 +7,7 @@
 #include "Misc/Message.h"
 
 //パースエラー発生時にassertで止める
-//#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
+#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
 
 namespace sakura {
 
@@ -59,6 +59,7 @@ namespace sakura {
 	const std::string ERROR_AST_044 = "A044";
 	const std::string ERROR_AST_045 = "A045";
 	const std::string ERROR_AST_046 = "A046";
+	const std::string ERROR_AST_047 = "A047";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -116,6 +117,7 @@ namespace sakura {
 	const uint32_t SEQUENCE_END_FLAG_COLON = 1u << 6u;
 	const uint32_t SEQUENCE_END_FALG_TALK_NEWLINE = 1u << 7u;
 	const uint32_t SEQUENCE_END_FLAG_VERTICAL_BAR = 1u << 8u;
+	const uint32_t SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN = 1u << 9u;
 
 	//ASTパース
 	class ASTParseContext {
@@ -212,6 +214,11 @@ namespace sakura {
 		//次へ
 		void FetchNext() {
 			++current;
+		}
+
+		//戻る
+		void FetchPrev() {
+			--current;
 		}
 
 		bool IsEOF() const {
@@ -332,6 +339,21 @@ namespace sakura {
 			//ASTノードとして扱わないクラスはルート空間のみということにしておく
 			if (parseContext.GetCurrent().type == ScriptTokenType::Class) {
 				ParseASTClass(parseContext);
+				continue;
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				parseContext.FetchNext();
+				if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+					parseContext.FetchPrev();
+					ParseASTUnit(parseContext);
+					continue;
+				}
+				
+				//式文脈なので一旦戻してParseASTStatementにつなげる
+				parseContext.FetchPrev();
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Use) {
+				ParseASTUse(parseContext);
 				continue;
 			}
 
@@ -834,14 +856,30 @@ namespace sakura {
 
 			//オペレータを要求する場面でオペランドの役目しか無いトークンはエラーになる
 			if (!isRequireOperand) {
+				bool isLeave = false;
+
 				switch (parseContext.GetCurrent().type) {
 				case ScriptTokenType::Number:
 				case ScriptTokenType::Symbol:
 				case ScriptTokenType::StringBegin:
-				case ScriptTokenType::BlockBegin:
 				case ScriptTokenType::Function:
 				case ScriptTokenType::Talk:
 					return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
+				case ScriptTokenType::BlockBegin:
+					//BlockBeginで式を終えられるなら許容
+					if ((sequenceEndFlags & SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN) == 0) {
+						return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
+					}
+					else {
+						parseContext.FetchNext();
+						isLeave = true;
+					}
+					break;
+				}
+
+				//離脱して良い場合
+				if (isLeave) {
+					break;
 				}
 			}
 
@@ -867,6 +905,13 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::This || parseContext.GetCurrent().type == ScriptTokenType::Base) {
 				//コンテキスト値
 				parseStack.PushOperand(ParseASTContextValue(parseContext));
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				//解決しようとしている場合はユニットオブジェクトを返す形になる
+				auto node = ASTNodeRef(new ASTNodeUnitRoot(parseContext.GetSourceMetadata()));
+				node->SetSourceRange(parseContext.GetCurrent().sourceRange);
+				parseContext.FetchNext();
+				parseStack.PushOperand(node);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
 				parseStack.PushOperand(ParseASTSymbol(parseContext));
@@ -1691,6 +1736,7 @@ namespace sakura {
 			return;
 		}
 
+		const auto& beginToken = parseContext.GetCurrent();
 		parseContext.FetchNext();
 		ScriptClassRef result(new ScriptClass(parseContext.GetSourceMetadata()));
 		ASTParseContext::ClassScope classScope(parseContext, result);
@@ -1705,37 +1751,31 @@ namespace sakura {
 		parseContext.FetchNext();
 
 		//継承
-		//TODO: 継承クラスの検索はローカル空間から検索することになるので、エイリアス検索等をかける必要あり
 		if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 			parseContext.FetchNext();
 			
 			if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
 				//ユニットルート参照
+				result->GetParentClassPath().SetFullPath(true);
 				parseContext.FetchNext();
 			}
 
-			std::string parentClassPath;
 			while (!parseContext.IsEnd()) {
 				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
 					parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
 					return;
 				}
 
-				parentClassPath.append(parseContext.GetCurrent().body);
+				result->GetParentClassPath().AddFullPath(parseContext.GetCurrent().body);
 				parseContext.FetchNext();
 
 				if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
-					parentClassPath.append(".");
 					parseContext.FetchNext();
 				}
 				else {
-					result->SetParentClassName(parentClassPath);
 					break;
 				}
 			}
-
-			//result->SetParentClassName(parseContext.GetCurrent().body);
-			//parseContext.FetchNext();
 		}
 
 		//開カッコ
@@ -1743,6 +1783,10 @@ namespace sakura {
 			parseContext.Error(ERROR_AST_027, parseContext.GetCurrent());
 			return;
 		}
+
+		//ここまで宣言部として記録する
+		result->SetDeclareSourceRange(SourceCodeRange(beginToken.sourceRange, parseContext.GetCurrent().sourceRange));
+
 		parseContext.FetchNext();
 
 		//メンバを確認
@@ -1765,19 +1809,41 @@ namespace sakura {
 					//引数解析
 					parseContext.FetchNext();
 					ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_BLACKET);
+					parseContext.FetchNext();
 				}
 
-				//開き中括弧
-				if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-					parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
-					return;
+				//コロン・baseで親クラスコンストラクタ呼び出し
+				if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
+					parseContext.FetchNext();
+					if (parseContext.GetCurrent().type != ScriptTokenType::Base) {
+						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
+						return;
+					}
+
+					//base呼び出し式を取得
+					auto baseCall = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN);
+					if (baseCall->GetType() != ASTNodeType::FunctionCall) {
+						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
+						return;
+					}
+
+					auto baseInitCall = std::static_pointer_cast<ASTNodeFunctionCall>(baseCall);
+					result->SetParentClassInitArguments(baseInitCall->GetArgumentNodes());
+				}
+				else {
+					//開き中括弧(base呼び出しがある場合はBlockBeginまで処理して戻るので、そうでない場合のみ)
+					if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
+						parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
+						return;
+					}
+					parseContext.FetchNext();
 				}
 
 				//関数本体
-				parseContext.FetchNext();
 				ASTNodeRef initBody = ParseASTCodeBlock(parseContext, true);
 
-				result->SetInitFunc(ScriptFunctionRef(new ScriptFunction(initBody, argList)));
+				auto functionRef = ScriptFunctionRef(new ScriptFunction(initBody, argList));
+				result->SetInitFunc(functionRef);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
 				//メンバ関数
@@ -1804,7 +1870,7 @@ namespace sakura {
 			}
 		}
 
-		if (!parseContext.HasError()) {
+		if (parseContext.HasError()) {
 			parseContext.Error(ERROR_AST_029, parseContext.GetCurrent());
 		}
 	}
@@ -1820,8 +1886,8 @@ namespace sakura {
 
 		//文脈によって宣言かオブジェクトかが変わる
 		if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
-			//解決しようとしている場合はユニットオブジェクトを返す形になる
-			return ASTNodeRef(new ASTNodeUnitRoot(parseContext.GetSourceMetadata()));
+			//このケースは式文脈なのでステートメント処理に流れてないといけない
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
 		}
 		else if(parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
 			//シンボルが続く場合は宣言の形
@@ -1838,19 +1904,12 @@ namespace sakura {
 	//unit宣言のパース
 	void ASTParser::ParseASTUnitDef(ASTParseContext& parseContext) {
 
-		assert(parseContext.GetCurrent().type == ScriptTokenType::Unit);
-		if (parseContext.GetCurrent().type != ScriptTokenType::Unit) {
-			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
-			return;
-		}
 
 		//ユニットを多重で設定不可
 		if (parseContext.GetScriptUnit()->IsExplicitUnit()) {
 			parseContext.Error(ERROR_AST_043, parseContext.GetCurrent());
 			return;
 		}
-
-		parseContext.FetchNext();
 
 		//ユニット名
 		const auto& unitName = parseContext.GetCurrent();
@@ -1860,6 +1919,7 @@ namespace sakura {
 			return;
 		}
 		parseContext.GetScriptUnit()->SetUnit(unitName.body);
+		parseContext.FetchNext();
 
 		//セミコロン
 		const auto& semiColon = parseContext.GetCurrent();
@@ -1867,6 +1927,7 @@ namespace sakura {
 			parseContext.Error(ERROR_AST_041, parseContext.GetCurrent());
 			return;
 		}
+		parseContext.FetchNext();
 	}
 
 	void ASTParser::ParseASTUse(ASTParseContext& parseContext) {
@@ -1881,7 +1942,27 @@ namespace sakura {
 		//useキーワードの対象を取得
 		std::string path;
 		const ScriptToken* lastPathToken = nullptr;
-		while (parseContext.IsEnd()) {
+		while (!parseContext.IsEnd()) {
+
+			if (parseContext.GetCurrent().type == ScriptTokenType::Asterisk) {
+				if (path.empty()) {
+					//err
+					assert(false);
+				}
+
+				//アスタリスクのワイルドカード参照
+				parseContext.FetchNext();
+				if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
+					//err
+					assert(false);
+				}
+
+				//ワイルドカード参照で登録
+				parseContext.GetSourceMetadata()->GetAlias().RegisterWildcardAlias(path);
+				parseContext.FetchNext();
+				return;
+			}
+
 			if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
 				//シンボルをパスに追加
 				if (!path.empty()) {

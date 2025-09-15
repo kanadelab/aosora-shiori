@@ -62,6 +62,8 @@ namespace sakura {
 			ERROR_MESSAGES("A044", "this,baseはクラスの外側では使えません。", "this,baseはクラス専用のキーワードです。")
 			ERROR_MESSAGES("A045", "エラー変数名が必要です", "エラーを変数に受け取るにはcatch(変数名)のようにcatchの後に括弧をつけて変数名を記入します")
 			ERROR_MESSAGES("A046", "閉じ括弧が必要です", "エラー変数名のあとには閉じ括弧が必要です")
+			ERROR_MESSAGES("A047", "コンストラクタの記述が正しくありません", "init キーワードの後は開き括弧 { からコンストラクタ本体を書くか、コロン : に続けて base キーワードでベースクラスコンストラクタ呼び出しを記入しますします。")
+			ERROR_MESSAGES("A048", "親クラスが見つかりません", "クラス継承で指定された親クラスが見つかりませんでした")
 
 			ERROR_MESSAGES("T001", "括弧 { } の対応関係が正しくありません。", "対応する開き括弧のない中括弧があったため、読み込みに失敗しました。")
 			ERROR_MESSAGES("T002", "トーク名として使用できない文字列です。", "変数名として使用できない文字をトーク名として使おうとしています。")
@@ -103,6 +105,9 @@ namespace sakura {
 			.Register("AOSORA_COMMON_ERROR_001", "引数の数が正しくありません。")
 
 			.Register("AOSORA_JSON_SERIALIZER_ERROR_001", "Deserializeに入力できるのは文字列だけです。")
+
+			.Register("AOSORA_FILE_ACCESS_ERROR_001", "ファイルパス指定は文字列である必要があります")
+			.Register("AOSORA_FILE_ACCESS_ERROR_002", "文字コード指定が正しくありません")
 			;
 
 

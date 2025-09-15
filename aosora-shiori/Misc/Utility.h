@@ -140,6 +140,29 @@ namespace sakura{
 		}
 	}
 
+	//文字列結合
+	inline std::string JoinString(const std::vector<std::string>& items, size_t index, size_t count, const std::string& delimiter) {
+		std::string result = "";
+		for (size_t i = index; i < index + count; i++) {
+			if (i != index) {
+				result.append(delimiter);
+			}
+			result.append(items[i]);
+		}
+		return result;
+	}
+
+	inline std::string JoinString(const std::vector<std::string>& items, const std::string& delimiter) {
+		std::string result = "";
+		for (size_t i = 0; i < items.size(); i++) {
+			if (i != 0) {
+				result.append(delimiter);
+			}
+			result.append(items[i]);
+		}
+		return result;
+	}
+
 	//文字コード変換
 	std::string SjisToUtf8(const std::string& input);
 	std::string Utf8ToSjis(const std::string& input);
@@ -256,6 +279,23 @@ namespace sakura{
 		}
 		else if (data.find("\r\nCharset: UTF-8\r\n") != std::string::npos) {
 			return Charset::UTF_8;
+		}
+		else {
+			return Charset::UNKNOWN;
+		}
+	}
+
+	//ファジーにcharsetを読む
+	inline Charset CharsetFromString(const std::string& cs) {
+		std::string str = cs;
+		ToLower(str);
+		Replace(str, "_", "-");
+
+		if (str == "utf-8") {
+			return Charset::UTF_8;
+		}
+		else if(str == "shift-jis") {
+			return Charset::SHIFT_JIS;
 		}
 		else {
 			return Charset::UNKNOWN;

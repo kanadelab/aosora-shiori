@@ -428,10 +428,42 @@ namespace sakura {
 
 	//ユニットオブジェクト
 	ScriptValueRef UnitObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
-		return executeContext.GetInterpreter().GetUnitVariable(key, path);
+		if (!path.empty()) {
+			return executeContext.GetInterpreter().GetUnitVariable(key, path);
+		}
+		else {
+			//ルートからユニット取得
+			return ScriptValue::Make(executeContext.GetInterpreter().GetUnit(key));
+		}
 	}
 
 	void UnitObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
-		executeContext.GetInterpreter().SetUnitVariable(key, value, path);
+		if (!path.empty()) {
+			executeContext.GetInterpreter().SetUnitVariable(key, value, path);
+		}
+		else {
+			//ルートへの書き込み禁止
+		}
 	}
+
+	ScriptValueRef UnitObject::Get(const std::string& key, ScriptInterpreter& interpreter) {
+		if (!path.empty()) {
+			return interpreter.GetUnitVariable(key, path);
+		}
+		else {
+			//ルートからユニット取得
+			return ScriptValue::Make(interpreter.GetUnit(key));
+		}
+	}
+
+	void UnitObject::Set(const std::string& key, const ScriptValueRef& value, ScriptInterpreter& interpreter) {
+		if (!path.empty()) {
+			interpreter.SetUnitVariable(key, value, path);
+		}
+		else {
+			//ルートへの書き込み禁止
+		}
+	}
+
+
 }

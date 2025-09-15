@@ -207,9 +207,9 @@ namespace sakura {
 			return parentClass;
 		}
 
-		//子クラス追加
-		void AddChildClass(const Reference<ClassData>& child) {
-			const uint32_t typeId = GetClassTypeId();
+		//子以降のアップキャスト関係にある型を追加
+		void AddUpcastType(const Reference<ClassData>& child) {
+			const uint32_t typeId = child->GetClassTypeId();
 			assert(typeId != ObjectTypeIdGenerator::INVALID_ID);
 			upcastTypes.insert(typeId);
 		}
@@ -596,7 +596,6 @@ namespace sakura {
 	class UnitObject : public Object<UnitObject> {
 	private:
 		std::string path;
-		//UnitData& unit;
 
 	public:
 		UnitObject(const std::string& unitPath):
@@ -606,6 +605,9 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+
+		ScriptValueRef Get(const std::string& key, ScriptInterpreter& interpreter);
+		void Set(const std::string& ket, const ScriptValueRef& value, ScriptInterpreter& interpreter);
 	};
 
 }
