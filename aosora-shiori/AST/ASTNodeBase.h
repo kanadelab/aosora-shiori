@@ -4,8 +4,10 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <set>
 #include "Base.h"
 #include "Tokens/Tokens.h"
+#include "Misc/Utility.h"
 
 namespace sakura {
 
@@ -34,8 +36,10 @@ namespace sakura {
 		StringLiteral,
 		NumberLiteral,
 		BooleanLiteral,
+		UnitRoot,
 		ResolveSymbol,
 		AssignSymbol,
+		ContextValue,
 		ArrayInitializer,
 		ObjectInitializer,
 		FunctionStatement,
@@ -109,12 +113,170 @@ namespace sakura {
 		const char* preview;
 	};
 
+	//スクリプトユニット
+	//namespaceのようなものとしてモジュール分離のために
+	class ScriptUnit {
+	private:
+		std::vector<std::string> unitPath;
+		std::string unitName;
+		bool explicitUnit;
+
+	public:
+		ScriptUnit() {
+			//デフォルトで "main" が使用される
+			SetUnit("main");
+			explicitUnit = false;
+		}
+
+		void SetUnit(const std::string& unit) {
+			unitName = unit;
+			SplitString(unit, unitPath, '.');
+			explicitUnit = true;	//明示的な指定としてマーク
+		}
+
+		const std::string& GetUnit() const {
+			return unitName;
+		}
+
+		std::string MakeChildUnitName(const char* nodeName) const {
+			return unitName + "." + nodeName;
+		}
+
+		size_t GetUnitPathLevel() const {
+			return unitPath.size();
+		}
+
+		const std::string& GetUnitPath(size_t index) const {
+			return unitPath[index];
+		}
+
+		bool IsExplicitUnit() const {
+			return explicitUnit;
+		}
+	};
+	using ScriptUnitRef = std::shared_ptr<ScriptUnit>;
+
+	struct AliasItem {
+		//エイリアス１つあたりの情報。
+		std::string fullPath;	//フルエイリアス（{親ユニット}.{ターゲット名}）
+		std::string parentUnit;	//親ユニット
+		std::string targetName;	//ターゲット名
+	};
+
+	//スクリプトユニットエイリアス usingのような
+	class ScriptUnitAlias {
+	private:
+		std::map<std::string, AliasItem> aliasMap;
+		std::vector<std::string> wildcardAliases;
+		std::set<std::string> wildcardAliasKeys;
+
+	public:
+		bool RegisterAlias(const std::string& key, const std::string& path) {
+			if (aliasMap.contains(key)) {
+				//多重追加は不可
+				return false;
+			}
+
+			//エイリアスを登録
+			AliasItem item;
+			item.fullPath = path;
+			const size_t dotPos = path.rfind(".");
+			if (dotPos != std::string::npos) {
+				//最後とそれまでとで切り離す
+				item.parentUnit = path.substr(0, dotPos);
+				item.targetName = path.substr(dotPos + 1);
+			}
+			else {
+				item.parentUnit = "";
+				item.targetName = path;
+			}
+
+			aliasMap.insert(decltype(aliasMap)::value_type(key, item));
+			return true;
+		}
+
+		bool RegisterWildcardAlias(const std::string& key) {
+			if (!wildcardAliasKeys.contains(key)) {
+				wildcardAliases.push_back(key);
+				wildcardAliasKeys.insert(key);
+				return true;
+			}
+			return false;
+		}
+
+		const AliasItem* FindAlias(const std::string& key) const {
+			auto found = aliasMap.find(key);
+			if (found != aliasMap.end()) {
+				return &found->second;
+			}
+			return nullptr;
+		}
+
+		size_t GetWildcardAliasCount() const {
+			return wildcardAliases.size();
+		}
+
+		const std::string& GetWildcardAlias(size_t index) const {
+			return wildcardAliases[index];
+		}
+	};
+
+	//ソーススコープのメタデータのこと
+	class ScriptSourceMetadata {
+	private:
+		ScriptUnitRef scriptUnit;
+		ScriptUnitAlias alias;
+
+	public:
+		ScriptSourceMetadata() {
+			//TODO: ここをリファレンスにする必要ないと思われ
+			scriptUnit.reset(new ScriptUnit());
+		}
+
+		const ScriptUnitRef& GetScriptUnit() const {
+			return scriptUnit;
+		}
+		ScriptUnitAlias& GetAlias() {
+			return alias;
+		}
+		const ScriptUnitAlias& GetAlias() const {
+			return alias;
+		}
+
+		//メタデータの確定
+		void CommitMetadata() {
+
+			//今のユニットからエイリアスを決定
+			std::string unitName;
+			unitName.reserve(scriptUnit->GetUnit().size());
+
+			for (size_t i = 0; i < scriptUnit->GetUnitPathLevel(); i++) {
+				if (!unitName.empty()) {
+					unitName += ".";
+				}
+				unitName += scriptUnit->GetUnitPath(i);
+
+				//ワイルドカードに登録
+				alias.RegisterWildcardAlias(unitName);
+			}
+
+			//systemユニットを登録
+			alias.RegisterWildcardAlias("system");
+		}
+	};
+	using ScriptSourceMetadataRef = std::shared_ptr<ScriptSourceMetadata>;
+
 	//ASTノード基底
 	class ASTNodeBase {
 	private:
 		SourceCodeRange sourceRange;
+		ScriptSourceMetadataRef sourceMetadata;
 
 	public:
+		ASTNodeBase(const ScriptSourceMetadataRef& sourceMeta):
+			sourceMetadata(sourceMeta)
+		{}
+
 		//ソースコード範囲を追加
 		void SetSourceRange(const ScriptToken& begin, const ScriptToken& includedEnd) {
 			sourceRange.SetRange(begin.sourceRange, includedEnd.sourceRange);
@@ -154,6 +316,16 @@ namespace sakura {
 			for (size_t i = beginIndex; i < endIndex; i++) {
 				node[i]->GetChildrenRecursive(node);
 			}
+		}
+
+		//スクリプトソースメタデータ
+		const ScriptSourceMetadataRef& GetSourceMetadata() const {
+			return sourceMetadata;
+		}
+
+		//スクリプトユニット取得
+		const ScriptUnitRef& GetScriptUnit() const {
+			return sourceMetadata->GetScriptUnit();
 		}
 	};
 
@@ -243,17 +415,48 @@ namespace sakura {
 		}
 	};
 
+	//クラスパス
+	//クラスだけはスクリプト起動前に検索する形になるので、スクリプトは実行せずに階層検索するためのパス情報
+	class ClassPath {
+	private:
+		bool isFullPath;	//unitキーワードから始める場合はフルパス扱いになる
+		std::vector<std::string> pathList;
+
+	public:
+		ClassPath():
+			isFullPath(false)
+		{ }
+
+		//C++側向けに簡易的に親クラス指定できるタイプ
+		ClassPath(const char* className, const char* unit = "system") :
+			isFullPath(true)
+		{
+			pathList.push_back(unit);
+			pathList.push_back(className);
+		}
+
+		bool IsFullPath() const { return isFullPath; }
+		void SetFullPath(bool fullPath) { isFullPath = fullPath; }
+
+		void AddFullPath(const std::string& pathNode) { pathList.push_back(pathNode); }
+		size_t GetPathNodeCount() const { return pathList.size(); }
+		const std::string& GetPathNode(size_t index) const { return pathList[index]; }
+		const std::vector<std::string>& GetPathNodeCollection() const { return pathList; }
+
+		bool IsValid() const { return !pathList.empty(); }
+	};
+
 	//クラスベース
 	//ネイティブクラスとスクリプトクラスと両方でインスタンス化できる型情報
 	class ClassBase {
 	private:
 
 		//解析時に登録する情報
-		std::string parentClassName;
 		std::string name;
+		ClassPath parentClassPath;
 
 		//クラスID
-		const uint32_t typeId;
+		uint32_t typeId;
 
 	public:
 		ClassBase(uint32_t classTypeId):
@@ -263,6 +466,9 @@ namespace sakura {
 		//スクリプトクラスかネイティブクラスか
 		virtual bool IsScriptClass() const = 0;
 
+		//ユニット名
+		virtual std::string GetUnitName() const = 0;
+
 		void SetName(const std::string& className) {
 			name = className;
 		}
@@ -271,25 +477,34 @@ namespace sakura {
 			return name;
 		}
 
-		const std::string& GetParentClassName() const {
-			return parentClassName;
-		}
-
-		void SetParentClassName(const std::string& className) {
-			parentClassName = className;
-		}
-
 		bool HasParentClass() const {
-			return !parentClassName.empty();
+			return parentClassPath.IsValid();
 		}
 
-		const std::string& GetParentClassName() {
-			return parentClassName;
+		const ClassPath& GetParentClassPath() const {
+			return parentClassPath;
+		}
+
+		ClassPath& GetParentClassPath() {
+			return parentClassPath;
+		}
+
+		void SetParentClassPath(const ClassPath& classPath) {
+			parentClassPath = classPath;
 		}
 
 		uint32_t GetTypeId() const {
 			return typeId;
 		}
+
+		//スクリプトクラスのための後付けID指定
+		void SetTypeId(uint32_t classTypeId) {
+			assert(typeId == 0);	//後付け専用なのですでに設定されていたら使用禁止
+			if (typeId != 0) {
+				return;
+			}
+			typeId = classTypeId;
+		}	
 	};
 
 	//ネイティブクラス
@@ -300,11 +515,12 @@ namespace sakura {
 		ScriptNativeStaticSetFunction staticSetFunc;
 		ScriptNativeStaticInitFunction staticInitFunc;
 		ScriptNativeStaticDestructFunction staticDestructFunc;
+		std::string unitName;
 
 	public:
 		template<typename T>
-		static std::shared_ptr<NativeClass> Make(const std::string& name, ScriptNativeFunction initFunction = nullptr) {
-			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>()));
+		static std::shared_ptr<NativeClass> Make(const std::string& name, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
+			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>(), unitName));
 			result->SetName(name);
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
@@ -314,10 +530,10 @@ namespace sakura {
 		}
 
 		template<typename T>
-		static std::shared_ptr<NativeClass> Make(const std::string& name, const std::string& parentName, ScriptNativeFunction initFunction = nullptr) {
-			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>()));
+		static std::shared_ptr<NativeClass> Make(const std::string& name, const ClassPath& parentClassPath, ScriptNativeFunction initFunction = nullptr, const std::string& unitName = "system") {
+			std::shared_ptr<NativeClass> result(new NativeClass(initFunction, ObjectTypeIdGenerator::Id<T>(), unitName));
 			result->SetName(name);
-			result->SetParentClassName(parentName);
+			result->SetParentClassPath(parentClassPath);
 			result->staticGetFunc = &T::StaticGet;
 			result->staticSetFunc = &T::StaticSet;
 			result->staticInitFunc = &T::StaticInit;
@@ -325,8 +541,9 @@ namespace sakura {
 			return result;
 		}
 		
-		NativeClass(ScriptNativeFunction initFunction, uint32_t classId) : ClassBase(classId),
-			initFunc(initFunction)
+		NativeClass(ScriptNativeFunction initFunction, uint32_t classId, const std::string& unitName) : ClassBase(classId),
+			initFunc(initFunction),
+			unitName(unitName)
 		{}
 
 		ScriptNativeFunction GetInitFunc() const {
@@ -350,6 +567,7 @@ namespace sakura {
 		}
 
 		virtual bool IsScriptClass() const override { return false; }
+		virtual std::string GetUnitName() const override { return unitName; }
 	};
 
 	class ScriptClassMember;
@@ -360,47 +578,28 @@ namespace sakura {
 	//スクリプトクラス
 	class ScriptClass : public ClassBase {
 	private:
-		//メンバ
-		std::vector<ScriptClassMemberRef> members;
-
 		//関数
 		std::vector<ScriptFunctionDef> functions;
 
 		//コンストラクタ
 		ScriptFunctionRef initFunc;
 
-		//親コンストラクタ
-		std::vector<ASTNodeRef> parentClassInitArguments;
+		//親コンストラクタ呼び出しAST
+		std::vector<ConstASTNodeRef> parentClassInitArguments;
+
+		//スクリプト情報
+		ScriptSourceMetadataRef sourceMetadata;
+
+		//宣言ソースレンジ
+		SourceCodeRange declareSourceRange;
 
 	public:
-		ScriptClass() : ClassBase(0) {
+		ScriptClass(const ScriptSourceMetadataRef& sourcemeta) : ClassBase(0),
+			sourceMetadata(sourcemeta){
 		}
 
 		virtual bool IsScriptClass() const override { return true; }
-
-
-		//メンバの追加
-		void AddMember(const std::string& name, const ASTNodeRef& initNode) {
-			members.push_back(ScriptClassMemberRef(new ScriptClassMember(name, initNode)));
-		}
-
-		size_t GetMemberCount() const {
-			return members.size();
-		}
-
-		ScriptClassMemberRef GetMember(size_t index) const {
-			return members[index];
-		}
-
-		bool ContainsMember(const std::string& name) const {
-			//TODO: 高速化
-			for (const auto& item : members) {
-				if (item->GetName() == name) {
-					return true;
-				}
-			}
-			return false;
-		}
+		virtual std::string GetUnitName() const override { return sourceMetadata->GetScriptUnit()->GetUnit(); }
 
 		void AddFunction(const ScriptFunctionDef& def) {
 			functions.push_back(def);
@@ -428,8 +627,25 @@ namespace sakura {
 			return parentClassInitArguments.size();
 		}
 
-		ASTNodeRef GetParentClassInitArgument(size_t index) const {
+		ConstASTNodeRef GetParentClassInitArgument(size_t index) const {
 			return parentClassInitArguments[index];
+		}
+
+		void SetParentClassInitArguments(const std::vector<ConstASTNodeRef>& args) {
+			parentClassInitArguments = args;
+		}
+
+		const ScriptSourceMetadataRef& GetSourceMetadata() const {
+			return sourceMetadata;
+		}
+
+		//宣言部ソースレンジ
+		void SetDeclareSourceRange(const SourceCodeRange& sourceRange) {
+			declareSourceRange = sourceRange;
+		}
+
+		const SourceCodeRange& GetDeclareSourceRange() const {
+			return declareSourceRange;
 		}
 
 	};

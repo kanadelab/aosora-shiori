@@ -7,7 +7,7 @@
 #include "Misc/Message.h"
 
 //パースエラー発生時にassertで止める
-//#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
+#define AOSORA_ENABLE_PARSE_ERROR_ASSERT
 
 namespace sakura {
 
@@ -53,6 +53,13 @@ namespace sakura {
 	const std::string ERROR_AST_038 = "A038";
 	const std::string ERROR_AST_039 = "A039";
 	const std::string ERROR_AST_040 = "A040";
+	const std::string ERROR_AST_041 = "A041";
+	const std::string ERROR_AST_042 = "A042";
+	const std::string ERROR_AST_043 = "A043";
+	const std::string ERROR_AST_044 = "A044";
+	const std::string ERROR_AST_045 = "A045";
+	const std::string ERROR_AST_046 = "A046";
+	const std::string ERROR_AST_047 = "A047";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -110,13 +117,33 @@ namespace sakura {
 	const uint32_t SEQUENCE_END_FLAG_COLON = 1u << 6u;
 	const uint32_t SEQUENCE_END_FALG_TALK_NEWLINE = 1u << 7u;
 	const uint32_t SEQUENCE_END_FLAG_VERTICAL_BAR = 1u << 8u;
+	const uint32_t SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN = 1u << 9u;
 
 	//ASTパース
 	class ASTParseContext {
+	public:
+		//クラス解析中スコープ指定用
+		class ClassScope {
+		private:
+			ASTParseContext& context;
+		public:
+			ClassScope(ASTParseContext& parseContext, const ScriptClassRef& classRef) :context(parseContext) {
+				assert(context.scriptClass == nullptr);
+				assert(classRef != nullptr);
+				context.scriptClass = classRef;
+			}
+			~ClassScope() {
+				assert(context.scriptClass != nullptr);
+				context.scriptClass = nullptr;
+			}
+		};
+
 	private:
 		ASTParseResult& result;
 		const std::list<ScriptToken>& tokens;
 		std::list<ScriptToken>::const_iterator current;
+		ScriptSourceMetadataRef sourceMetaData;
+		ScriptClassRef scriptClass;	//現在解析中のクラス
 
 		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
@@ -131,6 +158,9 @@ namespace sakura {
 		{
 			//最初のアイテムをとる
 			current = tokens.cbegin();
+
+			//ユニット情報
+			sourceMetaData.reset(new ScriptSourceMetadata());
 		}
 
 		const ScriptToken& GetCurrent() {
@@ -154,6 +184,11 @@ namespace sakura {
 		//クラスのセット
 		void AddClass(const ScriptClassRef& classData) {
 			result.classMap[classData->GetName()] = classData;
+		}
+
+		//解析中のクラスを取得
+		const ScriptClassRef& GetParsingClass() const {
+			return scriptClass;
 		}
 
 		//エラーのセット
@@ -181,6 +216,11 @@ namespace sakura {
 			++current;
 		}
 
+		//戻る
+		void FetchPrev() {
+			--current;
+		}
+
 		bool IsEOF() const {
 			return current == tokens.cend();
 		}
@@ -205,6 +245,18 @@ namespace sakura {
 
 		ScriptToken GetErrorToken() const {
 			return errorToken;
+		}
+
+		const ScriptSourceMetadataRef& GetSourceMetadata() const {
+			return sourceMetaData;
+		}
+
+		const ScriptUnitRef& GetScriptUnit() const {
+			return sourceMetaData->GetScriptUnit();
+		}
+
+		void CommitSourceMetadata() {
+			sourceMetaData->CommitMetadata();
 		}
 	};
 
@@ -257,6 +309,7 @@ namespace sakura {
 		}
 		std::sort(parseResult->breakableLines.begin(), parseResult->breakableLines.end());
 
+		parseContext.CommitSourceMetadata();
 		return parseResult;
 	}
 
@@ -279,7 +332,7 @@ namespace sakura {
 	//ソースコードルートのパース
 	ASTNodeRef ASTParser::ParseASTSourceRoot(ASTParseContext& parseContext) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
-		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock());
+		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock(parseContext.GetSourceMetadata()));
 
 		while (!parseContext.IsEnd()) {
 
@@ -288,9 +341,24 @@ namespace sakura {
 				ParseASTClass(parseContext);
 				continue;
 			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				parseContext.FetchNext();
+				if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+					parseContext.FetchPrev();
+					ParseASTUnit(parseContext);
+					continue;
+				}
+				
+				//式文脈なので一旦戻してParseASTStatementにつなげる
+				parseContext.FetchPrev();
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Use) {
+				ParseASTUse(parseContext);
+				continue;
+			}
 
 			//所属しているステートメントをブロック終了までパースする
-			auto node = ParseASTStatement(parseContext);
+			auto node = ParseASTStatement(parseContext, true);
 			result->AddStatement(node);
 		}
 
@@ -302,7 +370,7 @@ namespace sakura {
 	ASTNodeRef ASTParser::ParseASTCodeBlock(ASTParseContext& parseContext, bool isBlacketEnd) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
 
-		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock());
+		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock(parseContext.GetSourceMetadata()));
 
 		while (!parseContext.IsEnd()) {
 
@@ -314,7 +382,7 @@ namespace sakura {
 			}
 
 			//所属しているステートメントをブロック終了までパースする
-			auto node = ParseASTStatement(parseContext);
+			auto node = ParseASTStatement(parseContext, false);
 			result->AddStatement(node);
 		}
 
@@ -330,7 +398,7 @@ namespace sakura {
 	//トークブロックのパース
 	ASTNodeRef ASTParser::ParseASTTalkBlock(ASTParseContext& parseContext) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
-		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock());
+		std::shared_ptr<ASTNodeCodeBlock> result(new ASTNodeCodeBlock(parseContext.GetSourceMetadata()));
 
 		while (!parseContext.IsEnd()){
 
@@ -347,7 +415,7 @@ namespace sakura {
 			else if (parseContext.GetCurrent().type == ScriptTokenType::SpeakerIndex) {
 
 				//話者指定
-				ASTNodeRef si = ASTNodeRef(new ASTNodeTalkSetSpeaker(std::stoi(parseContext.GetCurrent().body)));
+				ASTNodeRef si = ASTNodeRef(new ASTNodeTalkSetSpeaker(std::stoi(parseContext.GetCurrent().body), parseContext.GetSourceMetadata()));
 				si->SetSourceRange(parseContext.GetCurrent());
 				result->AddStatement(si);
 				parseContext.FetchNext();
@@ -361,7 +429,7 @@ namespace sakura {
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::SpeakerSwitch) {
 				//直接speakerが来たら話者スイッチ
-				ASTNodeRef sw = ASTNodeRef(new ASTNodeTalkSetSpeaker(ASTNodeTalkSetSpeaker::SPEAKER_INDEX_SWITCH));
+				ASTNodeRef sw = ASTNodeRef(new ASTNodeTalkSetSpeaker(ASTNodeTalkSetSpeaker::SPEAKER_INDEX_SWITCH, parseContext.GetSourceMetadata()));
 				sw->SetSourceRange(parseContext.GetCurrent());
 				result->AddStatement(sw);
 				parseContext.FetchNext();
@@ -387,7 +455,7 @@ namespace sakura {
 					condition = ParseASTExpression(parseContext, SEQUENCE_END_FALG_TALK_NEWLINE);
 				}
 
-				ASTNodeRef talkJump = ASTNodeRef(new ASTNodeTalkJump(callNode, args, condition));
+				ASTNodeRef talkJump = ASTNodeRef(new ASTNodeTalkJump(callNode, args, condition, parseContext.GetSourceMetadata()));
 				talkJump->SetSourceRange(jumpBeginToken, parseContext.GetPrev());
 				result->AddStatement(talkJump);
 			}
@@ -395,7 +463,7 @@ namespace sakura {
 				//発話
 				const ScriptToken& talkBegin = parseContext.GetCurrent();
 				ASTNodeRef talkBody = ParseASTString(parseContext);
-				ASTNodeRef talk = ASTNodeRef(new ASTNodeTalkSpeak(talkBody));
+				ASTNodeRef talk = ASTNodeRef(new ASTNodeTalkSpeak(talkBody, parseContext.GetSourceMetadata()));
 
 				talk->SetSourceRange(talkBegin, parseContext.GetPrev());
 				result->AddStatement(talk);
@@ -403,7 +471,7 @@ namespace sakura {
 			else
 			{
 				//それ以外の場合は通常の関数内ステートメントとして処理
-				ASTNodeRef r = ParseASTStatement(parseContext);
+				ASTNodeRef r = ParseASTStatement(parseContext, false);
 				result->AddStatement(r);
 			}
 		}
@@ -481,14 +549,14 @@ namespace sakura {
 	}
 
 	//ASTステートメントのパースへの振り分け
-	ASTNodeRef ASTParser::ParseASTStatement(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock) {
 		switch (parseContext.GetCurrent().type) {
 		case ScriptTokenType::Local:
 			return ParseASTLocalVariable(parseContext);
 		case ScriptTokenType::Function:
-			return ParseASTFunctionStatement(parseContext);
+			return ParseASTFunctionStatement(parseContext, isRootBlock);
 		case ScriptTokenType::Talk:
-			return ParseASTTalkStatement(parseContext);
+			return ParseASTTalkStatement(parseContext, isRootBlock);
 		case ScriptTokenType::For:
 			return ParseASTFor(parseContext);
 		case ScriptTokenType::While:
@@ -580,19 +648,19 @@ namespace sakura {
 				switch (operatorInfo->type)
 				{
 				case OperatorType::AssignAdd:
-					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_ADD, operandLeft, operandRight));
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_ADD, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				case OperatorType::AssignSub:
-					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_SUB, operandLeft, operandRight));
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_SUB, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				case OperatorType::AssignMul:
-					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_MUL, operandLeft, operandRight));
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_MUL, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				case OperatorType::AssignDiv:
-					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_DIV, operandLeft, operandRight));
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_DIV, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				case OperatorType::AssignMod:
-					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_MOD, operandLeft, operandRight));
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_MOD, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				}
 
@@ -631,7 +699,7 @@ namespace sakura {
 				expressionStack.pop_back();
 				expressionStack.pop_back();
 
-				expressionStack.push_back(StackItem(ASTNodeRef(new ASTNodeEvalOperator2(*operatorInfo, operandLeft, operandRight))));
+				expressionStack.push_back(StackItem(ASTNodeRef(new ASTNodeEvalOperator2(*operatorInfo, operandLeft, operandRight, parseContext.GetSourceMetadata()))));
 			}
 			else if (operatorInfo->argCount == 1) {
 
@@ -642,7 +710,7 @@ namespace sakura {
 				expressionStack.pop_back();
 				expressionStack.pop_back();
 
-				expressionStack.push_back(StackItem(ASTNodeRef(new ASTNodeEvalOperator1(*operatorInfo, operand))));
+				expressionStack.push_back(StackItem(ASTNodeRef(new ASTNodeEvalOperator1(*operatorInfo, operand, parseContext.GetSourceMetadata()))));
 			}
 			else if (operatorInfo->type == OperatorType::Bracket) {
 				//カッコの対応関係がおかしい
@@ -788,14 +856,30 @@ namespace sakura {
 
 			//オペレータを要求する場面でオペランドの役目しか無いトークンはエラーになる
 			if (!isRequireOperand) {
+				bool isLeave = false;
+
 				switch (parseContext.GetCurrent().type) {
 				case ScriptTokenType::Number:
 				case ScriptTokenType::Symbol:
 				case ScriptTokenType::StringBegin:
-				case ScriptTokenType::BlockBegin:
 				case ScriptTokenType::Function:
 				case ScriptTokenType::Talk:
 					return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
+				case ScriptTokenType::BlockBegin:
+					//BlockBeginで式を終えられるなら許容
+					if ((sequenceEndFlags & SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN) == 0) {
+						return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
+					}
+					else {
+						parseContext.FetchNext();
+						isLeave = true;
+					}
+					break;
+				}
+
+				//離脱して良い場合
+				if (isLeave) {
+					break;
 				}
 			}
 
@@ -804,19 +888,30 @@ namespace sakura {
 				parseStack.PushOperand(ParseASTNumberLiteral(parseContext));
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::True) {
-				ASTNodeRef node = ASTNodeRef(new ASTNodeBooleanLiteral(true));
+				ASTNodeRef node = ASTNodeRef(new ASTNodeBooleanLiteral(true, parseContext.GetSourceMetadata()));
 				node->SetSourceRange(parseContext.GetCurrent());
 				parseContext.FetchNext();
 				parseStack.PushOperand(node);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::False) {
-				ASTNodeRef node = ASTNodeRef(new ASTNodeBooleanLiteral(false));
+				ASTNodeRef node = ASTNodeRef(new ASTNodeBooleanLiteral(false, parseContext.GetSourceMetadata()));
 				node->SetSourceRange(parseContext.GetCurrent());
 				parseContext.FetchNext();
 				parseStack.PushOperand(node);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::StringBegin) {
 				parseStack.PushOperand(ParseASTString(parseContext));
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::This || parseContext.GetCurrent().type == ScriptTokenType::Base) {
+				//コンテキスト値
+				parseStack.PushOperand(ParseASTContextValue(parseContext));
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				//解決しようとしている場合はユニットオブジェクトを返す形になる
+				auto node = ASTNodeRef(new ASTNodeUnitRoot(parseContext.GetSourceMetadata()));
+				node->SetSourceRange(parseContext.GetCurrent().sourceRange);
+				parseContext.FetchNext();
+				parseStack.PushOperand(node);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
 				parseStack.PushOperand(ParseASTSymbol(parseContext));
@@ -841,7 +936,7 @@ namespace sakura {
 					auto indexExpression = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_ARRAY_BLACKET);
 
 					//アクセスノードを作成
-					parseStack.PushOperand(ASTNodeRef(new ASTNodeResolveMember(arrayExpression, indexExpression)));
+					parseStack.PushOperand(ASTNodeRef(new ASTNodeResolveMember(arrayExpression, indexExpression, parseContext.GetSourceMetadata())));
 				}
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::BlockBegin) {
@@ -870,7 +965,7 @@ namespace sakura {
 				}
 
 				//メンバ解決
-				ASTNodeRef keyNode(new ASTNodeStringLiteral(parseContext.GetCurrent().body));
+				ASTNodeRef keyNode(new ASTNodeStringLiteral(parseContext.GetCurrent().body, parseContext.GetSourceMetadata()));
 				keyNode->SetSourceRange(parseContext.GetCurrent());
 				parseContext.FetchNext();
 
@@ -878,7 +973,7 @@ namespace sakura {
 				if (parseContext.HasError()) {
 					return target;
 				}
-				parseStack.PushOperand(ASTNodeRef(new ASTNodeResolveMember(target, keyNode)));
+				parseStack.PushOperand(ASTNodeRef(new ASTNodeResolveMember(target, keyNode, parseContext.GetSourceMetadata())));
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
 
@@ -938,10 +1033,10 @@ namespace sakura {
 				}
 
 				//1を足すように構成
-				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0));
+				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0, parseContext.GetSourceMetadata()));
 				literalNode->SetSourceRange(parseContext.GetCurrent());
 
-				auto addNode = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_ADD, operand, literalNode));
+				auto addNode = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_ADD, operand, literalNode, parseContext.GetSourceMetadata()));
 				addNode->SetSourceRange(parseContext.GetCurrent());
 
 				parseStack.PushOperand(ParseASTSet(parseContext, operand, addNode));
@@ -955,10 +1050,10 @@ namespace sakura {
 					return operand;
 				}
 
-				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0));
+				auto literalNode = ASTNodeRef(new ASTNodeNumberLiteral(1.0, parseContext.GetSourceMetadata()));
 				literalNode->SetSourceRange(parseContext.GetCurrent());
 
-				auto addNode = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_SUB, operand, literalNode));
+				auto addNode = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_SUB, operand, literalNode, parseContext.GetSourceMetadata()));
 				addNode->SetSourceRange(parseContext.GetCurrent());
 
 				parseStack.PushOperand(ParseASTSet(parseContext, operand, addNode));
@@ -983,7 +1078,7 @@ namespace sakura {
 						if (parseContext.HasError()) {
 							return func;
 						}
-						std::shared_ptr<ASTNodeFunctionCall> call(new ASTNodeFunctionCall(func, args));
+						std::shared_ptr<ASTNodeFunctionCall> call(new ASTNodeFunctionCall(func, args, parseContext.GetSourceMetadata()));
 						call->SetSourceRange(rangeBegin, parseContext.GetPrev());
 						parseStack.PushOperand(call);
 						continue;
@@ -1162,7 +1257,7 @@ namespace sakura {
 
 		//単純に string to double をかける
 		const number value = std::stod(parseContext.GetCurrent().body);
-		auto r = ASTNodeRef(new ASTNodeNumberLiteral(value));
+		auto r = ASTNodeRef(new ASTNodeNumberLiteral(value, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(parseContext.GetCurrent());
 		parseContext.FetchNext();
 		return r;
@@ -1216,7 +1311,7 @@ namespace sakura {
 		}
 		else {
 			//それ以外ならフォーマット文字列ノードを作る
-			ASTNodeRef r = ASTNodeRef(new ASTNodeFormatString(items));
+			ASTNodeRef r = ASTNodeRef(new ASTNodeFormatString(items, parseContext.GetSourceMetadata()));
 			r->SetSourceRange(parseContext.GetCurrent());
 			return r;
 		}
@@ -1233,10 +1328,36 @@ namespace sakura {
 
 		std::string value = parseContext.GetCurrent().body;
 		
-		auto r = ASTNodeRef(new ASTNodeStringLiteral(value));
+		auto r = ASTNodeRef(new ASTNodeStringLiteral(value, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(parseContext.GetCurrent());
 		parseContext.FetchNext();
 		return r;
+	}
+
+	//コンテキスト値取得
+	ASTNodeRef ASTParser::ParseASTContextValue(ASTParseContext& parseContext) {
+
+		//クラスパースのコンテキストでないと使用不可
+		if (parseContext.GetParsingClass() == nullptr) {
+			return parseContext.Error(ERROR_AST_044, parseContext.GetCurrent());
+		}
+
+		ASTNodeRef result = nullptr;
+		if (parseContext.GetCurrent().type == ScriptTokenType::This) {
+			result.reset(new ASTNodeContextValue(ASTNodeContextValue::ValueType::This, parseContext.GetParsingClass(), parseContext.GetSourceMetadata()));
+		}
+		else if (parseContext.GetCurrent().type == ScriptTokenType::Base) {
+			result.reset(new ASTNodeContextValue(ASTNodeContextValue::ValueType::Base, parseContext.GetParsingClass(), parseContext.GetSourceMetadata()));
+		}
+		else {
+			//存在しないタイプ
+			assert(false);
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+
+		result->SetSourceRange(parseContext.GetCurrent());
+		parseContext.FetchNext();
+		return result;
 	}
 
 	//シンボル解決
@@ -1249,7 +1370,7 @@ namespace sakura {
 		}
 
 		std::string name = parseContext.GetCurrent().body;
-		auto r = ASTNodeRef(new ASTNodeResolveSymbol(name));
+		auto r = ASTNodeRef(new ASTNodeResolveSymbol(name, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(parseContext.GetCurrent());
 		parseContext.FetchNext();
 		return r;
@@ -1270,7 +1391,7 @@ namespace sakura {
 		//各要素がexpressionとして存在していて、カンマもしくは終了カッコで閉じられるはずだ
 		std::vector<ConstASTNodeRef> items;
 		ParseASTExpressionList(parseContext, items, SEQUENCE_END_FLAG_ARRAY_BLACKET);
-		auto r = ASTNodeRef(new ASTNodeArrayInitializer(items));
+		auto r = ASTNodeRef(new ASTNodeArrayInitializer(items, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
@@ -1329,7 +1450,7 @@ namespace sakura {
 			}
 		}
 
-		auto r = ASTNodeRef(new ASTNodeObjectInitializer(items));
+		auto r = ASTNodeRef(new ASTNodeObjectInitializer(items, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
@@ -1399,13 +1520,13 @@ namespace sakura {
 			// 成功するようなら改めてparseContextでやり直す
 			if (!tentativeContext.IsEnd() && tentativeContext.GetCurrent().type == ScriptTokenType::BlockEnd) {
 				const ScriptToken& beginSyntaxSugarToken = parseContext.GetCurrent();
-				std::shared_ptr<ASTNodeCodeBlock> funcBody(new ASTNodeCodeBlock());
+				std::shared_ptr<ASTNodeCodeBlock> funcBody(new ASTNodeCodeBlock(parseContext.GetSourceMetadata()));
 				auto node = ParseASTReturn(parseContext, true);
 				funcBody->AddStatement(node);
 				parseContext.FetchNext();
 				funcBody->SetSourceRange(beginSyntaxSugarToken, parseContext.GetPrev());
 
-				auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList))));
+				auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList)), parseContext.GetSourceMetadata()));
 				r->SetSourceRange(beginToken, parseContext.GetPrev());
 				return r;
 			}
@@ -1413,13 +1534,13 @@ namespace sakura {
 
 		//コードブロックを取得
 		ASTNodeRef funcBody = ParseASTCodeBlock(parseContext, true);
-		auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList))));
+		auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcBody, argList)), parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
 
 	//関数ステートメント function FuncName:conditions(val) { }
-	ASTNodeRef ASTParser::ParseASTFunctionStatement(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTFunctionStatement(ASTParseContext& parseContext, bool isRootBlockStatement) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
 
 		//対象外の情報にはエラーを返す
@@ -1432,7 +1553,7 @@ namespace sakura {
 		if (def.func == nullptr) {
 			return ASTNodeRef(new ASTError());
 		}
-		auto r = ASTNodeRef(new ASTNodeFunctionStatement(def.names, def.func, def.condition));
+		auto r = ASTNodeRef(new ASTNodeFunctionStatement(def.names, def.func, def.condition, isRootBlockStatement, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
@@ -1466,13 +1587,13 @@ namespace sakura {
 
 		//トークブロック取得
 		ASTNodeRef funcbody = ParseASTTalkBlock(parseContext);
-		auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcbody, argList))));
+		auto r = ASTNodeRef(new ASTNodeFunctionInitializer(ScriptFunctionRef(new ScriptFunction(funcbody, argList)), parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
 
 	//トークステートメント talk TalkName, TalkName2 : condition (args) {}
-	ASTNodeRef ASTParser::ParseASTTalkStatement(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTTalkStatement(ASTParseContext& parseContext, bool isRootBlockStatement) {
 		const ScriptToken& beginToken = parseContext.GetCurrent();
 
 		//対象外の情報にはエラーを返す
@@ -1485,7 +1606,7 @@ namespace sakura {
 		if (def.func == nullptr) {
 			return ASTNodeRef(new ASTError());
 		}
-		auto r = ASTNodeRef(new ASTNodeFunctionStatement(def.names, def.func, def.condition));
+		auto r = ASTNodeRef(new ASTNodeFunctionStatement(def.names, def.func, def.condition, isRootBlockStatement, parseContext.GetSourceMetadata()));
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;
 	}
@@ -1590,7 +1711,7 @@ namespace sakura {
 		std::shared_ptr<ASTNodeFunctionCall> fc = std::static_pointer_cast<ASTNodeFunctionCall>(target);
 		ConstASTNodeRef funcNode = fc->GetFunctionNode();
 
-		auto r = ASTNodeRef(new ASTNodeNewClassInstance(fc->GetFunctionNode(), fc->GetArgumentNodes()));
+		auto r = ASTNodeRef(new ASTNodeNewClassInstance(fc->GetFunctionNode(), fc->GetArgumentNodes(), parseContext.GetSourceMetadata()));
 
 		//ソース位置の特定、new演算子から最後の引数か関数までの間でとる
 		SourceCodeRange last = fc->GetFunctionNode()->GetSourceRange();
@@ -1615,10 +1736,10 @@ namespace sakura {
 			return;
 		}
 
+		const auto& beginToken = parseContext.GetCurrent();
 		parseContext.FetchNext();
-
-
-		ScriptClassRef result(new ScriptClass());
+		ScriptClassRef result(new ScriptClass(parseContext.GetSourceMetadata()));
+		ASTParseContext::ClassScope classScope(parseContext, result);
 
 		//クラス名
 		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
@@ -1632,12 +1753,29 @@ namespace sakura {
 		//継承
 		if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 			parseContext.FetchNext();
-			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
-				return;
+			
+			if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
+				//ユニットルート参照
+				result->GetParentClassPath().SetFullPath(true);
+				parseContext.FetchNext();
 			}
-			result->SetParentClassName(parseContext.GetCurrent().body);
-			parseContext.FetchNext();
+
+			while (!parseContext.IsEnd()) {
+				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+					parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
+					return;
+				}
+
+				result->GetParentClassPath().AddFullPath(parseContext.GetCurrent().body);
+				parseContext.FetchNext();
+
+				if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+					parseContext.FetchNext();
+				}
+				else {
+					break;
+				}
+			}
 		}
 
 		//開カッコ
@@ -1645,6 +1783,10 @@ namespace sakura {
 			parseContext.Error(ERROR_AST_027, parseContext.GetCurrent());
 			return;
 		}
+
+		//ここまで宣言部として記録する
+		result->SetDeclareSourceRange(SourceCodeRange(beginToken.sourceRange, parseContext.GetCurrent().sourceRange));
+
 		parseContext.FetchNext();
 
 		//メンバを確認
@@ -1667,34 +1809,41 @@ namespace sakura {
 					//引数解析
 					parseContext.FetchNext();
 					ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_BLACKET);
+					parseContext.FetchNext();
 				}
 
-				//開き中括弧
-				if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-					parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
-					return;
+				//コロン・baseで親クラスコンストラクタ呼び出し
+				if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
+					parseContext.FetchNext();
+					if (parseContext.GetCurrent().type != ScriptTokenType::Base) {
+						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
+						return;
+					}
+
+					//base呼び出し式を取得
+					auto baseCall = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN);
+					if (baseCall->GetType() != ASTNodeType::FunctionCall) {
+						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
+						return;
+					}
+
+					auto baseInitCall = std::static_pointer_cast<ASTNodeFunctionCall>(baseCall);
+					result->SetParentClassInitArguments(baseInitCall->GetArgumentNodes());
+				}
+				else {
+					//開き中括弧(base呼び出しがある場合はBlockBeginまで処理して戻るので、そうでない場合のみ)
+					if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
+						parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
+						return;
+					}
+					parseContext.FetchNext();
 				}
 
 				//関数本体
-				parseContext.FetchNext();
 				ASTNodeRef initBody = ParseASTCodeBlock(parseContext, true);
 
-				result->SetInitFunc(ScriptFunctionRef(new ScriptFunction(initBody, argList)));
-			}
-			else if (parseContext.GetCurrent().type == ScriptTokenType::Member) {
-				//メンバ変数
-				parseContext.FetchNext();
-
-				//ローカル変数のようなスタイル
-				std::vector<ScriptVariableDef> defs;
-				if (!ParseVariableDef(parseContext, defs)) {
-					return;
-				}
-
-				//メンバ変数をリストに登録
-				for (const ScriptVariableDef& d : defs) {
-					result->AddMember(d.name, d.initializer);
-				}
+				auto functionRef = ScriptFunctionRef(new ScriptFunction(initBody, argList));
+				result->SetInitFunc(functionRef);
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Function) {
 				//メンバ関数
@@ -1721,8 +1870,129 @@ namespace sakura {
 			}
 		}
 
-		if (!parseContext.HasError()) {
+		if (parseContext.HasError()) {
 			parseContext.Error(ERROR_AST_029, parseContext.GetCurrent());
+		}
+	}
+
+	//unitキーワードのパース
+	ASTNodeRef ASTParser::ParseASTUnit(ASTParseContext& parseContext) {
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Unit);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Unit) {
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+
+		parseContext.FetchNext();
+
+		//文脈によって宣言かオブジェクトかが変わる
+		if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+			//このケースは式文脈なのでステートメント処理に流れてないといけない
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+		}
+		else if(parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+			//シンボルが続く場合は宣言の形
+			ParseASTUnitDef(parseContext);
+			return nullptr;
+		}
+		else {
+			//そのどれでもない場合は構文としておかしいのでエラー
+			//TODO: 正しいエラーを新設すること
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+		}
+	}
+
+	//unit宣言のパース
+	void ASTParser::ParseASTUnitDef(ASTParseContext& parseContext) {
+
+
+		//ユニットを多重で設定不可
+		if (parseContext.GetScriptUnit()->IsExplicitUnit()) {
+			parseContext.Error(ERROR_AST_043, parseContext.GetCurrent());
+			return;
+		}
+
+		//ユニット名
+		const auto& unitName = parseContext.GetCurrent();
+		if (unitName.type != ScriptTokenType::Symbol) {
+			//ユニット名でないなにかがある
+			parseContext.Error(ERROR_AST_042, parseContext.GetCurrent());
+			return;
+		}
+		parseContext.GetScriptUnit()->SetUnit(unitName.body);
+		parseContext.FetchNext();
+
+		//セミコロン
+		const auto& semiColon = parseContext.GetCurrent();
+		if (semiColon.type != ScriptTokenType::Semicolon) {
+			parseContext.Error(ERROR_AST_041, parseContext.GetCurrent());
+			return;
+		}
+		parseContext.FetchNext();
+	}
+
+	void ASTParser::ParseASTUse(ASTParseContext& parseContext) {
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Use);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Use) {
+			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+			return;
+		}
+
+		parseContext.FetchNext();
+
+		//useキーワードの対象を取得
+		std::string path;
+		const ScriptToken* lastPathToken = nullptr;
+		while (!parseContext.IsEnd()) {
+
+			if (parseContext.GetCurrent().type == ScriptTokenType::Asterisk) {
+				if (path.empty()) {
+					//err
+					assert(false);
+				}
+
+				//アスタリスクのワイルドカード参照
+				parseContext.FetchNext();
+				if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
+					//err
+					assert(false);
+				}
+
+				//ワイルドカード参照で登録
+				parseContext.GetSourceMetadata()->GetAlias().RegisterWildcardAlias(path);
+				parseContext.FetchNext();
+				return;
+			}
+
+			if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+				//シンボルをパスに追加
+				if (!path.empty()) {
+					path.append(".");
+				}
+				lastPathToken = &parseContext.GetCurrent();
+				path.append(lastPathToken->body);
+				parseContext.FetchNext();
+			}
+			else {
+				//err
+				return;
+			}
+
+			//セミコロンで終端するかピリオドで続ける
+			if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
+				//エイリアスを登録して終了
+				if (!parseContext.GetSourceMetadata()->GetAlias().RegisterAlias(lastPathToken->body, path)) {
+					//エイリアス重複のためエラー
+				}
+				parseContext.FetchNext();
+				return;
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+				parseContext.FetchNext();
+			}
+			else {
+				//err
+				return;
+			}
 		}
 	}
 
@@ -1739,7 +2009,7 @@ namespace sakura {
 		parseContext.FetchNext();
 
 		//結果リスト
-		std::shared_ptr<ASTNodeLocalVariableDeclarationList> result(new ASTNodeLocalVariableDeclarationList());
+		std::shared_ptr<ASTNodeLocalVariableDeclarationList> result(new ASTNodeLocalVariableDeclarationList(parseContext.GetSourceMetadata()));
 		std::vector<ScriptVariableDef> defs;
 		
 		if (!ParseVariableDef(parseContext, defs)) {
@@ -1747,7 +2017,7 @@ namespace sakura {
 		}
 
 		for (size_t i = 0; i < defs.size(); i++) {
-			auto val = std::shared_ptr<ASTNodeLocalVariableDeclaration>(new ASTNodeLocalVariableDeclaration(defs[i].name, defs[i].initializer));
+			auto val = std::shared_ptr<ASTNodeLocalVariableDeclaration>(new ASTNodeLocalVariableDeclaration(defs[i].name, defs[i].initializer, parseContext.GetSourceMetadata()));
 			val->SetSourceRange(defs[i].range);
 			result->AddVariable(val);
 		}
@@ -1892,10 +2162,10 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			loopStatement = ParseASTStatement(parseContext);
+			loopStatement = ParseASTStatement(parseContext, true);
 		}
 
-		ASTNodeRef result(new ASTNodeFor(initExpression, ifExpression, incrementExpression, loopStatement));
+		ASTNodeRef result(new ASTNodeFor(initExpression, ifExpression, incrementExpression, loopStatement, parseContext.GetSourceMetadata()));
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
 		return result;
 	}
@@ -1931,10 +2201,10 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			trueStatement = ParseASTStatement(parseContext);
+			trueStatement = ParseASTStatement(parseContext, true);
 		}
 
-		ASTNodeRef result(new ASTNodeWhile(ifExpression, trueStatement));
+		ASTNodeRef result(new ASTNodeWhile(ifExpression, trueStatement, parseContext.GetSourceMetadata()));
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
 		return result;
 	}
@@ -1970,7 +2240,7 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			trueStatement = ParseASTStatement(parseContext);
+			trueStatement = ParseASTStatement(parseContext, true);
 		}
 
 		ASTNodeRef r;
@@ -1984,13 +2254,13 @@ namespace sakura {
 				falseStatement = ParseASTCodeBlock(parseContext, true);
 			}
 			else {
-				falseStatement = ParseASTStatement(parseContext);
+				falseStatement = ParseASTStatement(parseContext, true);
 			}
-			r = ASTNodeRef(new ASTNodeIf(ifExpression, trueStatement, falseStatement));
+			r = ASTNodeRef(new ASTNodeIf(ifExpression, trueStatement, falseStatement, parseContext.GetSourceMetadata()));
 		}
 		else {
 			//elseなし
-			r = ASTNodeRef(new ASTNodeIf(ifExpression, trueStatement));
+			r = ASTNodeRef(new ASTNodeIf(ifExpression, trueStatement, parseContext.GetSourceMetadata()));
 		}
 
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
@@ -2015,7 +2285,7 @@ namespace sakura {
 		}
 		parseContext.FetchNext();
 
-		ASTNodeRef result(new ASTNodeBreak());
+		ASTNodeRef result(new ASTNodeBreak(parseContext.GetSourceMetadata()));
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
 		return result;
 	}
@@ -2038,7 +2308,7 @@ namespace sakura {
 		}
 		parseContext.FetchNext();
 
-		ASTNodeRef result(new ASTNodeContinue());
+		ASTNodeRef result(new ASTNodeContinue(parseContext.GetSourceMetadata()));
 		result->SetSourceRange(beginToken, parseContext.GetPrev());
 		return result;
 	}
@@ -2065,12 +2335,12 @@ namespace sakura {
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
 			//式があってセミコロンで終了な単純系のはず
 			ASTNodeRef returnValueNode = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
-			r = ASTNodeRef(new ASTNodeReturn(returnValueNode));
+			r = ASTNodeRef(new ASTNodeReturn(returnValueNode, parseContext.GetSourceMetadata()));
 		}
 		else {
 			//戻り値なし
 			parseContext.FetchNext();
-			r = ASTNodeRef(new ASTNodeReturn());
+			r = ASTNodeRef(new ASTNodeReturn(parseContext.GetSourceMetadata()));
 		}
 
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
@@ -2095,28 +2365,29 @@ namespace sakura {
 
 		//tryブロック
 		ConstASTNodeRef tryBlock = ParseASTCodeBlock(parseContext, true);
-		std::shared_ptr<ASTNodeTry> resultNode = std::shared_ptr<ASTNodeTry>(new ASTNodeTry(tryBlock));
+		std::shared_ptr<ASTNodeTry> resultNode = std::shared_ptr<ASTNodeTry>(new ASTNodeTry(tryBlock, parseContext.GetSourceMetadata()));
 
 		//catch
 		while (parseContext.GetCurrent().type == ScriptTokenType::Catch) {
 			parseContext.FetchNext();
-			
-			std::vector<std::string> catchClasses;
-			while (true) {
 
-				//catch型シンボルをチェック
-				if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+			//開カッコがあれば例外変数
+			std::string variableName;
+			if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
+				parseContext.FetchNext();
 
-					catchClasses.push_back(parseContext.GetCurrent().body);
-					parseContext.FetchNext();
-
-					//カンマで複数指定想定
-					if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
-						parseContext.FetchNext();
-						continue;
-					}
+				//変数名
+				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+					return parseContext.Error(ERROR_AST_045, parseContext.GetCurrent());
 				}
-				break;
+				variableName = parseContext.GetCurrent().body;
+				parseContext.FetchNext();
+
+				//閉じカッコ
+				if (parseContext.GetCurrent().type != ScriptTokenType::BracketEnd) {
+					return parseContext.Error(ERROR_AST_046, parseContext.GetCurrent());
+				}
+				parseContext.FetchNext();
 			}
 
 			//開カッコ
@@ -2127,7 +2398,7 @@ namespace sakura {
 
 			//catchブロック
 			ConstASTNodeRef catchBlock = ParseASTCodeBlock(parseContext, true);
-			resultNode->AddCatchBlock(catchBlock, catchClasses);
+			resultNode->AddCatchBlock(catchBlock, variableName);
 		}
 
 		//finally
@@ -2163,12 +2434,12 @@ namespace sakura {
 		if (parseContext.GetCurrent().type != ScriptTokenType::Semicolon) {
 			//式があってセミコロンで終了な単純系のはず
 			ASTNodeRef throwValueNode = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
-			r = ASTNodeRef(new ASTNodeThrow(throwValueNode));
+			r = ASTNodeRef(new ASTNodeThrow(throwValueNode, parseContext.GetSourceMetadata()));
 		}
 		else {
 			//戻り値なし
 			parseContext.FetchNext();
-			r = ASTNodeRef(new ASTNodeThrow());
+			r = ASTNodeRef(new ASTNodeThrow(parseContext.GetSourceMetadata()));
 		}
 
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
@@ -2177,14 +2448,14 @@ namespace sakura {
 
 	//ResolveSymbol -> AssignSymbol
 	ASTNodeRef ASTNodeResolveSymbol::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		auto node = ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignSymbol(name, valueNode, valueNode->GetSourceMetadata()));
 		node->SetSourceRange(GetSourceRange());
 		return node;
 	}
 
 	//ResolveMember -> AssignMember
 	ASTNodeRef ASTNodeResolveMember::ConvertToSetter(const ASTNodeRef& valueNode) const {
-		auto node = ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode));
+		auto node = ASTNodeRef(new ASTNodeAssignMember(target, key, valueNode, valueNode->GetSourceMetadata()));
 		node->SetSourceRange(GetSourceRange());
 		return node;
 	}

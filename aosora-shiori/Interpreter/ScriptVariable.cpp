@@ -64,6 +64,7 @@ namespace sakura {
 	}
 
 	void ScriptObject::RawSet(const std::string& key, const ScriptValueRef& value) {
+		assert(value != nullptr);
 		members[key] = value;
 	}
 
@@ -91,48 +92,39 @@ namespace sakura {
 	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
 
 		//クラスデータが設定されている場合そちらに設定する
-		if (scriptClass != nullptr) {
-			scriptClass->SetToInstance(key, value, *this, executeContext);
-		}
-		else {
-			members[key] = value;
-		}
+		assert(value != nullptr);
+		members[key] = value;
 	}
 
 	ScriptValueRef ScriptObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
 
 		//クラスデータが設定されている場合そちら経由で取得する
-		if (scriptClass != nullptr) {
-			return scriptClass->GetFromInstance(key, *this, executeContext);
+		auto rawgetResult = RawGet(key);
+		if (rawgetResult != nullptr) {
+			return rawgetResult;
 		}
-		else {
-			auto rawgetResult = RawGet(key);
-			if (rawgetResult != nullptr) {
-				return rawgetResult;
-			}
 			
-			//組み込みフィールド
-			if (key == "length") {
-				return ScriptValue::Make(static_cast<number>(members.size()));
-			}
-			else if (key == "Add") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
-			}
-			else if (key == "Contains") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
-			}
-			else if (key == "Clear") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
-			}
-			else if (key == "Remove") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
-			}
-			else if (key == "Keys") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
-			}
-
-			return nullptr;
+		//組み込みフィールド
+		if (key == "length") {
+			return ScriptValue::Make(static_cast<number>(members.size()));
 		}
+		else if (key == "Add") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
+		}
+		else if (key == "Contains") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
+		}
+		else if (key == "Clear") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
+		}
+		else if (key == "Remove") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
+		}
+		else if (key == "Keys") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
+		}
+
+		return nullptr;
 	}
 
 	std::string ScriptObject::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
@@ -173,16 +165,95 @@ namespace sakura {
 		}
 	}
 
-	void ScriptObject::SetClassInfo(const Reference<ClassData>& classData) {
-		scriptClass = classData;
+	ClassInstance::ClassInstance(const Reference<ClassData>& classType, ScriptExecuteContext& executeContext)
+	{
+		//内部ストレージを生成
+		//TODO: ネイティブクラスの場合は不要
+		scriptStore = executeContext.GetInterpreter().CreateObject();
 
-		//タイプIDをScriptObjectからクラスへ上書き
-		SetInstanceTypeId(scriptClass->GetClassTypeId());
+		//タイプIDを指定
+		classData = classType;
+		SetInstanceTypeId(classData->GetClassTypeId());
 	}
 
+	void ClassInstance::SetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		if (classType->GetMetadata().IsScriptClass()) {
+			//スクリプトクラスの場合は中身を書き換える
+			scriptStore->RawSet(key, value);
+		}
+		else {
+			//ネイティブならインスタンス領域にセット
+			classType->SetToInstance(key, value, self, executeContext);
+		}
+	}
+
+	ScriptValueRef ClassInstance::GetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, ScriptExecuteContext& executeContext) {
+		//スクリプトクラスであればストレージを検索
+		//TODO: 検索順を反転させるべきかも？　クラスから検索すると多段検索がどうしても必要になるのでとりあえず効率からこうしているけれど･･･
+		if (classType->GetMetadata().IsScriptClass()) {
+			if (scriptStore->Contains(key)) {
+				return scriptStore->RawGet(key);
+			}
+		}
+
+		//見つかってなければ型領域から検索
+		return classType->GetFromInstance(key, self, executeContext);
+	}
+
+	Reference<UpcastClassInstance> ClassInstance::MakeBase(const Reference<ClassInstance>& self, const ScriptClassRef& contextClass, ScriptExecuteContext& executeContext) {
+		//baseキーワードで取得できるupcastedインスタンスを取得する
+		//contextClassがbaseキーワードのASTノードが所属するクラスを示しているのでその親クラスを取得する
+		//(classData->GetParentClass() を使うとthisに対するbaseとなるので多段継承で問題が出るためNG)
+
+		//インタプリタからクラスデータを取得
+		auto classRef = executeContext.GetInterpreter().GetClass(contextClass->GetTypeId());
+		return executeContext.GetInterpreter().CreateNativeObject<UpcastClassInstance>(self, classRef->GetObjectRef().Cast<ClassData>()->GetParentClass());
+	}
+
+	void ClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		SetInternal(self.Cast<ClassInstance>(), classData, key, value, executeContext);
+	}
+
+	ScriptValueRef ClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		return GetInternal(self.Cast<ClassInstance>(), classData, key, executeContext);
+	}
+
+	void ClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (classData != nullptr) {
+			result.push_back(classData.Get());
+		}
+		if (scriptStore != nullptr) {
+			result.push_back(scriptStore.Get());
+		}
+		if (nativeClassInstance != nullptr) {
+			result.push_back(nativeClassInstance.Get());
+		}
+	}
+
+	void UpcastClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		//ClassInstanceに対して型指定形式で問い合わせる
+		classInstance->SetInternal(classInstance, upcastedClassData, key, value, executeContext);
+	}
+
+	ScriptValueRef UpcastClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		return classInstance->GetInternal(classInstance, upcastedClassData, key, executeContext);
+	}
+
+	void UpcastClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (classInstance != nullptr) {
+			result.push_back(classInstance.Get());
+		}
+		if (upcastedClassData != nullptr) {
+			result.push_back(upcastedClassData.Get());
+		}
+	}
 
 	ScriptValueRef ScriptValue::MakeObject(ScriptInterpreter& interpreter) {
-		return ScriptValueRef(new ScriptValue(interpreter.CreateObject()));
+		return Make(interpreter.CreateObject());
+	}
+
+	ScriptValueRef ScriptValue::MakeArray(ScriptInterpreter& interpreter) {
+		return Make(interpreter.CreateArray());
 	}
 
 	std::string ScriptValue::ToStringWithFunctionCall(ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode) {
@@ -237,5 +308,9 @@ namespace sakura {
 
 	ScriptValueRef FunctionRequest::GetThisValue() const {
 		return GetContext().GetBlockScope()->GetThisValue();
+	}
+
+	ScriptInterpreter& FunctionRequest::GetInterpreter() const {
+		return executeContext.GetInterpreter();
 	}
 }

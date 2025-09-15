@@ -67,9 +67,12 @@ namespace sakura {
 		Finally,
 		Throw,
 		Class,
-		Member,
 		Init,
 		New,
+		Unit,
+		Use,
+		This,
+		Base,
 
 		BlockBegin,
 		BlockEnd,
@@ -138,6 +141,15 @@ namespace sakura {
 			endLineIndex(endLineIdx),
 			endColumnIndex(endColumnIdx)
 		{}
+
+		SourceCodeRange(const SourceCodeRange& begin, const SourceCodeRange& includedEnd) :
+			beginLineIndex(0),
+			beginColumnIndex(0),
+			endLineIndex(0),
+			endColumnIndex(0)
+		{
+			SetRange(begin, includedEnd);
+		}
 
 		void SetRange(const SourceCodeRange& begin, const SourceCodeRange& includedEnd) {
 			sourcePath = begin.sourcePath;

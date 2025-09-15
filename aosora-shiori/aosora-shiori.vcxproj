@@ -144,6 +144,7 @@
     <ClInclude Include="AST\ASTParser.h" />
     <ClInclude Include="Base.h" />
     <ClInclude Include="CommonLibrary\CommonClasses.h" />
+    <ClInclude Include="CommonLibrary\StandardLibrary.h" />
     <ClInclude Include="CoreLibrary\CoreClasses.h" />
     <ClInclude Include="CoreLibrary\CoreLibrary.h" />
     <ClInclude Include="CoreLibrary\PrimitiveMethod.h" />
@@ -167,6 +168,7 @@
     <ClCompile Include="AST\ASTNodeBase.cpp" />
     <ClCompile Include="AST\ASTParser.cpp" />
     <ClCompile Include="CommonLibrary\CommonClasses.cpp" />
+    <ClCompile Include="CommonLibrary\StandardLibrary.cpp" />
     <ClCompile Include="CoreLibrary\CoreClasses.cpp" />
     <ClCompile Include="CoreLibrary\PrimitiveMethod.cpp" />
     <ClCompile Include="Debugger\DebugBootstrap.cpp" />

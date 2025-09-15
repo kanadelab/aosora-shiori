@@ -1124,7 +1124,7 @@ namespace sakura {
 		bool IsConnected() const { return isSetupCompleted; }
 
 		void NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
-		void NotifyThrowExceotion(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
+		void NotifyThrowExceotion(const ScriptError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
 		void NotifyScriptFileLoaded(const std::string& fileBody, const std::string& fullName, const ASTParseResult& astParseResult);
 		void NotifyLog(const std::string& log, bool isError);
 		void NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError);
@@ -1207,7 +1207,7 @@ namespace sakura {
 	}
 
 	//例外発生時
-	void DebugSystem::NotifyThrowExceotion(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
+	void DebugSystem::NotifyThrowExceotion(const ScriptError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
 		if (breakPoints.IsBreakOnAllRuntimeError()) {
 			//エディタスタックレベルの確認
 			auto stackLevel = executeContext.MakeStackTrace(executingNode, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
@@ -1794,7 +1794,7 @@ namespace sakura {
 		}
 	}
 
-	void Debugger::NotifyError(const RuntimeError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
+	void Debugger::NotifyError(const ScriptError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
 		if (DebugSystem::GetInstance() != nullptr) {
 			DebugSystem::GetInstance()->NotifyThrowExceotion(runtimeError, executingNode, executeContext);
 		}

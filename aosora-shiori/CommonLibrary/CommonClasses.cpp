@@ -9,24 +9,6 @@
 
 namespace sakura {
 
-	
-	
-	//ScriptObjectのシリアライザ
-	class ObjectSerializer {
-	public:
-		//json->objref
-		static ScriptValueRef Deserialize(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
-		static Reference<ScriptObject> DeserializeObject(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
-		static Reference<ScriptArray> DeserializeArray(const std::shared_ptr<JsonTokenBase>& token, ScriptInterpreter& interpreter);
-		static ScriptValueRef Deserialize(const std::string& json, ScriptInterpreter& interpreter);
-
-		//obj->json
-		static std::shared_ptr<JsonTokenBase> Serialize(const ScriptValueRef& value);
-		static std::shared_ptr<JsonArray> SerializeArray(const Reference<ScriptArray>& obj);
-		static std::shared_ptr<JsonObject> SerializeObject(const ObjectRef& obj);
-		static std::string Serialize(const ObjectRef& obj);
-	};
-
 	ScriptValueRef ObjectSerializer::Deserialize(const std::string& json, ScriptInterpreter& interpreter) {
 		auto jsonResult = JsonSerializer::Deserialize(json);
 		if (!jsonResult.success) {

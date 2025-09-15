@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <fstream>
+#include <filesystem>
 #include "AST/AST.h"
 #include "Interpreter/ScriptVariable.h"
 #include "Misc/Utility.h"
@@ -9,8 +10,9 @@ namespace sakura {
 	class ScriptExecuteContext;
 	class ClassData;
 	class BlockScope;
-	class RuntimeError;
+	class ScriptError;
 	class ScriptInterpreterStack;
+	class UnitObject;
 
 	class ScriptExecutor {
 	private:
@@ -22,6 +24,8 @@ namespace sakura {
 		static ScriptValueRef ExecuteStringLiteral(const ASTNodeStringLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteNumberLiteral(const ASTNodeNumberLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteContextValue(const ASTNodeContextValue& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteUnitRoot(const ASTNodeUnitRoot& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteAssignSymbol(const ASTNodeAssignSymbol& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteArrayInitializer(const ASTNodeArrayInitializer& node, ScriptExecuteContext& executeContext);
@@ -77,6 +81,9 @@ namespace sakura {
 		static ScriptValueRef ExecuteASTNode(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 	};
 
+	struct UnitData {
+		std::map<std::string, ScriptValueRef> unitVariables;	//ユニット変数
+	};
 
 	//スクリプト実行インタプリタ
 	class ScriptInterpreter {
@@ -88,10 +95,11 @@ namespace sakura {
 
 		//システムレジストリ(書き込み禁止)
 		std::map<std::string, ScriptValueRef> systemRegistry;
-		std::map<std::string, ScriptValueRef> globalVariables;
+		//std::map<std::string, ScriptValueRef> globalVariables;
+		std::map<std::string, UnitData> units;
 
 		//クラス型情報
-		std::map<std::string, Reference<ClassData>> classMap;
+		//std::map<std::string, Reference<ClassData>> classMap;
 		std::map<uint32_t, Reference<ClassData>> classIdMap;
 
 		//ネイティブクラス用の、staticな情報ストア(クラスごとにScriptObject１個)
@@ -149,6 +157,12 @@ namespace sakura {
 			return securityLevel;
 		}
 
+		//セキュリティレベル的にローカルマシンデータにアクセスしていいかを確認
+		bool IsAllowLocalAccess() const {
+			//local時のみ
+			return GetSecurityLevel() == SecurityLevel::LOCAL;
+		}
+
 		//ワーキングディレクトリ(パス区切り文字終端)
 		void SetWorkingDirectory(const std::string& dir) {
 			workingDirectory = dir;
@@ -158,15 +172,21 @@ namespace sakura {
 			return workingDirectory;
 		}
 
+		//TODO: relativePathといいつつ絶対パスを考慮してるので考える⋯
 		std::string GetFileName(const std::string& relativePath) const {
+			if (std::filesystem::path(relativePath).is_absolute()) {
+				//絶対パスだったらなにもしない
+				return relativePath;
+			}
 			return workingDirectory + relativePath;
 		}
 
 
 		//クラスの登録
 		void ImportClasses(const std::map<std::string, ScriptClassRef>& classMap);
-		void ImportClass(const std::shared_ptr<const ClassBase>& nativeClass);
-		void CommitClasses();
+		void ImportClass(const std::shared_ptr<ClassBase>& nativeClass);
+		std::shared_ptr<ScriptParseError> CommitClasses();
+		ClassData* FindClass(const ClassPath& classPath, const ScriptUnitAlias* alias);
 
 		//システムレジストリ値を追加
 		void RegisterSystem(const std::string& name, const ScriptValueRef& value) {
@@ -194,6 +214,10 @@ namespace sakura {
 
 		//グローバルから取得
 		ScriptValueRef GetGlobalVariable(const std::string& name) {
+#if 1
+			//メインユニットを使用する
+			return GetUnitVariable(name, "main");
+#else
 			//値を探して返す
 			auto it = globalVariables.find(name);
 			if (it != globalVariables.end()) {
@@ -202,10 +226,15 @@ namespace sakura {
 			else {
 				return nullptr;
 			}
+#endif
 		}
 
 		//グローバルに設定
 		void SetGlobalVariable(const std::string& name, const ScriptValueRef& value) {
+#if 1
+			//メインユニットを使用する
+			SetUnitVariable(name, value, "main");
+#else
 			auto it = globalVariables.find(name);
 			if (it != globalVariables.end()) {
 				it->second = value;
@@ -213,10 +242,59 @@ namespace sakura {
 			else {
 				globalVariables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
 			}
+#endif
 		}
 
+		//現在のユニット変数を取得
+		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
+
+			//unitがない場合は追加
+			//TODO: 追加を許容しなくなるかも?
+			if (!units.contains(scriptUnit)) {
+				RegisterUnit(scriptUnit);
+			}
+
+			auto& variables = units.find(scriptUnit)->second.unitVariables;
+			auto it = variables.find(name);
+			if (it != variables.end()) {
+				return it->second;
+			}
+			else {
+				return nullptr;
+			}
+		}
+
+		//現在のユニット変数を設定
+		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
+
+			//unitがない場合は追加
+			//TODO: 追加を許容しなくなるかも?
+			if (!units.contains(scriptUnit)) {
+				RegisterUnit(scriptUnit);
+			}
+
+			auto& variables = units.find(scriptUnit)->second.unitVariables;
+			auto it = variables.find(name);
+			if (it != variables.end()) {
+				it->second = value;
+			}
+			else {
+				variables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
+			}
+		}
+
+		//ユニットを登録
+		void RegisterUnit(const std::string& unitName);
+
+		//ルート空間からユニットを取得
+		Reference<UnitObject> GetUnit(const std::string& unitName);
+
+		//エイリアス指定群から値の参照
+		ScriptValueRef GetFromAlias(const ScriptUnitAlias& alias, const std::string& name);
+
 		//クラス取得
-		ScriptValueRef GetClass(const std::string& name);
+		//ScriptValueRef GetClass(const std::string& name);
+		ScriptValueRef GetClass(const uint32_t typeId);
 
 		//クラス取得
 		template<typename T>
@@ -232,7 +310,7 @@ namespace sakura {
 
 
 		//クラスID取得
-		uint32_t GetClassId(const std::string& name);
+		//uint32_t GetClassId(const std::string& name);
 
 		//クラス名取得
 		std::string GetClassTypeName(uint32_t typeId);
@@ -252,6 +330,8 @@ namespace sakura {
 			return objectManager.CreateObject<ScriptObject>();
 		}
 
+		//配列生成
+		Reference<ScriptArray> CreateArray();
 		//ネイティブオブジェクト作成
 		template<typename T, typename... Args>
 		Reference<T> CreateNativeObject(Args... args) {
@@ -260,7 +340,7 @@ namespace sakura {
 
 		//クラスインスタンス生成
 		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context);
-		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ScriptObject> scriptObjInstance);
+		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance);
 
 
 		//オブジェクト型判定
@@ -421,6 +501,20 @@ namespace sakura {
 				//ループをひとつ離脱したのでステータスをもとに戻す
 				st.loopDepth--;
 				st.loopMode = LoopMode::Normal;
+				assert(st.loopDepth >= 0);
+			}
+		};
+
+		class TryScope {
+		public:
+			ScriptInterpreterStack& st;
+			TryScope(ScriptInterpreterStack& stack) :
+				st(stack) {
+				st.tryDepth++;
+			}
+			~TryScope() {
+				st.tryDepth--;
+				assert(st.tryDepth >= 0);
 			}
 		};
 
@@ -437,6 +531,9 @@ namespace sakura {
 		int32_t loopDepth;
 		LoopMode loopMode;
 
+		//try
+		int32_t tryDepth;
+
 		//トーク
 		TalkStringCombiner::SpeakedSpeakers speakedCache;
 		std::string talkBody;
@@ -445,6 +542,7 @@ namespace sakura {
 
 		//このスタック位置の関数名
 		std::string funcName;
+
 
 	private:
 		ScriptInterpreterStack(ScriptInterpreterStack* parent) :
@@ -456,6 +554,7 @@ namespace sakura {
 			leaveMode(LeaveMode::None),
 			loopDepth(0),
 			loopMode(LoopMode::Normal),
+			tryDepth(0),
 			isTalkLineEnd(false),
 			isTalkJump(false)
 		{
@@ -605,6 +704,21 @@ namespace sakura {
 			return callingBlockScope;
 		}
 
+		//tryブロック内かどうか(例外を投げた場合catchされるかどうか)
+		bool IsTryBlock() const {
+			if (tryDepth > 0) {
+				return true;
+			}
+
+			//スタックをさかのぼってcatchスコープにあるかを確認する
+			if (parent != nullptr) {
+				return parent->IsTryBlock();
+			}
+			else {
+				return false;
+			}
+		}
+
 		//子スタックフレームの作成
 		ScriptInterpreterStack CreateChildStackFrame(const ASTNodeBase* callingNode, const Reference<BlockScope>& callingScope, const std::string& targetFunctionName) {
 
@@ -614,6 +728,17 @@ namespace sakura {
 			ScriptInterpreterStack childStack(this);
 			childStack.SetFunctionName(targetFunctionName);
 			return childStack;
+		}
+
+		//親スタックフレームのメタデータを取得
+		ScriptSourceMetadataRef GetParentStackSourceMetadata() const {
+			if (parent == nullptr) {
+				return nullptr;
+			}
+			if (parent->GetCallingASTNode() == nullptr) {
+				return nullptr;
+			}
+			return parent->GetCallingASTNode()->GetSourceMetadata();
 		}
 
 		//TalkBuilderで設定されたTalkHeaderを必要に応じて追加
@@ -689,8 +814,8 @@ namespace sakura {
 		//新しいブロックスコープのコンテキストを作る
 		ScriptExecuteContext CreateChildBlockScopeContext();
 
-		ScriptValueRef GetSymbol(const std::string& name);
-		void SetSymbol(const std::string& name, const ScriptValueRef& value);
+		ScriptValueRef GetSymbol(const std::string& name, const ScriptSourceMetadata& metadata);
+		void SetSymbol(const std::string& name, const ScriptValueRef& value, const ScriptSourceMetadata& metadata);
 
 		//スタックトレースの取得
 		std::vector<CallStackInfo> MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& currentFuncName);
@@ -700,8 +825,8 @@ namespace sakura {
 
 		//エラーのスローヘルパ
 		template<typename T>
-		Reference<RuntimeError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
-			Reference<RuntimeError> err = interpreter.CreateNativeObject<T>(message);
+		Reference<ScriptError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
+			Reference<ScriptError> err = interpreter.CreateNativeObject<T>(message);
 			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err, context);
 			return err;
 		}

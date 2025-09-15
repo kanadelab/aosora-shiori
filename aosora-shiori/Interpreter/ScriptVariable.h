@@ -17,6 +17,7 @@ namespace sakura {
 
 	class ClassData;
 	class ScriptObject;
+	class ScriptArray;
 	class ScriptInterpreter;
 	class ScriptExecuteContext;
 	class ObjectBase;
@@ -122,18 +123,23 @@ namespace sakura {
 	//オブジェクト
 	class ObjectBase : public CollectableBase {
 	private:
-		uint32_t typeId;
+		uint32_t typeId;				//スクリプト側に見せる型のID
+		uint32_t nativeObjectTypeId;	//C++側の実際の型ID
 
 	protected:
+		//スクリプトに渡す型を変更する
+		//主にClassInstanceを表現するためのもの
 		void SetInstanceTypeId(uint32_t id) { typeId = id; }
 
 	public:
 		ObjectBase(uint32_t objectTypeId):
-			typeId(objectTypeId)
+			typeId(objectTypeId),
+			nativeObjectTypeId(objectTypeId)
 		{}
 
 		//オブジェクトタイプIDの取得
 		uint32_t GetInstanceTypeId() const { return typeId; }
+		uint32_t GetNativeInstanceTypeId() const { return nativeObjectTypeId; }
 
 		//ゲッタとセッタ
 		virtual ScriptValueRef Get(const Reference<ObjectBase>& self, const std::string& key, ScriptExecuteContext& executeContext);
@@ -237,6 +243,7 @@ namespace sakura {
 		}
 
 		static ScriptValueRef MakeObject(ScriptInterpreter& interpreter);
+		static ScriptValueRef MakeArray(ScriptInterpreter& interpreter);
 
 		static ScriptValueRef MakeNull() {
 			return ScriptValueRef(new ScriptValue(ScriptValueType::Null));
@@ -254,6 +261,8 @@ namespace sakura {
 				return !stringValue.empty();	//カラでなければ true
 			case ScriptValueType::Boolean:
 				return boolValue;
+			case ScriptValueType::Object:		//オブジェクトは常にtrue
+				return true;
 			default:
 				//未知
 				assert(false);
@@ -478,12 +487,6 @@ namespace sakura {
 		//連想配列の実体
 		std::map<std::string, ScriptValueRef> members;
 
-		//スクリプトクラス型
-		Reference<ClassData> scriptClass;
-
-		//ネイティブクラスインスタンス。スクリプトの基底型から１つ継承したネイティブ型
-		ObjectRef nativeClassInstance;
-
 	public:
 
 		ScriptObject() {
@@ -519,27 +522,72 @@ namespace sakura {
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 
-		//クラス情報の設定、初期化時にしか呼ばない
-		void SetClassInfo(const Reference<ClassData>& classData);
+
+	};
+
+	//クラスインスタンス
+	class UpcastClassInstance;
+	class ClassInstance : public Object<ClassInstance> {
+		friend class UpcastClassInstance;
+	private:
+		//スクリプトクラス型
+		Reference<ClassData> classData;
+
+		//スクリプト向けの領域、thisに相当するキーバリューストア
+		Reference<ScriptObject> scriptStore;
+
+		//ネイティブクラスインスタンス。スクリプトの基底型から１つ継承したネイティブ型
+		ObjectRef nativeClassInstance;
+
+	private:
+		void SetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
+		ScriptValueRef GetInternal(const Reference<ClassInstance>& self, const Reference<ClassData>& classType, const std::string& key, ScriptExecuteContext& executeContext);
+
+	public:
+
+		ClassInstance(const Reference<ClassData>& classType, ScriptExecuteContext& executeContext);
 
 		//継承元のネイティブオブジェクトを設定
 		void SetNativeBaseInstance(const ObjectRef& nativeInstance) {
 			nativeClassInstance = nativeInstance;
 		}
-
-		const ObjectRef& GetNativeBaseInstance() const {
-			return nativeClassInstance;
-		}
-
+		const ObjectRef& GetNativeBaseInstance() const { return nativeClassInstance; }
+		const Reference<ScriptObject>& GetScriptStore() const { return scriptStore; }
+		
+		Reference<UpcastClassInstance> MakeBase(const Reference<ClassInstance>& self, const ScriptClassRef& contextClass, ScriptExecuteContext& executeContext);
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 	};
 
+	//クラスインスタンスのアップキャスト体
+	class UpcastClassInstance : public Object<UpcastClassInstance> {
+	private:
+		//参照先
+		Reference<ClassInstance> classInstance;
+		
+		//参照型
+		Reference<ClassData> upcastedClassData;
+
+	public:
+		UpcastClassInstance(const Reference<ClassInstance>& instance, const Reference<ClassData> upcastedType):
+			classInstance(instance),
+			upcastedClassData(upcastedType) 
+		{}
+
+		const Reference<ClassInstance>& GetClassInstance() const { return classInstance; }
+		const Reference<ClassData>& GetUpcastedClassData() const { return upcastedClassData; }
+
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+	};
 
 	//関数リクエスト
 	class FunctionRequest {
 	private:
 		std::vector<ScriptValueRef> args;
 		ScriptExecuteContext& executeContext;
-		const ASTNodeBase* callingNode;
 
 	public:
 
@@ -556,6 +604,9 @@ namespace sakura {
 		ScriptExecuteContext& GetContext() const {
 			return executeContext;
 		}
+
+		//インタプリタ取得
+		ScriptInterpreter& GetInterpreter() const;
 
 		//引数の数
 		size_t GetArgumentCount() const {

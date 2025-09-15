@@ -207,9 +207,9 @@ namespace sakura {
 			return parentClass;
 		}
 
-		//子クラス追加
-		void AddChildClass(const Reference<ClassData>& child) {
-			const uint32_t typeId = GetClassTypeId();
+		//子以降のアップキャスト関係にある型を追加
+		void AddUpcastType(const Reference<ClassData>& child) {
+			const uint32_t typeId = child->GetClassTypeId();
 			assert(typeId != ObjectTypeIdGenerator::INVALID_ID);
 			upcastTypes.insert(typeId);
 		}
@@ -219,16 +219,18 @@ namespace sakura {
 			return upcastTypes.contains(objectClassId);
 		}
 
-		void SetToInstance(const std::string& key, const ScriptValueRef& value, ScriptObject& instance, ScriptExecuteContext& executeContext);
-		ScriptValueRef GetFromInstance(const std::string& key, ScriptObject& instance, ScriptExecuteContext& executeContext);
+		void SetToInstance(const std::string& key, const ScriptValueRef& value, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext);
+		ScriptValueRef GetFromInstance(const std::string& key, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext);
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+
+		
 	};
 
 	//エラーオブジェクト
-	class RuntimeError : public Object<RuntimeError> {
+	class ScriptError : public Object<ScriptError> {
 	private:
 		bool canCatch;
 		bool hasCallstackInfo;
@@ -236,7 +238,7 @@ namespace sakura {
 		std::vector<CallStackInfo> callStackInfo;
 
 	public:
-		RuntimeError(const std::string& errorMessage):
+		ScriptError(const std::string& errorMessage):
 			canCatch(true),
 			hasCallstackInfo(false),
 			message(errorMessage)
@@ -263,7 +265,9 @@ namespace sakura {
 		const std::string ToString() const {
 			std::string r;
 			for (const auto& info : callStackInfo) {
-				r += info.sourceRange.ToString() + "\n";
+				if (info.hasSourceRange) {
+					r += info.sourceRange.ToString() + "\n";
+				}
 			}
 			r += message;
 			return r;
@@ -279,7 +283,24 @@ namespace sakura {
 		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
 		static void CreateObject(const FunctionRequest& req, FunctionResponse& res);
+
+		//スクリプト向け実装
+		static void ScriptToString(const FunctionRequest& request, FunctionResponse& response) {
+			ScriptError* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptError>(request.GetContext().GetBlockScope()->GetThisValue());
+			//スタックはなしでエラーメッセージだけにしておく
+			response.SetReturnValue(ScriptValue::Make(obj->message));
+		}
+	};
+
+	//ランタイム側のエラー
+	class RuntimeError : public ScriptError {
+	public:
+		RuntimeError(const std::string& errorMessage) :ScriptError(errorMessage)
+		{
+		}
+
 	};
 
 
@@ -362,6 +383,9 @@ namespace sakura {
 
 	//リフレクション
 	class Reflection : public Object<Reflection> {
+	private:
+		static ScriptSourceMetadataRef GetCallingSourceMetadata(const FunctionRequest& request);
+
 	public:
 		static void ScopeGet(const FunctionRequest& request, FunctionResponse& response);
 		static void ScopeSet(const FunctionRequest& request, FunctionResponse& response);
@@ -565,6 +589,25 @@ namespace sakura {
 
 		//トークの先頭に付与するスクリプトを取得
 		static const std::string& GetScriptHead(ScriptInterpreter& interpreter);
+	};
+
+	//ユニットオブジェクト
+	//ScriptUnit参照用の専用オブジェクト
+	class UnitObject : public Object<UnitObject> {
+	private:
+		std::string path;
+
+	public:
+		UnitObject(const std::string& unitPath):
+			path(unitPath)
+		{ }
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
+		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+
+		ScriptValueRef Get(const std::string& key, ScriptInterpreter& interpreter);
+		void Set(const std::string& ket, const ScriptValueRef& value, ScriptInterpreter& interpreter);
 	};
 
 }

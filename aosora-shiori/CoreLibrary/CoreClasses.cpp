@@ -51,27 +51,19 @@ namespace sakura {
 			}
 		}
 	}
-
-	void ClassData::SetToInstance(const std::string& key, const ScriptValueRef& value, ScriptObject& instance, ScriptExecuteContext& executeContext) {
+	
+	
+	void ClassData::SetToInstance(const std::string& key, const ScriptValueRef& value, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext) {
 
 		if (metadata->IsScriptClass()) {
-			//スクリプトクラスを示している場合はそちらから検索する
-			const ScriptClass& scriptMetadata = static_cast<const ScriptClass&>(*metadata);
-			if (scriptMetadata.ContainsMember(key)) {
-				//キーが有効であれば中身をつかってよい
-				instance.RawSet(key, value);
-				return;
-			}
-			else if (methods.contains(key)) {
-				//メソッドとして存在していたら書き込み無効
-				return;
-			}
-
+			//スクリプトクラスではこないはず（キーバリューストアへのアクセスになるため）
+			assert(false);
+			return;
 		}
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
-			assert(instance.GetNativeBaseInstance() != nullptr);
-			instance.GetNativeBaseInstance()->Set(instance.GetNativeBaseInstance(), key, value, executeContext);
+			assert(instance->GetNativeBaseInstance() != nullptr);
+			instance->GetNativeBaseInstance()->Set(instance->GetNativeBaseInstance(), key, value, executeContext);
 			return;
 		}
 
@@ -81,25 +73,17 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ClassData::GetFromInstance(const std::string& key, ScriptObject& instance, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ClassData::GetFromInstance(const std::string& key, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext) {
 
 		if (metadata->IsScriptClass()) {
-			//スクリプトクラスを示している場合はそちらから検索する
-			const ScriptClass& scriptMetadata = static_cast<const ScriptClass&>(*metadata);
-			if (scriptMetadata.ContainsMember(key)) {
-				//キーが有効であれば中身をつかってよい
-				return instance.RawGet(key);
-			}
-			else if (methods.contains(key)) {
-				//WARN: ObjectRefを作り直しているのがまずそう
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], 
-					ScriptValue::Make(ObjectRef(&instance))));
+			if (methods.contains(key)) {
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], ScriptValue::Make(instance)));
 			}
 		}
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
-			assert(instance.GetNativeBaseInstance() != nullptr);
-			return instance.GetNativeBaseInstance()->Get(instance.GetNativeBaseInstance(), key, executeContext);
+			assert(instance->GetNativeBaseInstance() != nullptr);
+			return instance->GetNativeBaseInstance()->Get(instance->GetNativeBaseInstance(), key, executeContext);
 		}
 
 		//見つからない場合さらに親を見る
@@ -109,6 +93,7 @@ namespace sakura {
 
 		return nullptr;
 	}
+	
 
 	void ClassData::FetchReferencedItems(std::list<CollectableBase*>& result) {
 		result.push_back(parentClass.Get());
@@ -152,16 +137,23 @@ namespace sakura {
 	}
 
 	//エラー基底
-	void RuntimeError::FetchReferencedItems(std::list<CollectableBase*>& result) {
+	void ScriptError::FetchReferencedItems(std::list<CollectableBase*>& result) {
 		//なし
 	}
 
-	void RuntimeError::CreateObject(const FunctionRequest& req, FunctionResponse& res) {
+	ScriptValueRef ScriptError::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "ToString") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptError::ScriptToString, self));
+		}
+		return ScriptValue::Null;
+	}
+
+	void ScriptError::CreateObject(const FunctionRequest& req, FunctionResponse& res) {
 		std::string message = "<no message>";
 		if (req.GetArgumentCount() > 0) {
 			message = req.GetArgument(0)->ToString();
 		}
-		res.SetReturnValue(ScriptValue::Make(req.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(message)));
+		res.SetReturnValue(ScriptValue::Make(req.GetContext().GetInterpreter().CreateNativeObject<ScriptError>(message)));
 	}
 
 	//呼出順のリストを作成
@@ -230,8 +222,7 @@ namespace sakura {
 	}
 
 	void OverloadedFunctionList::ThisCall(const FunctionRequest& request, FunctionResponse& response, const ScriptValueRef& thisValue) {
-		//TODO: thisの考慮が必要な場合の検討
-		auto selectedItem = SelectItem(request.GetContext(), nullptr);
+		auto selectedItem = SelectItem(request.GetContext(), thisValue);
 		if (selectedItem->IsObject()) {
 			//関数呼び出しを実行、そのままレスポンスをもらって帰る
 			std::vector<ScriptValueRef> args = request.GetArgumentCollection();
@@ -257,12 +248,10 @@ namespace sakura {
 		}
 
 		//デリゲートを返す
-		if (item->nativeFunc == nullptr)
-		{
+		if (item->nativeFunc == nullptr) {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->scriptFunc, thisValue, item->blockScope));
 		}
-		else
-		{
+		else {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->nativeFunc, thisValue, item->blockScope));
 		}
 	}
@@ -286,10 +275,23 @@ namespace sakura {
 	}
 
 	//リフレクション
+	ScriptSourceMetadataRef Reflection::GetCallingSourceMetadata(const FunctionRequest& request) {
+		//スタックの1段上を参照して呼び出し元のデータを取得
+		return request.GetContext().GetStack().GetParentStackSourceMetadata();
+	}
+
 	void Reflection::ScopeGet(const FunctionRequest& request, FunctionResponse& response) {
+		//スクリプト呼び出し元のユニットを取得
+		auto sourcemeta = GetCallingSourceMetadata(request);
+		if (sourcemeta == nullptr) {
+			assert(false);
+			response.SetReturnValue(ScriptValue::Null);
+			return;
+		}
+
 		//スコープから指定された文字列で検索する
 		if (request.GetArgumentCount() >= 1) {
-			response.SetReturnValue(request.GetContext().GetSymbol(request.GetArgument(0)->ToString()));
+			response.SetReturnValue(request.GetContext().GetSymbol(request.GetArgument(0)->ToString(), *sourcemeta));
 		}
 		else {
 			//TODO: 例外投げるべき？
@@ -298,8 +300,15 @@ namespace sakura {
 	}
 
 	void Reflection::ScopeSet(const FunctionRequest& request, FunctionResponse& response) {
+		//スクリプト呼び出し元のユニットを取得
+		auto sourcemeta = GetCallingSourceMetadata(request);
+		if (sourcemeta == nullptr) {
+			assert(false);
+			return;
+		}
+
 		if (request.GetArgumentCount() >= 2) {
-			request.GetContext().SetSymbol(request.GetArgument(0)->ToString(), request.GetArgument(1));
+			request.GetContext().SetSymbol(request.GetArgument(0)->ToString(), request.GetArgument(1), *sourcemeta);
 		}
 	}
 
@@ -416,4 +425,45 @@ namespace sakura {
 	const std::string& TalkBuilder::GetScriptHead(ScriptInterpreter& interpreter) {
 		return GetCurrentSettings(interpreter).GetScriptHead();
 	}
+
+	//ユニットオブジェクト
+	ScriptValueRef UnitObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+		if (!path.empty()) {
+			return executeContext.GetInterpreter().GetUnitVariable(key, path);
+		}
+		else {
+			//ルートからユニット取得
+			return ScriptValue::Make(executeContext.GetInterpreter().GetUnit(key));
+		}
+	}
+
+	void UnitObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		if (!path.empty()) {
+			executeContext.GetInterpreter().SetUnitVariable(key, value, path);
+		}
+		else {
+			//ルートへの書き込み禁止
+		}
+	}
+
+	ScriptValueRef UnitObject::Get(const std::string& key, ScriptInterpreter& interpreter) {
+		if (!path.empty()) {
+			return interpreter.GetUnitVariable(key, path);
+		}
+		else {
+			//ルートからユニット取得
+			return ScriptValue::Make(interpreter.GetUnit(key));
+		}
+	}
+
+	void UnitObject::Set(const std::string& key, const ScriptValueRef& value, ScriptInterpreter& interpreter) {
+		if (!path.empty()) {
+			interpreter.SetUnitVariable(key, value, path);
+		}
+		else {
+			//ルートへの書き込み禁止
+		}
+	}
+
+
 }

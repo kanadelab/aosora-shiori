@@ -50,6 +50,9 @@
     <ClCompile Include="Debugger\DebuggerUtility.cpp">
       <Filter>Debugger</Filter>
     </ClCompile>
+    <ClCompile Include="CommonLibrary\StandardLibrary.cpp">
+      <Filter>CommonLibrary</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -117,6 +120,9 @@
     </ClInclude>
     <ClInclude Include="Debugger\DebuggerUtility.h">
       <Filter>Debugger</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonLibrary\StandardLibrary.h">
+      <Filter>CommonLibrary</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

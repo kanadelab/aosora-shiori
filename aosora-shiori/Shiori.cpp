@@ -110,6 +110,7 @@ namespace sakura {
 			if (loadResult->success) {
 				parsedFileList.push_back(loadResult);
 				interpreter.ImportClasses(loadResult->classMap);
+				interpreter.RegisterUnit(loadResult->root->GetSourceMetadata()->GetScriptUnit()->GetUnit());
 			}
 			else {
 				scriptLoadErrors.push_back(*loadResult->error);
@@ -118,6 +119,14 @@ namespace sakura {
 
 		//デバッグブートストラップはここで処理する
 		Debugger::Bootstrap();
+
+		if (scriptLoadErrors.empty()) {
+			//クラスのリレーションシップ構築
+			auto commitError = interpreter.CommitClasses();
+			if (commitError != nullptr) {
+				scriptLoadErrors.push_back(*commitError.get());
+			}
+		}
 
 		//エラーが発生していたら以降の処理を打ち切る
 		if (!scriptLoadErrors.empty()) {
@@ -131,9 +140,6 @@ namespace sakura {
 			}
 			return;
 		}
-
-		//クラスのリレーションシップ構築
-		interpreter.CommitClasses();
 
 		//ルートスクリプト実行
 		for (auto item : parsedFileList) {
@@ -268,12 +274,6 @@ namespace sakura {
 				projectSettings.scriptFiles.push_back(filename);
 			}
 		}
-	}
-
-	void Shiori::LoadWithoutProject() {
-
-		//クラスのリレーションシップ構築
-		interpreter.CommitClasses();
 	}
 
 	void Shiori::Unload() {
@@ -423,7 +423,7 @@ namespace sakura {
 		if (shioriObj == nullptr || shioriObj->GetObjectInstanceTypeId() != ScriptObject::TypeId()) {
 			//ScriptObjectになってなかったら上書き
 			shioriObj = ScriptValue::Make(interpreter.CreateObject());
-			interpreter.SetGlobalVariable("Shiori", shioriObj);
+			interpreter.SetUnitVariable("Shiori", shioriObj, "system");
 		}
 
 		//ReferenceListの作成
@@ -692,7 +692,7 @@ namespace sakura {
 
 	//エラーをさくらスクリプトによるゴースト上での表示むけに整形
 	std::string Shiori::ToStringRuntimeErrorForSakuraScript(const ObjectRef& errObj, bool isBooting) {
-		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		auto* err = interpreter.InstanceAs<ScriptError>(errObj);
 		assert(err != nullptr);
 
 		std::string ghostErrorGuide = std::string() + "\\0\\b[2]\\s[0]\\![quicksession,true]■" + TextSystem::Find("AOSORA_RUNTIME_ERROR_0") + "\\n" + TextSystem::Find("AOSORA_RUNTIME_ERROR_1") + "\\n\\n";
@@ -736,7 +736,7 @@ namespace sakura {
 
 	//エラーをエラーログ等の表示用に平文で整形
 	std::string Shiori::ToStringRuntimeErrorForErrorLog(const ObjectRef& errObj) {
-		auto* err = interpreter.InstanceAs<RuntimeError>(errObj);
+		auto* err = interpreter.InstanceAs<ScriptError>(errObj);
 		assert(err != nullptr);
 
 		std::string scriptErrorLog = TextSystem::Find("AOSORA_RUNTIME_ERROR_5");
