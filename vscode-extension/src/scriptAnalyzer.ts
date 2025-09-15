@@ -16,7 +16,9 @@ const AnalyzeResult = z.object({
 	range: z.optional(AnalyzedSourceRange),
 	functions: z.optional(z.array(z.object({
 		range: AnalyzedSourceRange
-	})))
+	}))),
+	unit: z.optional(z.string()),
+	uses: z.optional(z.array(z.string()))
 });
 
 export type AnalyzedSourceRange = z.infer<typeof AnalyzedSourceRange>;

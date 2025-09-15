@@ -37,20 +37,27 @@
     ],
     "commands": [
       {
-        "command": "aosora-shiori.helloWorld",
-        "title": "Hello World"
-      },
-      {
         "command": "extension.aosora-shiori.debugEditorContents",
-        "title": "Debug File",
-        "category": "Mock Debug",
+        "title": "Debug Ghost",
+        "category": "Debug",
         "enablement": "!inDebugMode",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "aosora.sendcaret",
+        "title": "ゴーストに送信"
       }
     ],
     "breakpoints": [
       {
         "language": "aosora"
+      }
+    ],
+    "keybindings":[
+      {
+        "command": "aosora.sendcaret",
+        "key": "Alt+Q",
+        "when": "resourceLangId == aosora"
       }
     ],
     "menus": {
@@ -59,6 +66,12 @@
           "command": "extension.aosora-shiori.debugEditorContents",
           "when": "resourceLangId == aosora",
           "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "aosora.sendcaret",
+          "when": "resourceLangId == aosora"
         }
       ]
     },

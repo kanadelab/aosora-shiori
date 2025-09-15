@@ -194,10 +194,13 @@ namespace sakura {
 		//エラーのセット
 		ASTNodeRef Error(const std::string& errorCode, const ScriptToken& token) {
 
-#if defined(AOSORA_ENABLE_PARSE_ERROR_ASSERT)
-			//デバッグのためエラーだったら即止め
-			assert(false);
+#if defined(AOSORA_DEBUG)
+			if (DEBUG_ENABLE_ASSERT_PARSE_ERROR) {
+				//デバッグのためエラーだったら即止め
+				assert(false);
+			}
 #endif
+
 			//最初に発生したエラーだけを記録(エラーでパースが崩れたのにあわせてまたエラーになるのを回避するため)
 			if (!hasError) {
 				errorData.errorCode = errorCode;

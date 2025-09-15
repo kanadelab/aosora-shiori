@@ -82,6 +82,8 @@ int main(int argc, char* argv[])
 	//グローバルレベルの関数とトークを収集する
 	std::vector<sakura::ConstASTNodeRef> topLevelNodes;
 	ast->root->GetChildren(topLevelNodes);
+	
+	const auto& unitAlias = ast->root->GetSourceMetadata()->GetAlias();
 
 	for (const auto& item : topLevelNodes) {
 		if (item->GetType() == sakura::ASTNodeType::FunctionStatement) {
@@ -91,8 +93,21 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	//use情報を取得
+	auto useList = sakura::JsonSerializer::MakeArray();
+
+	for (const auto item : unitAlias.GetAliasCollection()) {
+		useList->Add(sakura::JsonSerializer::From(item.second.fullPath));
+	}
+
+	for (size_t i = 0; i < unitAlias.GetWildcardAliasCount(); i++) {
+		useList->Add(sakura::JsonSerializer::From(unitAlias.GetWildcardAlias(i) + ".*"));
+	}
+
 	resultObject->Add("error", sakura::JsonSerializer::From(false));
 	resultObject->Add("functions", functions);
+	resultObject->Add("unit", sakura::JsonSerializer::From(ast->root->GetSourceMetadata()->GetScriptUnit()->GetUnit()));
+	resultObject->Add("uses", useList);
 	std::cout << sakura::JsonSerializer::Serialize(resultObject);
 	sakura::TextSystem::DestroyInstance();
 	return 0;

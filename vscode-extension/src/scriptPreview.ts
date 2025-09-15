@@ -14,8 +14,16 @@ const ERROR_CODE_PREVIEW_SCRIPT_ERROR = 4;
 
 let isExecuting = false;
 
+//unitやuseが追加されたので、ゴーストに送信する場合これらの情報が必要になる。
+export type SendScript = {
+	scriptBody: string,
+	unit: string,
+	uses: string[]
+};
+
+
 //スクリプトプレビューイング
-export async function SendPreviewFunction(functionBody:string, extensionPath:string){
+export async function SendPreviewFunction(sendScript:SendScript, extensionPath:string){
 	if(isExecuting){
 		vscode.window.showErrorMessage(GetMessage().scriptPreview001);
 	}
@@ -37,6 +45,12 @@ export async function SendPreviewFunction(functionBody:string, extensionPath:str
 				command += ` "${workspace}/"`;
 			}
 		}
+
+		let functionBody = "";
+		functionBody += `unit ${sendScript.unit};\r\n`;
+		functionBody += sendScript.uses.map(o => `use ${o};`).join("\r\n");
+		functionBody += "\r\n";
+		functionBody += sendScript.scriptBody;
 
 		//一時ファイルを用意して呼び出す
 		await fs.promises.writeFile(outPath, functionBody, 'utf-8');

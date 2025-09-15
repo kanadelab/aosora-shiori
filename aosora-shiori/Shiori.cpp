@@ -6,6 +6,10 @@
 #include "Debugger/Debugger.h"
 
 namespace sakura {
+
+	//パースエラーをアサートで止める
+	bool DEBUG_ENABLE_ASSERT_PARSE_ERROR = false;
+
 	//SHIORI 起動エラー
 	const std::string ERROR_SHIORI_001 = "S001";
 	const std::string ERROR_SHIORI_002 = "S002";

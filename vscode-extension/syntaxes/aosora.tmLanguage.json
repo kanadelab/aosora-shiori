@@ -75,10 +75,16 @@
 			]
 		},
 		"keywords": {
-			"patterns": [{
-				"name": "keyword.control.aosora",
-				"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|true|false|null|try|catch|finally|new|throw|class|member|init)\\b"
-			}]
+			"patterns": [
+				{
+					"name": "keyword.control.aosora",
+					"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|try|catch|finally|new|throw|class|unit|use|init)\\b"
+				},
+				{
+					"name": "keyword.other.aosora",
+					"match": "\\b(true|false|null)\\b"
+				}
+			]
 		},
 		"rootblock":{
 			"patterns": [

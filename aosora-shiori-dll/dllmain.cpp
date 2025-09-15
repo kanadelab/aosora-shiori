@@ -168,6 +168,10 @@ HGLOBAL CreateResponseMemory(const std::string& responseStr, long* len) {
 }
 
 extern "C" __declspec(dllexport) BOOL __cdecl load(HGLOBAL h, long len) {
+
+	//デバッグ時にパースエラーをアサートで止める
+	sakura::DEBUG_ENABLE_ASSERT_PARSE_ERROR = true;
+
 	char* ptr = static_cast<char*>(malloc(len + 1));
 	std::memcpy(ptr, h, len);
 	ptr[len] = '\0';

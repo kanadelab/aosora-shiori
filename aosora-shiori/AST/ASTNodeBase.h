@@ -219,6 +219,10 @@ namespace sakura {
 		const std::string& GetWildcardAlias(size_t index) const {
 			return wildcardAliases[index];
 		}
+
+		const std::map<std::string, AliasItem>& GetAliasCollection() const {
+			return aliasMap;
+		}
 	};
 
 	//ソーススコープのメタデータのこと
