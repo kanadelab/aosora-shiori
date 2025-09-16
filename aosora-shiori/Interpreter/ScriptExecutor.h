@@ -379,7 +379,13 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ObjectRef& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj.template Cast<T>().Get();
+				if (obj->GetNativeInstanceTypeId() == ClassInstance::TypeId()) {
+					//スクリプトクラスインスタンスをC++クラスにキャストする場合、内部型を得てからキャストする。
+					return obj.Cast<ClassInstance>()->GetNativeBaseInstance().template Cast<T>().Get();
+				}
+				else {
+					return obj.template Cast<T>().Get();
+				}
 			}
 			else {
 				return nullptr;
@@ -389,7 +395,13 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ScriptValueRef& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj->GetObjectRef().template Cast<T>().Get();
+				if (obj->GetObjectInstanceTypeId() == ClassInstance::TypeId()) {
+					//スクリプトクラスインスタンスをC++クラスにキャストする場合、内部型を得てからキャストする。
+					return obj->GetObjectRef().Cast<ClassInstance>()->GetNativeBaseInstance().template Cast<T>().Get();
+				}
+				else {
+					return obj->GetObjectRef().template Cast<T>().Get();
+				}
 			}
 			else {
 				return nullptr;
@@ -399,7 +411,12 @@ namespace sakura {
 		template<typename T>
 		T* InstanceAs(const ScriptValue& obj) {
 			if (InstanceIs<T>(obj)) {
-				return obj.GetObjectRef().template Cast<T>().Get();
+				if (obj.GetObjectInstanceTypeId() == ClassInstance::TypeId()) {
+					return obj.GetObjectRef().Cast<ClassInstance>()->GetNativeBaseInstance().template Cast<T>().Get();
+				}
+				else {
+					return obj.GetObjectRef().template Cast<T>().Get();
+				}
 			}
 			else {
 				return nullptr;
