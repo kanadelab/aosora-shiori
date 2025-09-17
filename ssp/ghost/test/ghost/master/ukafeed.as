@@ -9,7 +9,7 @@ use std.*;
 local ukafeedData = {};
 
 function RequestUkafeed {
-	return "\![execute,http-get,https://feed.ukagaka.net/json,--async=OnUkafeedLoaded]";
+	return "うかフィードを読むよ。\![execute,http-get,https://feed.ukagaka.net/json,--async=OnUkafeedLoaded]";
 }
 
 function OnUkafeedLoaded {
@@ -39,7 +39,7 @@ function OnUkafeedList {
 		result += "\![*]\__q[OnUkafeedItemDetail,{i}]\f[bold,1][{item.tags[0]}]\f[bold,default]{item.title}\__q\n";
 	}
 
-	return "\0\s[0]\b[2]\![quicksession,true]うかフィード  {result}\n\n\![*]\q[とじる,OnMenuClose]";
+	return "\0\s[0]\b[2]\![quicksession,true]うかフィード\n\n{result}\n\n\![*]\q[とじる,OnMenuClose]";
 }
 
 talk OnUkafeedItemDetail {

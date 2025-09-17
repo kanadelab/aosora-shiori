@@ -1,13 +1,13 @@
 /*
 	メニュー関係。
 */
-
+use ukafeed;
 
 talk MainMenu {
 	\s[4]なーあにっと。
 
 	\![*]\q[何か喋って,ランダムトーク]
-	\![*]\q[喋り間隔変更,FirstTalk]
+	\![*]\q[喋り間隔変更,OnChagneTalkInterval]
 	\![*]\q[呼ばれ方を変える,OnChangeUserName]
 	\![*]\q[かいものリスト,OnItemList]
 	\![*]\q[うかフィードを見る,OnUkafeed]
@@ -173,7 +173,7 @@ class ListItemFruit : ListItem {
 //かいものリスト
 local itemListCount = {
 	おにく: new ListItemMeat(),
-	おさかな: new ListItemFish2(),
+	おさかな: new ListItemFish(),
 	おやさい: new ListItem("おやさい"),
 	くだもの: new ListItemFruit()
 };
@@ -197,7 +197,7 @@ function かいものリスト表示 {
 	for(local i = 0; i < itemList.length; i++){
 		local itemName = itemList[i];
 		local item = itemListCount[itemName];
-		result += "\q[▲増やす,OnIncrementItem,{itemName}] \q[▼減らす,OnDecrementItem,{itemName}] {item.name}: {item.ToString()} {item.InstanceOf(ListItem)}\n";
+		result += "\q[▲増やす,OnIncrementItem,{itemName}] \q[▼減らす,OnDecrementItem,{itemName}] {item.name}: {item.ToString()}\n";
 	}
 
 	result += "\n\![*]\q[とじる,OnMenuClose]";
