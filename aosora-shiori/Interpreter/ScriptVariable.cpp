@@ -168,7 +168,6 @@ namespace sakura {
 	ClassInstance::ClassInstance(const Reference<ClassData>& classType, ScriptExecuteContext& executeContext)
 	{
 		//内部ストレージを生成
-		//TODO: ネイティブクラスの場合は不要
 		scriptStore = executeContext.GetInterpreter().CreateObject();
 
 		//タイプIDを指定

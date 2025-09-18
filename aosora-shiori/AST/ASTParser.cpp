@@ -60,6 +60,7 @@ namespace sakura {
 	const std::string ERROR_AST_045 = "A045";
 	const std::string ERROR_AST_046 = "A046";
 	const std::string ERROR_AST_047 = "A047";
+	const std::string ERROR_AST_049 = "A049";	//048はクラスリレーションエラーなのでここにはない
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -1899,8 +1900,7 @@ namespace sakura {
 		}
 		else {
 			//そのどれでもない場合は構文としておかしいのでエラー
-			//TODO: 正しいエラーを新設すること
-			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_049, parseContext.GetCurrent());
 		}
 	}
 

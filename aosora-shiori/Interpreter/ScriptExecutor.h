@@ -374,7 +374,6 @@ namespace sakura {
 
 
 		//ネイティブクラスオブジェクトへのキャスト
-		//TODO: ScriptObjectを渡した場合、中身のネイティブオブジェクトを参照できるようにする
 		//WARN: 結果を他に渡さないこと。スクリプトで継承したネイティブオブジェクトをもってくるとスクリプト部分が見えなくなってしまうため
 		template<typename T>
 		T* InstanceAs(const ObjectRef& obj) {

@@ -1728,7 +1728,11 @@ namespace sakura {
 				//戻り値と同じインスタンスを示しているはず
 				assert(r.Get() == createdObject.Get());
 
-				//TODO: NewClassInstanceが例外を出した場合に初期化を中断して離脱する
+				//親クラスコンストラクタが例外を返していたら離脱する
+				if (initStack.IsThrew()) {
+					context.ThrowError(callingNode, context.GetBlockScope(), "init", initStack.GetThrewError(), context);
+					return nullptr;
+				}
 			}
 
 			//thisを指定
