@@ -68,7 +68,6 @@ namespace sakura {
 	const std::string TOKEN_KEYWORD_FINALLY = "finally";
 	const std::string TOKEN_KEYWORD_THROW = "throw";
 	const std::string TOKEN_KEYWORD_CLASS = "class";
-	const std::string TOKEN_KEYWORD_MEMBER = "member";
 	const std::string TOKEN_KEYWORD_INIT = "init";
 	const std::string TOKEN_KEYWORD_NEW = "new";
 	const std::string TOKEN_KEYWORD_UNIT = "unit";

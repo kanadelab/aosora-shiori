@@ -22,6 +22,11 @@ namespace sakura {
 	//ASTふりわけ
 	ScriptValueRef ScriptExecutor::ExecuteInternal(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 
+		//非実行ノードはスルー
+		if (!node.IsExecutable()) {
+			return ScriptValue::Null;
+		}
+
 		//無限ループ対策の実行ステップ制限
 		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
 			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
@@ -111,8 +116,10 @@ namespace sakura {
 
 		for (const ConstASTNodeRef& stmt : node.GetStatements()) {
 
-			//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
-			Debugger::NotifyASTExecute(*stmt.get(), executeContext);
+			if (stmt->IsExecutable()) {
+				//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
+				Debugger::NotifyASTExecute(*stmt.get(), executeContext);
+			}
 
 			//実行
 			ExecuteInternal(*stmt, executeContext);
@@ -1728,11 +1735,7 @@ namespace sakura {
 				//戻り値と同じインスタンスを示しているはず
 				assert(r.Get() == createdObject.Get());
 
-				//親クラスコンストラクタが例外を返していたら離脱する
-				if (initStack.IsThrew()) {
-					context.ThrowError(callingNode, context.GetBlockScope(), "init", initStack.GetThrewError(), context);
-					return nullptr;
-				}
+				//TODO: NewClassInstanceが例外を出した場合に初期化を中断して離脱する
 			}
 
 			//thisを指定

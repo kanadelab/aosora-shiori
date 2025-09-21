@@ -77,7 +77,9 @@ namespace sakura {
 
 		if (metadata->IsScriptClass()) {
 			if (methods.contains(key)) {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], ScriptValue::Make(instance)));
+				Reference< InstancedOverloadFunctionList> res = executeContext.GetInterpreter().CreateNativeObject<InstancedOverloadFunctionList>(methods[key], ScriptValue::Make(instance));
+				res->SetName(key);
+				return ScriptValue::Make(res);
 			}
 		}
 		else {

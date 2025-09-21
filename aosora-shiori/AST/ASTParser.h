@@ -77,7 +77,7 @@ namespace sakura {
 		static ASTNodeRef ParseASTNew(ASTParseContext& parseContext, const ScriptToken& operatorToken, const ASTNodeRef& target);
 
 		//クラスとuse宣言はASTを返さない
-		static void ParseASTClass(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTClass(ASTParseContext& parseContext);
 		static void ParseASTUse(ASTParseContext& parseContext);
 
 		//unitは文脈で宣言かオブジェクトかが変わる

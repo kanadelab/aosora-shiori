@@ -1410,12 +1410,21 @@ namespace sakura {
 				//一致するスタックフレームの情報を送る
 				Reference<BlockScope> scope = frame.blockScope;
 				while (scope != nullptr) {
+
+					//ローカル
 					for (auto& kvp : scope->GetLocalVariableCollection()) {
 						if (!addedSet.contains(kvp.first)) {
 							result->Add(MakeVariableInfo(kvp.first, kvp.second, breakSession));
 							addedSet.insert(kvp.first);
 						}
 					}
+
+					//this
+					if (scope->GetThisValue() != nullptr) {
+						result->Add(MakeVariableInfo("this", scope->GetThisValue(), breakSession));
+						addedSet.insert("this");
+					}
+
 					scope = scope->GetParentScope();
 				}
 				break;
@@ -1431,7 +1440,7 @@ namespace sakura {
 	JsonArrayRef EnumShioriRequests(BreakSession& breakSession) {
 		JsonArrayRef result = JsonSerializer::MakeArray();
 		ScriptInterpreter& interpreter = breakSession.GetContext().GetInterpreter();
-		auto shioriVariable = interpreter.GetGlobalVariable("Shiori");
+		auto shioriVariable = interpreter.GetUnitVariable("Shiori", "system");
 		ScriptObject* shioriObj = interpreter.InstanceAs<ScriptObject>(shioriVariable);
 		if (shioriObj == nullptr) {
 			//書き込まれているなどで期待した方でない場合無効
@@ -1554,6 +1563,12 @@ namespace sakura {
 			if (inst != nullptr) {
 				return EnumMembers(*inst, breakSession);
 			}
+		}
+
+		//クラスインスタンスは中身にアクセスさせる
+		if (obj->GetNativeInstanceTypeId() == ClassInstance::TypeId()) {
+			auto inst = obj.Cast<ClassInstance>();
+			return EnumMembers(*inst->GetScriptStore().Get(), breakSession);
 		}
 
 		//対応する型がない: 本来展開できないものについてはハンドルを発行しないはず⋯。

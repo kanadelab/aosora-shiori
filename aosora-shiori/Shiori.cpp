@@ -423,7 +423,7 @@ namespace sakura {
 		std::string result;
 
 		//リクエストをグローバル空間に書き込み
-		auto shioriObj = interpreter.GetGlobalVariable("Shiori");
+		auto shioriObj = interpreter.GetUnitVariable("Shiori", "system");
 		if (shioriObj == nullptr || shioriObj->GetObjectInstanceTypeId() != ScriptObject::TypeId()) {
 			//ScriptObjectになってなかったら上書き
 			shioriObj = ScriptValue::Make(interpreter.CreateObject());
@@ -457,7 +457,7 @@ namespace sakura {
 		shioriMap->RawSet("Headers", ScriptValue::Make(headers));
 
 		//グローバル空間からイベントを探す
-		auto variable = interpreter.GetGlobalVariable(eventName);
+		auto variable = interpreter.GetUnitVariable(eventName, "main");
 
 		if (variable != nullptr) {
 			//タイプによって挙動を換える

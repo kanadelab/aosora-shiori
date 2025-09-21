@@ -376,6 +376,14 @@ namespace sakura {
 			func(function)
 		{}
 
+		void SetName(const std::string& name) {
+			func->SetName(name);
+		}
+
+		const std::string& GetName() const {
+			return func->GetName();
+		}
+
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual bool CanCall() const override { return true; }
 		virtual void Call(const FunctionRequest& request, FunctionResponse& response);

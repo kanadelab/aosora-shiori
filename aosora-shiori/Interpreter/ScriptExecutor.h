@@ -212,39 +212,6 @@ namespace sakura {
 			return systemRegistry.contains(name);
 		}
 
-		//グローバルから取得
-		ScriptValueRef GetGlobalVariable(const std::string& name) {
-#if 1
-			//メインユニットを使用する
-			return GetUnitVariable(name, "main");
-#else
-			//値を探して返す
-			auto it = globalVariables.find(name);
-			if (it != globalVariables.end()) {
-				return it->second;
-			}
-			else {
-				return nullptr;
-			}
-#endif
-		}
-
-		//グローバルに設定
-		void SetGlobalVariable(const std::string& name, const ScriptValueRef& value) {
-#if 1
-			//メインユニットを使用する
-			SetUnitVariable(name, value, "main");
-#else
-			auto it = globalVariables.find(name);
-			if (it != globalVariables.end()) {
-				it->second = value;
-			}
-			else {
-				globalVariables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
-			}
-#endif
-		}
-
 		//現在のユニット変数を取得
 		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
 

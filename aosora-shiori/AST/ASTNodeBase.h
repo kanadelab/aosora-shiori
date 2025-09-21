@@ -60,6 +60,7 @@ namespace sakura {
 		AssignMember,
 		Try,
 		Throw,
+		Class,
 
 		//トークブロック
 		TalkSetSpeaker,
@@ -303,6 +304,7 @@ namespace sakura {
 
 		virtual ASTNodeType GetType() const { return ASTNodeType::Invalid; }
 		virtual void GetChildren(std::vector<ConstASTNodeRef>& nodes) const {};
+		virtual bool IsExecutable() const { return true; }
 
 		virtual const char* DebugName() const = 0;
 		virtual std::string DebugToString() const { return ""; }
@@ -364,34 +366,6 @@ namespace sakura {
 		std::vector<std::string> names;		//名前リスト
 		ScriptFunctionRef func;				//本体
 		ASTNodeRef condition;				//呼出条件
-	};
-
-	//スクリプトクラスメンバ
-	class ScriptClassMember {
-	private:
-		std::string name;
-
-		//メンバイニシャライザ
-		ASTNodeRef initializer;
-
-	public:
-		ScriptClassMember(const std::string& memberName, const ASTNodeRef& initializerNode) :
-			name(memberName),
-			initializer(initializerNode)
-		{}
-
-		ScriptClassMember(const std::string& memberName) :
-			name(memberName),
-			initializer(nullptr)
-		{}
-
-		std::string GetName() {
-			return name;
-		}
-
-		ASTNodeRef GetInitializer() {
-			return initializer;
-		}
 	};
 
 	class ClassBase;

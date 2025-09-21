@@ -342,7 +342,7 @@ namespace sakura {
 
 			//ASTノードとして扱わないクラスはルート空間のみということにしておく
 			if (parseContext.GetCurrent().type == ScriptTokenType::Class) {
-				ParseASTClass(parseContext);
+				result->AddStatement(ParseASTClass(parseContext));
 				continue;
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Unit) {
@@ -1731,13 +1731,12 @@ namespace sakura {
 	}
 
 	//クラス
-	void ASTParser::ParseASTClass(ASTParseContext& parseContext) {
+	ASTNodeRef ASTParser::ParseASTClass(ASTParseContext& parseContext) {
 
 		//対象外の情報にはエラーを返す
 		assert(parseContext.GetCurrent().type == ScriptTokenType::Class);
 		if (parseContext.GetCurrent().type != ScriptTokenType::Class) {
-			parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
-			return;
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
 		}
 
 		const auto& beginToken = parseContext.GetCurrent();
@@ -1747,8 +1746,7 @@ namespace sakura {
 
 		//クラス名
 		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-			parseContext.Error(ERROR_AST_025, parseContext.GetCurrent());
-			return;
+			return parseContext.Error(ERROR_AST_025, parseContext.GetCurrent());
 		}
 		std::string className = parseContext.GetCurrent().body;
 		result->SetName(className);
@@ -1766,8 +1764,7 @@ namespace sakura {
 
 			while (!parseContext.IsEnd()) {
 				if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-					parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
-					return;
+					return parseContext.Error(ERROR_AST_026, parseContext.GetCurrent());
 				}
 
 				result->GetParentClassPath().AddFullPath(parseContext.GetCurrent().body);
@@ -1784,8 +1781,7 @@ namespace sakura {
 
 		//開カッコ
 		if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-			parseContext.Error(ERROR_AST_027, parseContext.GetCurrent());
-			return;
+			return parseContext.Error(ERROR_AST_027, parseContext.GetCurrent());
 		}
 
 		//ここまで宣言部として記録する
@@ -1800,7 +1796,7 @@ namespace sakura {
 				//終了
 				parseContext.FetchNext();
 				parseContext.AddClass(result);
-				return;
+				return ASTNodeRef(new ASTNodeClass(result, parseContext.GetSourceMetadata()));
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::Init) {
 				//コンストラクタ
@@ -1820,15 +1816,13 @@ namespace sakura {
 				if (parseContext.GetCurrent().type == ScriptTokenType::Colon) {
 					parseContext.FetchNext();
 					if (parseContext.GetCurrent().type != ScriptTokenType::Base) {
-						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
-						return;
+						return parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
 					}
 
 					//base呼び出し式を取得
 					auto baseCall = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_BLOCK_BLACKET_BEGIN);
 					if (baseCall->GetType() != ASTNodeType::FunctionCall) {
-						parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
-						return;
+						return parseContext.Error(ERROR_AST_047, parseContext.GetCurrent());
 					}
 
 					auto baseInitCall = std::static_pointer_cast<ASTNodeFunctionCall>(baseCall);
@@ -1837,8 +1831,7 @@ namespace sakura {
 				else {
 					//開き中括弧(base呼び出しがある場合はBlockBeginまで処理して戻るので、そうでない場合のみ)
 					if (parseContext.GetCurrent().type != ScriptTokenType::BlockBegin) {
-						parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
-						return;
+						return parseContext.Error(ERROR_AST_028, parseContext.GetCurrent());
 					}
 					parseContext.FetchNext();
 				}
@@ -1853,7 +1846,7 @@ namespace sakura {
 				//メンバ関数
 				ScriptFunctionDef def = ParseFunctionDef(parseContext, BlockType::Function);
 				if (def.func == nullptr) {
-					return;
+					return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
 				}
 
 				result->AddFunction(def);
@@ -1862,21 +1855,23 @@ namespace sakura {
 				//メンバトーク
 				ScriptFunctionDef def = ParseFunctionDef(parseContext, BlockType::Talk);
 				if (def.func == nullptr) {
-					return;
+					return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
 				}
 
 				result->AddFunction(def);
 			}
 			else {
 				//構文エラーか
-				parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
-				return;
+				return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
 			}
 		}
 
 		if (parseContext.HasError()) {
-			parseContext.Error(ERROR_AST_029, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_029, parseContext.GetCurrent());
 		}
+
+		//ここでは戻れない（中括弧終わりにならないといけないので）
+		return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
 	}
 
 	//unitキーワードのパース

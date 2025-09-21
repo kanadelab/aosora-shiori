@@ -1003,7 +1003,48 @@ namespace sakura {
 		}
 	};
 
+	//クラス
+	class ASTNodeClass : public ASTNodeBase {
+	private:
+		ScriptClassRef scriptClass;
 
+	public:
+		ASTNodeClass(const ScriptClassRef& classRef, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
+			scriptClass(classRef) {
+		}
+
+		virtual ASTNodeType GetType() const override { return ASTNodeType::Class; }
+		virtual bool IsExecutable() const override { return false; }
+
+		virtual void GetChildren(std::vector<ConstASTNodeRef>& nodes) const override {
+
+			// 関数
+			for (size_t i = 0; i < scriptClass->GetFunctionCount(); i++) {
+				nodes.push_back(scriptClass->GetFunction(i).func->GetFunctionBody());
+			}
+
+			// コンストラクタ
+			if (scriptClass->GetInitFunc() != nullptr) {
+				nodes.push_back(scriptClass->GetInitFunc()->GetFunctionBody());
+			}
+		}
+
+		virtual const char* DebugName() const override { return "Class"; }
+		virtual void DebugDump(int32_t indent) const override {
+			ASTNodeBase::DebugDump(indent);
+
+			// 関数
+			for (size_t i = 0; i < scriptClass->GetFunctionCount(); i++) {
+				scriptClass->GetFunction(i).func->GetFunctionBody()->DebugDump(indent + 1);
+			}
+
+			// コンストラクタ
+			if (scriptClass->GetInitFunc() != nullptr) {
+				scriptClass->GetInitFunc()->GetFunctionBody()->DebugDump(indent + 1);
+			}
+		}
+
+	};
 	
 	inline bool ASTNodeFormatString::IsFuncStatementBlockOnly() const {
 		bool hasStatement = false;
