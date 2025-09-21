@@ -10,7 +10,9 @@ namespace sakura {
 	class LoadedSourceManager {
 	private:
 		struct LoadedSource {
+#if defined(AOSORA_DEBUGGER_ENABLE_MD5)
 			std::string md5;
+#endif
 			std::string fullName;
 		};
 

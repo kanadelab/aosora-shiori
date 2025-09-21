@@ -1,8 +1,7 @@
 import { randomUUID } from 'crypto';
 import {number, z} from 'zod';
 import * as Net from 'net';
-
-export const DEBUGGER_REVISION = "0";
+import { DEBUGGER_REVISION } from './version';
 
 //Aosora デバッガインターフェース
 type BreakPointRequest = {
@@ -70,7 +69,7 @@ export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 
 const LoadedSource = z.object({
 	path: z.string(), 
-	md5: z.string()
+	md5: z.optional(z.string()),
 });
 export type LoadedSource = z.infer<typeof LoadedSource>;
 

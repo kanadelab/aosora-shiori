@@ -1,8 +1,13 @@
-﻿#include "Base.h"
-
-#include <vector>
+﻿#include <vector>
 #include <string_view>
 #include <string>
+
+#include "Base.h"
+
+#if defined(AOSORA_ENABLE_DEBUGGER)
+
+#if defined(AOSORA_DEBUGGER_ENABLE_MD5)
+
 #if defined(AOSORA_REQUIRED_WIN32)
 #include "Windows.h"
 #else
@@ -12,7 +17,6 @@
 #endif // AOSORA_REQUIRED_WIN32
 #include "Debugger/DebuggerUtility.h"
 
-#if defined(AOSORA_ENABLE_DEBUGGER)
 #if defined(AOSORA_REQUIRED_WIN32)
 #pragma comment(lib, "Bcrypt.lib")
 #endif // AOSORA_REQUIRED_WIN32
@@ -72,10 +76,19 @@ namespace sakura {
 	}
 #endif // AOSORA_REQUIRED_WIN32
 
+}
+#else
+#include "Debugger/DebuggerUtility.h"
+#endif // AOSORA_DEBUGGER_ENABLE_MD5
+
+namespace sakura {
+
 	void LoadedSourceManager::AddSource(const std::string& body, const std::string& fullName)
 	{
 		LoadedSource source;
+#if defined(AOSORA_DEBUGGER_ENABLE_MD5)
 		source.md5 = MD5Hash(body);
+#endif
 		source.fullName = fullName;
 		loadedSources.push_back(source);
 	}

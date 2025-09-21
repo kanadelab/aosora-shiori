@@ -384,7 +384,7 @@ class AosoraDebugSession extends DebugSession {
 	private createLoadedsource(source: LoadedSource):DebugProtocol.Source{
 		return {
 			path: source.path, 
-			checksums: [{algorithm: 'MD5', checksum: source.md5}]
+			checksums: source.md5 ? [{algorithm: 'MD5', checksum: source.md5}] : undefined
 		};
 	}
 

@@ -7,6 +7,9 @@ const resourceCharset = "utf-16le";
 const versionHeaderFile = "../aosora-shiori/Version.h";
 const versionHeaderCharset = "utf-8";
 
+const versionScriptFile = "../vscode-extension/src/version.ts";
+const versionScriptCharset = "utf-8";
+
 const packageFile = "../vscode-extension/package.json";
 const packageCharset = "utf-8";
 
@@ -33,6 +36,10 @@ let versionHeader = `#pragma once\r\n` +
     `#define AOSORA_SHIORI_BUILD\t"Build#${build_num}"\r\n` +
     `#define AOSORA_DEBUGGER_REVISION\t"${debugger_ver}"\r\n`;
 fs.writeFileSync(versionHeaderFile, versionHeader, versionHeaderCharset);
+
+//version.ts の書き換え
+let versionScript = `export const DEBUGGER_REVISION = "${debugger_ver}";\r\n`
+fs.writeFileSync(versionScriptFile, versionScript, versionScriptCharset);
 
 //vscode-extensionのpackage.json書き換え
 let packageFileBody = fs.readFileSync(packageFile, packageCharset);

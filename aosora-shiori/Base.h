@@ -13,8 +13,14 @@
 //aosoraデバッガ(VSCodeに対する通信)の有効化
 #define AOSORA_ENABLE_DEBUGGER
 
+//MD5をデバッガに送る
+//デバッグ時のブレークポイントの有効性チェックとかに使用されるかと思っていたらそうでもなくて効果のほどが不明なのと
+//あたらしめのwindowsでしか動かない疑惑があるのでオフにするためのスイッチ
+//#define AOSORA_DEBUGGER_ENABLE_MD5
+
 //型定義
 namespace sakura {
+	//必要な場合の制度変更用に
 	using number = double;
 }
 

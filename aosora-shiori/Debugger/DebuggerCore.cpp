@@ -1769,7 +1769,9 @@ namespace sakura {
 				auto fileRecord = JsonSerializer::MakeObject();
 				const auto& loadedFile = loadedSources.GetLoadedSource(i);
 				fileRecord->Add("path", JsonSerializer::From(loadedFile.fullName));
+#if defined(AOSORA_DEBUGGER_ENABLE_MD5)
 				fileRecord->Add("md5", JsonSerializer::From(loadedFile.md5));
+#endif
 				files->Add(fileRecord);
 			}
 			responseData->Add("files", files);
