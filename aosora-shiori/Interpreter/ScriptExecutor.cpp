@@ -874,16 +874,15 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		ScriptValueRef right = ExecuteInternal(*node.GetOperandRight(), executeContext);
-		if (executeContext.RequireLeave()) {
-			return ScriptValue::Null;
-		}
-
 		//javascriptにならって左がtrueなら左をかえし、そうでないなら右をかえす
 		if (left->ToBoolean()) {
 			return left;
 		}
 		else {
+			ScriptValueRef right = ExecuteInternal(*node.GetOperandRight(), executeContext);
+			if (executeContext.RequireLeave()) {
+				return ScriptValue::Null;
+			}
 			return right;
 		}
 	}
@@ -895,13 +894,12 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
-		ScriptValueRef right = ExecuteInternal(*node.GetOperandRight(), executeContext);
-		if (executeContext.RequireLeave()) {
-			return ScriptValue::Null;
-		}
-
-		//javascriptにならって左がtureなら右をかえす
+		//javascriptにならって左がtrueなら右をかえす
 		if (left->ToBoolean()) {
+			ScriptValueRef right = ExecuteInternal(*node.GetOperandRight(), executeContext);
+			if (executeContext.RequireLeave()) {
+				return ScriptValue::Null;
+			}
 			return right;
 		}
 		else {
