@@ -53,6 +53,7 @@ namespace sakura {
 		static ASTNodeRef ParseASTLocalVariable(ASTParseContext& parseContext);
 		static bool ParseVariableDef(ASTParseContext& parseContext, std::vector<ScriptVariableDef>& defs);
 		static ASTNodeRef ParseASTWhile(ASTParseContext& parseContext);
+		static ASTNodeRef ParseASTForeach(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTFor(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTIf(ASTParseContext& parseContext);
 		static ASTNodeRef ParseASTReturn(ASTParseContext& parseContext, bool isLambdaSyntaxSugar = false);

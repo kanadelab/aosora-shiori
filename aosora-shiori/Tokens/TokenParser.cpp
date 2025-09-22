@@ -74,6 +74,8 @@ namespace sakura {
 	const std::string TOKEN_KEYWORD_USE = "use";
 	const std::string TOKEN_KEYWORD_THIS = "this";
 	const std::string TOKEN_KEYWORD_BASE = "base";
+	const std::string TOKEN_KEYWORD_IN = "in";
+	const std::string TOKEN_KEYWORD_FOREACH = "foreach";
 
 	const std::string TOKEN_BLOCK_BEGIN = "{";
 	const std::string TOKEN_BLOCK_END = "}";
@@ -148,6 +150,7 @@ namespace sakura {
 	//固定トークンと異なり、シンボル名として取り出された範囲で一致する必要がある
 	const ScriptTokenSet TOKEN_KEYWORDS[] = {
 		{TOKEN_KEYWORD_FUNCTION, ScriptTokenType::Function},
+		{TOKEN_KEYWORD_FOREACH, ScriptTokenType::Foreach},
 		{TOKEN_KEYWORD_FOR, ScriptTokenType::For},
 		{TOKEN_KEYWORD_WHILE, ScriptTokenType::While},
 		{TOKEN_KEYWORD_IF, ScriptTokenType::If},
@@ -170,6 +173,7 @@ namespace sakura {
 		{TOKEN_KEYWORD_USE, ScriptTokenType::Use},
 		{TOKEN_KEYWORD_THIS, ScriptTokenType::This},
 		{TOKEN_KEYWORD_BASE, ScriptTokenType::Base},
+		{TOKEN_KEYWORD_IN, ScriptTokenType::In}
 	};
 
 	const std::regex JSON_NUMBER_PATTERN(R"((^[0-9.]+))");

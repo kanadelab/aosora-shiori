@@ -21,6 +21,7 @@ namespace sakura {
 	class ScriptInterpreter;
 	class ScriptExecuteContext;
 	class ObjectBase;
+	class ScriptIterator;
 
 	//オブジェクト型
 	enum class ScriptValueType {
@@ -131,6 +132,9 @@ namespace sakura {
 		//主にClassInstanceを表現するためのもの
 		void SetInstanceTypeId(uint32_t id) { typeId = id; }
 
+		//C++継承で型変換が発生する場合のためのもの
+		void SetNativeOverrideInstanceId(uint32_t id) { typeId = id; nativeObjectTypeId = id; }
+
 	public:
 		ObjectBase(uint32_t objectTypeId):
 			typeId(objectTypeId),
@@ -142,8 +146,8 @@ namespace sakura {
 		uint32_t GetNativeInstanceTypeId() const { return nativeObjectTypeId; }
 
 		//ゲッタとセッタ
-		virtual ScriptValueRef Get(const Reference<ObjectBase>& self, const std::string& key, ScriptExecuteContext& executeContext);
-		virtual void Set(const Reference<ObjectBase>& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext);
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext);
 
 		//関数呼び出しスタイルの使用が可能かどうか
 		virtual bool CanCall() const { return false; }
@@ -151,6 +155,9 @@ namespace sakura {
 
 		//デバッグ向けの文字列化
 		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext);
+
+		//リファレンスオブジェクト作成
+		Reference<ObjectBase> GetRef() { return Reference<ObjectBase>(this); }
 	};
 
 	using ObjectRef = Reference<ObjectBase>;
@@ -452,6 +459,7 @@ namespace sakura {
 	};
 	
 	//継承用のID発行付きのオブジェクト、オブジェクト型をC++で宣言するときはこれを継承する
+	//さらに継承する必要がある場合は素直にいかないので注意･･･（TypeIdを直接定義したうえでコンストラクタでIDの上書きが必要）
 	template<typename T>
 	class Object : public ObjectBase {
 	public:
@@ -481,15 +489,85 @@ namespace sakura {
 		}
 	};
 
+	//イテレート可能オブジェクト
+	class ScriptIterable : public Object<ScriptIterable>{
+	private:
+		//有効なイテレータ数(これがある状態でコレクションを変更するとエラーとなる)
+		int32_t iteratorCheckoutCounter;
+
+	public:
+		virtual Reference<ScriptIterator> CreateIterator(ScriptExecuteContext& executeContext) = 0;
+		bool ValidateCollectionLock(const FunctionRequest& request, FunctionResponse& response);
+		bool ValidateCollectionLock(ScriptExecuteContext& executeContext);
+
+		void CheckoutIterator() {
+			iteratorCheckoutCounter++;
+		}
+
+		void CheckinIterator() {
+			iteratorCheckoutCounter--;
+			assert(iteratorCheckoutCounter >= 0);
+		}
+
+		bool IsCollectionLocked() const {
+			//イテレータが有効な間はコレクションの変更は許容できないので止める
+			return (iteratorCheckoutCounter > 0);
+		}
+
+		//これ自体は参照をもたない
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result){}
+	};
+
+	//イテレータ
+	class ScriptIterator : public Object<ScriptIterator> {
+	private:
+		Reference<ScriptIterable> target;
+
+	public:
+		//生成時、破棄時で元オブジェクトに対して checkout/checkinをかけてイテレータの有効範囲を通知する
+		ScriptIterator(const Reference<ScriptIterable>& iterable):
+			target(iterable) {
+			target->CheckoutIterator();
+		}
+		
+		virtual ~ScriptIterator() {
+			assert(target == nullptr);
+		}
+
+		void Dispose() {
+			assert(target != nullptr);
+			if (target != nullptr) {
+				target->CheckinIterator();
+				target = nullptr;
+			}
+		}
+
+		virtual ScriptValueRef GetValue() = 0;
+		virtual ScriptValueRef GetKey() = 0;
+		virtual void FetchNext() = 0;
+		virtual bool IsEnd() = 0;
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
+	};
+
 	//スクリプト連想配列
-	class ScriptObject : public Object<ScriptObject> {
+	class ScriptObject : public ScriptIterable {
+	public:
+		using InternalCollectionType = std::map<std::string, ScriptValueRef>;
+
 	private:
 		//連想配列の実体
-		std::map<std::string, ScriptValueRef> members;
+		InternalCollectionType members;
 
 	public:
 
 		ScriptObject() {
+			//スクリプト公開型継承なのでインスタンスIDを再指定しないといけない
+			SetNativeOverrideInstanceId(TypeId());
+		}
+
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<ScriptObject>();
 		}
 
 		static void ScriptAdd(const FunctionRequest& request, FunctionResponse& response);
@@ -513,16 +591,54 @@ namespace sakura {
 			members.erase(key);
 		}
 
-		const std::map<std::string, ScriptValueRef>& GetInternalCollection() const { return members; }
+		const InternalCollectionType& GetInternalCollection() const { return members; }
 
 		//操作
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) override;
 
+		virtual Reference<ScriptIterator> CreateIterator(ScriptExecuteContext& executeContext) override;
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
+	};
 
+	//連想配列に対するイテレータ
+	class ScriptObjectIterator : public ScriptIterator {
+	private:
+		Reference<ScriptObject> targetObject;
+		ScriptObject::InternalCollectionType::const_iterator internalIterator;
 
+	public:
+		ScriptObjectIterator(const Reference<ScriptObject>& target) : ScriptIterator(target),
+			targetObject(target) {
+			SetNativeOverrideInstanceId(TypeId());
+			internalIterator = targetObject->GetInternalCollection().begin();
+		}
+
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<ScriptObjectIterator>();
+		}
+
+		virtual ScriptValueRef GetValue() override {
+			return internalIterator->second;
+		}
+
+		virtual ScriptValueRef GetKey() override {
+			return ScriptValue::Make(internalIterator->first);
+		}
+
+		virtual void FetchNext() {
+			++internalIterator;
+		}
+
+		virtual bool IsEnd() override {
+			if (internalIterator == targetObject->GetInternalCollection().end()) {
+			return true;
+			}
+			return false;
+		}
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 	};
 
 	//クラスインスタンス
@@ -555,8 +671,8 @@ namespace sakura {
 		const Reference<ScriptObject>& GetScriptStore() const { return scriptStore; }
 		
 		Reference<UpcastClassInstance> MakeBase(const Reference<ClassInstance>& self, const ScriptClassRef& contextClass, ScriptExecuteContext& executeContext);
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 	};
 
@@ -578,8 +694,8 @@ namespace sakura {
 		const Reference<ClassInstance>& GetClassInstance() const { return classInstance; }
 		const Reference<ClassData>& GetUpcastedClassData() const { return upcastedClassData; }
 
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 	};
 

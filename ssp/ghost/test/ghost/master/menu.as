@@ -3,8 +3,18 @@
 */
 use ukafeed;
 
+function LocalTest(){
+	//local c = [12,34,56,78];
+	local obj = {a: 12, b: 23, c: 45};
+	local sm = 0;
+	foreach(local a in c){
+		sm += a;
+	}
+	return sm;
+}
+
 talk MainMenu {
-	\s[4]なーあにっと。
+	\s[4]なーあにっと。 {LocalTest()}
 
 	\![*]\q[何か喋って,ランダムトーク]
 	\![*]\q[喋り間隔変更,OnChagneTalkInterval]

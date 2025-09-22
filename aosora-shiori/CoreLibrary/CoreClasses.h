@@ -223,8 +223,8 @@ namespace sakura {
 		ScriptValueRef GetFromInstance(const std::string& key, const Reference<ClassInstance>& instance, ScriptExecuteContext& executeContext);
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 
 		
 	};
@@ -283,7 +283,7 @@ namespace sakura {
 		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 		static void CreateObject(const FunctionRequest& req, FunctionResponse& res);
 
 		//スクリプト向け実装
@@ -299,8 +299,13 @@ namespace sakura {
 	public:
 		RuntimeError(const std::string& errorMessage) :ScriptError(errorMessage)
 		{
+			SetNativeOverrideInstanceId(TypeId());
 		}
 
+		//Object<>の継承からさらに継承なので別途TypeIdを定義しないといけない
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<RuntimeError>();
+		}
 	};
 
 
@@ -358,7 +363,7 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 		virtual bool CanCall() const override { return true; }
 		virtual void Call(const FunctionRequest& request, FunctionResponse& response);
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 	};
 
 	//インスタンス付きの関数オーバーロードオブジェクト
@@ -403,12 +408,20 @@ namespace sakura {
 
 	//スクリプト配列
 	//配列イニシャライザ記法ではこちらのオブジェクトを生成する形
-	class ScriptArray : public Object<ScriptArray> {
+	class ScriptArray : public ScriptIterable {
 	private:
 		//線形配列の実体
 		std::vector<ScriptValueRef> members;
 
 	public:
+
+		ScriptArray() {
+			SetNativeOverrideInstanceId(TypeId());
+		}
+
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<ScriptArray>();
+		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
 
@@ -438,7 +451,7 @@ namespace sakura {
 			members.clear();
 		}
 
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override {
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override {
 			
 			//通常の対応にあわせてnumberに変換してからsize_t にする
 			number indexNumber = NAN;
@@ -459,22 +472,22 @@ namespace sakura {
 			}
 		}
 
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override {
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override {
 
 			if (key == "Add") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAdd, self));
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAdd, GetRef()));
 			}
 			else if (key == "AddRange") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAddRange, self));
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptAddRange, GetRef()));
 			}
 			else if (key == "Insert") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptInsert, self));
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptInsert, GetRef()));
 			}
 			else if (key == "Remove") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptRemove, self));
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptRemove, GetRef()));
 			}
 			else if (key == "Clear") {
-				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptClear, self));
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptArray::ScriptClear, GetRef()));
 			}
 			else if (key == "length") {
 				return ScriptValue::Make(static_cast<number>(members.size()));
@@ -506,6 +519,11 @@ namespace sakura {
 		static void ScriptAdd(const FunctionRequest& request, FunctionResponse& response) {
 			if (request.GetArgumentCount() >= 1) {
 				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+
+				if (!obj->ValidateCollectionLock(request, response)) {
+					return;
+				}
+
 				obj->Add(request.GetArgument(0));
 			}
 		}
@@ -513,6 +531,11 @@ namespace sakura {
 		static void ScriptAddRange(const FunctionRequest& request, FunctionResponse& response) {
 			if (request.GetArgumentCount() >= 1) {
 				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+
+				if (!obj->ValidateCollectionLock(request, response)) {
+					return;
+				}
+
 				ScriptArray* arg = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetArgument(0));
 
 				if (arg != nullptr) {
@@ -526,6 +549,11 @@ namespace sakura {
 		static void ScriptRemove(const FunctionRequest& request, FunctionResponse& response) {
 			if (request.GetArgumentCount() >= 1) {
 				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+
+				if (!obj->ValidateCollectionLock(request, response)) {
+					return;
+				}
+
 				size_t n = static_cast<size_t>(request.GetArgument(0)->ToNumber());
 				if (n < obj->Count()) {
 					obj->Remove(n);
@@ -535,12 +563,22 @@ namespace sakura {
 
 		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response) {
 			ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+
+			if (!obj->ValidateCollectionLock(request, response)) {
+				return;
+			}
+
 			obj->Clear();
 		}
 
 		static void ScriptInsert(const FunctionRequest& request, FunctionResponse& response) {
 			if (request.GetArgumentCount() >= 2) {
 				ScriptArray* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptArray>(request.GetContext().GetBlockScope()->GetThisValue());
+
+				if (!obj->ValidateCollectionLock(request, response)) {
+					return;
+				}
+
 				size_t index;
 				if (request.GetArgument(1)->ToIndex(index) && index <= obj->Count()) {
 					obj->Insert(request.GetArgument(0), index);
@@ -548,8 +586,45 @@ namespace sakura {
 			}
 		}
 
+
+		virtual Reference<ScriptIterator> CreateIterator(ScriptExecuteContext& executeContext) override;
 		virtual std::string DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) override;
 
+	};
+
+	class ScriptArrayIterator : public ScriptIterator {
+	private:
+		Reference<ScriptArray> targetArray;
+		size_t currentIndex;
+
+	public:
+		ScriptArrayIterator(const Reference<ScriptArray>& target) :ScriptIterator(target),
+			targetArray(target),
+			currentIndex(0) {
+			SetNativeOverrideInstanceId(TypeId());
+		}
+
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<ScriptArrayIterator>();
+		}
+
+		virtual ScriptValueRef GetValue() {
+			return targetArray->At(currentIndex);
+		}
+
+		virtual ScriptValueRef GetKey() {
+			return ScriptValue::Make(static_cast<number>(currentIndex));
+		}
+
+		virtual void FetchNext() {
+			currentIndex++;
+		}
+
+		virtual bool IsEnd() {
+			return !(currentIndex < targetArray->Count());
+		}
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result);
 	};
 
 	//トーク内にタグを自動挿入する関係の設定オブジェクト
@@ -561,8 +636,8 @@ namespace sakura {
 
 	public:
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {};
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
 
 		TalkBuilderSettings() :
 			autoLineBreak("\\n"),
@@ -611,8 +686,8 @@ namespace sakura {
 		{ }
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
-		virtual ScriptValueRef Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) override;
-		virtual void Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
+		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext) override;
+		virtual void Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) override;
 
 		ScriptValueRef Get(const std::string& key, ScriptInterpreter& interpreter);
 		void Set(const std::string& ket, const ScriptValueRef& value, ScriptInterpreter& interpreter);

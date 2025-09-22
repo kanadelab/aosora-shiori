@@ -594,9 +594,9 @@ namespace sakura {
 #endif	// #if defined(AOSORA_ENABLE_SAORI_LOADER)
 	}
 
-	ScriptValueRef SaoriModule::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef SaoriModule::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "Request") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&SaoriModule::Request, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&SaoriModule::Request, GetRef()));
 		}
 		return nullptr;
 	}

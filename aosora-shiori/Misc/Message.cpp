@@ -109,6 +109,9 @@ namespace sakura {
 
 			.Register("AOSORA_FILE_ACCESS_ERROR_001", "ファイルパス指定は文字列である必要があります")
 			.Register("AOSORA_FILE_ACCESS_ERROR_002", "文字コード指定が正しくありません")
+
+			.Register("AOSORA_ITERATOR_ERROR_001", "foreachループ処理中にオブジェクトのサイズが変わる操作はできません。")
+			.Register("AOSORA_ITERATOR_ERROR_002", "foreachループにループできないオブジェクトが渡されています。")
 			;
 
 

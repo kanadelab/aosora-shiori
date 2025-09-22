@@ -78,7 +78,7 @@
 			"patterns": [
 				{
 					"name": "keyword.control.aosora",
-					"match": "\\b(if|else|talk|function|return|local|for|while|continue|break|try|catch|finally|new|throw|class|unit|use|init)\\b"
+					"match": "\\b(if|else|talk|function|return|local|for|foreach|in|while|continue|break|try|catch|finally|new|throw|class|unit|use|init)\\b"
 				},
 				{
 					"name": "keyword.other.aosora",

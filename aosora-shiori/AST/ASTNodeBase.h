@@ -47,6 +47,7 @@ namespace sakura {
 		LocalVariableDeclaration,
 		LocalVariableDeclarationList,
 		For,
+		Foreach,
 		While,
 		If,
 		Break,

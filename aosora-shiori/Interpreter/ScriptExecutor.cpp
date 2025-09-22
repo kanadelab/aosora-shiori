@@ -27,10 +27,20 @@ namespace sakura {
 			return ScriptValue::Null;
 		}
 
+		//実行結果をもっておく
+		ScriptValueRef result = ScriptValue::Null;
+
+		//コンテキストに実行中ノードをセット
+		const ASTNodeBase* callingNode = executeContext.GetCurrentASTNode();
+		executeContext.SetCurrentASTNode(&node);
+
 		//無限ループ対策の実行ステップ制限
 		if (executeContext.GetInterpreter().GetLimitScriptSteps() > 0) {
 			if (executeContext.GetInterpreter().IncrementScriptStep() > executeContext.GetInterpreter().GetLimitScriptSteps()) {
-				executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_001"), executeContext)->SetCanCatch(false);
+				executeContext.ThrowRuntimeError<RuntimeError>(TextSystem::Find("AOSORA_BUILTIN_ERROR_001"), executeContext)->SetCanCatch(false);
+
+				//実行中ノードを戻して終わり
+				executeContext.SetCurrentASTNode(callingNode);
 				return ScriptValue::Null;
 			}
 		}
@@ -38,74 +48,112 @@ namespace sakura {
 		//ノードタイプごとに実行
 		switch (node.GetType()) {
 		case ASTNodeType::CodeBlock:
-			return ExecuteCodeBlock(static_cast<const ASTNodeCodeBlock&>(node), executeContext);
+			result = ExecuteCodeBlock(static_cast<const ASTNodeCodeBlock&>(node), executeContext);
+			break;
 		case ASTNodeType::FormatString:
-			return ExecuteFormatString(static_cast<const ASTNodeFormatString&>(node), executeContext);
+			result = ExecuteFormatString(static_cast<const ASTNodeFormatString&>(node), executeContext);
+			break;
 		case ASTNodeType::StringLiteral:
-			return ExecuteStringLiteral(static_cast<const ASTNodeStringLiteral&>(node), executeContext);
+			 result = ExecuteStringLiteral(static_cast<const ASTNodeStringLiteral&>(node), executeContext);
+			 break;
 		case ASTNodeType::NumberLiteral:
-			return ExecuteNumberLiteral(static_cast<const ASTNodeNumberLiteral&>(node), executeContext);
+			result =  ExecuteNumberLiteral(static_cast<const ASTNodeNumberLiteral&>(node), executeContext);
+			break;
 		case ASTNodeType::BooleanLiteral:
-			return ExecuteBooleanLiteral(static_cast<const ASTNodeBooleanLiteral&>(node), executeContext);
+			result =  ExecuteBooleanLiteral(static_cast<const ASTNodeBooleanLiteral&>(node), executeContext);
+			break;
 		case ASTNodeType::ResolveSymbol:
-			return ExecuteResolveSymbol(static_cast<const ASTNodeResolveSymbol&>(node), executeContext);
+			result =  ExecuteResolveSymbol(static_cast<const ASTNodeResolveSymbol&>(node), executeContext);
+			break;
 		case ASTNodeType::AssignSymbol:
-			return ExecuteAssignSymbol(static_cast<const ASTNodeAssignSymbol&>(node), executeContext);
+			result =  ExecuteAssignSymbol(static_cast<const ASTNodeAssignSymbol&>(node), executeContext);
+			break;
 		case ASTNodeType::ArrayInitializer:
-			return ExecuteArrayInitializer(static_cast<const ASTNodeArrayInitializer&>(node), executeContext);
+			result =  ExecuteArrayInitializer(static_cast<const ASTNodeArrayInitializer&>(node), executeContext);
+			break;
 		case ASTNodeType::ObjectInitializer:
-			return ExecuteObjectInitializer(static_cast<const ASTNodeObjectInitializer&>(node), executeContext);
+			result =  ExecuteObjectInitializer(static_cast<const ASTNodeObjectInitializer&>(node), executeContext);
+			break;
 		case ASTNodeType::FunctionStatement:
-			return ExecuteFunctionStatement(static_cast<const ASTNodeFunctionStatement&>(node), executeContext);
+			result =  ExecuteFunctionStatement(static_cast<const ASTNodeFunctionStatement&>(node), executeContext);
+			break;
 		case ASTNodeType::FunctionInitializer:
-			return ExecuteFunctionInitializer(static_cast<const ASTNodeFunctionInitializer&>(node), executeContext);
+			result =  ExecuteFunctionInitializer(static_cast<const ASTNodeFunctionInitializer&>(node), executeContext);
+			break;
 		case ASTNodeType::LocalVariableDeclaration:
-			return ExecuteLocalVariableDeclaration(static_cast<const ASTNodeLocalVariableDeclaration&>(node), executeContext);
+			result =  ExecuteLocalVariableDeclaration(static_cast<const ASTNodeLocalVariableDeclaration&>(node), executeContext);
+			break;
 		case ASTNodeType::LocalVariableDeclarationList:
-			return ExecuteLocalVariableDeclarationList(static_cast<const ASTNodeLocalVariableDeclarationList&>(node), executeContext);
+			result =  ExecuteLocalVariableDeclarationList(static_cast<const ASTNodeLocalVariableDeclarationList&>(node), executeContext);
+			break;
+		case ASTNodeType::Foreach:
+			result =  ExecuteForeach(static_cast<const ASTNodeForeach&>(node), executeContext);
+			break;
 		case ASTNodeType::For:
-			return ExecuteFor(static_cast<const ASTNodeFor&>(node), executeContext);
+			result =  ExecuteFor(static_cast<const ASTNodeFor&>(node), executeContext);
+			break;
 		case ASTNodeType::While:
-			return ExecuteWhile(static_cast<const ASTNodeWhile&>(node), executeContext);
+			result =  ExecuteWhile(static_cast<const ASTNodeWhile&>(node), executeContext);
+			break;
 		case ASTNodeType::If:
-			return ExecuteIf(static_cast<const ASTNodeIf&>(node), executeContext);
+			result =  ExecuteIf(static_cast<const ASTNodeIf&>(node), executeContext);
+			break;
 		case ASTNodeType::Break:
-			return ExecuteBreak(static_cast<const ASTNodeBreak&>(node), executeContext);
+			result =  ExecuteBreak(static_cast<const ASTNodeBreak&>(node), executeContext);
+			break;
 		case ASTNodeType::Continue:
-			return ExecuteContinue(static_cast<const ASTNodeContinue&>(node), executeContext);
+			result =  ExecuteContinue(static_cast<const ASTNodeContinue&>(node), executeContext);
+			break;
 		case ASTNodeType::Return:
-			return ExecuteReturn(static_cast<const ASTNodeReturn&>(node), executeContext);
+			result =  ExecuteReturn(static_cast<const ASTNodeReturn&>(node), executeContext);
+			break;
 		case ASTNodeType::Operator2:
-			return ExecuteOperator2(static_cast<const ASTNodeEvalOperator2&>(node), executeContext);
+			result =  ExecuteOperator2(static_cast<const ASTNodeEvalOperator2&>(node), executeContext);
+			break;
 		case ASTNodeType::Operator1:
-			return ExecuteOperator1(static_cast<const ASTNodeEvalOperator1&>(node), executeContext);
+			result =  ExecuteOperator1(static_cast<const ASTNodeEvalOperator1&>(node), executeContext);
+			break;
 		case ASTNodeType::NewClassInstance:
-			return ExecuteNewClassInstance(static_cast<const ASTNodeNewClassInstance&>(node), executeContext);
+			result =  ExecuteNewClassInstance(static_cast<const ASTNodeNewClassInstance&>(node), executeContext);
+			break;
 		case ASTNodeType::FunctionCall:
-			return ExecuteFunctionCall(static_cast<const ASTNodeFunctionCall&>(node), executeContext);
+			result =  ExecuteFunctionCall(static_cast<const ASTNodeFunctionCall&>(node), executeContext);
+			break;
 		case ASTNodeType::ContextValue:
-			return ExecuteContextValue(static_cast<const ASTNodeContextValue&>(node), executeContext);
+			result =  ExecuteContextValue(static_cast<const ASTNodeContextValue&>(node), executeContext);
+			break;
 		case ASTNodeType::ResolveMember:
-			return ExecuteResolveMember(static_cast<const ASTNodeResolveMember&>(node), executeContext);
+			result =  ExecuteResolveMember(static_cast<const ASTNodeResolveMember&>(node), executeContext);
+			break;
 		case ASTNodeType::AssignMember:
-			return ExecuteAssignMember(static_cast<const ASTNodeAssignMember&>(node), executeContext);
+			result =  ExecuteAssignMember(static_cast<const ASTNodeAssignMember&>(node), executeContext);
+			break;
 		case ASTNodeType::Try:
-			return ExecuteTry(static_cast<const ASTNodeTry&>(node), executeContext);
+			result =  ExecuteTry(static_cast<const ASTNodeTry&>(node), executeContext);
+			break;
 		case ASTNodeType::Throw:
-			return ExecuteThrow(static_cast<const ASTNodeThrow&>(node), executeContext);
+			result =  ExecuteThrow(static_cast<const ASTNodeThrow&>(node), executeContext);
+			break;
 		case ASTNodeType::TalkJump:
-			return ExecuteTalkJump(static_cast<const ASTNodeTalkJump&>(node), executeContext);
+			result =  ExecuteTalkJump(static_cast<const ASTNodeTalkJump&>(node), executeContext);
+			break;
 		case ASTNodeType::TalkSpeak:
-			return ExecuteTalkSpeak(static_cast<const ASTNodeTalkSpeak&>(node), executeContext);
+			result =  ExecuteTalkSpeak(static_cast<const ASTNodeTalkSpeak&>(node), executeContext);
+			break;
 		case ASTNodeType::TalkSetSpeaker:
-			return ExecuteTalkSetSpeaker(static_cast<const ASTNodeTalkSetSpeaker&>(node), executeContext);
+			result =  ExecuteTalkSetSpeaker(static_cast<const ASTNodeTalkSetSpeaker&>(node), executeContext);
+			break;
 		case ASTNodeType::UnitRoot:
-			return ExecuteUnitRoot(static_cast<const ASTNodeUnitRoot&>(node), executeContext);
+			result =  ExecuteUnitRoot(static_cast<const ASTNodeUnitRoot&>(node), executeContext);
+			break;
 
 		default:
 			assert(false);
-			return ScriptValue::Null;
 		}
+
+		//実行中ノードを戻して終わり
+		executeContext.SetCurrentASTNode(callingNode);
+		return result;
 	}
 
 	//コードブロック
@@ -258,6 +306,77 @@ namespace sakura {
 				return ScriptValue::Null;
 			}
 		}
+		return ScriptValue::Null;
+	}
+
+	ScriptValueRef ScriptExecutor::ExecuteForeach(const ASTNodeForeach& node, ScriptExecuteContext& executeContext) {
+		
+		//変数定義部分のスコープを作成
+		ScriptExecuteContext initScopeContext = executeContext.CreateChildBlockScopeContext();
+
+		//変数宣言に応じて設定
+		if (node.IsRegisterLocalVariable()) {
+			initScopeContext.GetBlockScope()->RegisterLocalVariable(node.GetLoopValueName(), ScriptValue::Null);
+			initScopeContext.GetBlockScope()->RegisterLocalVariable(node.GetLoopKeyName(), ScriptValue::Null);
+		}
+
+		//ターゲット式の実行
+		ScriptValueRef target = ExecuteInternal(*node.GetTargetExpression(), executeContext);
+
+		//ターゲットが反復可能基底に基づいている必要がある
+		ScriptIterable* iterable = executeContext.GetInterpreter().InstanceAs<ScriptIterable>(target);
+		if (iterable == nullptr) {
+			//error: 反復可能ではないので例外送出
+			executeContext.ThrowRuntimeError<RuntimeError>(TextSystem::Find("AOSORA_ITERATOR_ERROR_002"), executeContext);
+			return ScriptValue::Null;
+		}
+
+		//イテレータオブジェクトの作成
+		Reference<ScriptIterator> it = iterable->CreateIterator(executeContext);
+
+		while (true) {
+			{
+				//ループ毎にブロックスコープを作り直す
+				ScriptExecuteContext loopScopeContext = initScopeContext.CreateChildBlockScopeContext();
+
+				//スープスコープとしてマーク
+				ScriptInterpreterStack::LoopScope loopScole(loopScopeContext.GetStack());
+
+				//イテレータ有効性をチェック
+				if (it->IsEnd()) {
+					it->Dispose();
+					return ScriptValue::Null;
+				}
+
+				//ループ変数にイテレータが示す値を代入
+				loopScopeContext.SetSymbol(node.GetLoopValueName(), it->GetValue(), *node.GetSourceMetadata());
+				if (!node.GetLoopKeyName().empty()) {
+					loopScopeContext.SetSymbol(node.GetLoopKeyName(), it->GetKey(), *node.GetSourceMetadata());
+				}
+
+				//コードブロック本体の実行
+				ExecuteInternal(*node.GetLoopStatement(), loopScopeContext);
+
+				//return/throwの脱出の場合は最優先で終わり
+				if (loopScopeContext.GetStack().IsStackLeave()) {
+					it->Dispose();
+					return ScriptValue::Null;
+				}
+
+				//break対応
+				if (loopScopeContext.GetStack().IsBreak()) {
+					it->Dispose();
+					return ScriptValue::Null;
+				}
+
+				//continue指示で離脱してきている可能性があるので指示をクリア
+				loopScopeContext.GetStack().ClearLoopMode();
+
+				//イテレータを次に進める
+				it->FetchNext();
+			}
+		}
+
 		return ScriptValue::Null;
 	}
 
@@ -939,7 +1058,7 @@ namespace sakura {
 
 		//呼び出し不可時、エラーを生成する
 		if (!function->IsObject() || !function->GetObjectRef()->CanCall()) {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, TextSystem::Find("AOSORA_BUILTIN_ERROR_002"), executeContext);
+			executeContext.ThrowRuntimeError<RuntimeError>(TextSystem::Find("AOSORA_BUILTIN_ERROR_002"), executeContext);
 			return ScriptValue::Null;
 		}
 
@@ -972,7 +1091,7 @@ namespace sakura {
 
 		//Objectの場合は内部参照、それ以外の場合は組み込みメソッドの呼出等となる
 		if (r->GetValueType() == ScriptValueType::Object) {
-			auto result = r->GetObjectRef()->Get(r->GetObjectRef(), key, executeContext);
+			auto result = r->GetObjectRef()->Get(key, executeContext);
 			if (result != nullptr) {
 				return result;
 			}
@@ -1023,7 +1142,7 @@ namespace sakura {
 				return ScriptValue::Null;
 			}
 
-			r->GetObjectRef()->Set(r->GetObjectRef(), k->ToString(), v, executeContext);
+			r->GetObjectRef()->Set(k->ToString(), v, executeContext);
 		}
 		return ScriptValue::Null;
 	}
@@ -1117,7 +1236,7 @@ namespace sakura {
 			executeContext.ThrowError(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName(), r->GetObjectRef(), executeContext);
 		}
 		else {
-			executeContext.ThrowRuntimeError<RuntimeError>(node, "throwできるのはErrorオブジェクトだけです。", executeContext);
+			executeContext.ThrowRuntimeError<RuntimeError>("throwできるのはErrorオブジェクトだけです。", executeContext);
 		}
 		
 		return ScriptValue::Null;
@@ -1396,9 +1515,12 @@ namespace sakura {
 		//組み込みのクラスを登録
 		RegisterNativeFunction("print", &ScriptInterpreter::Print);
 
-		//TODO: 無名の登録が必要かも、グローバル空間をあまり汚染したくないものもあったり
-		ImportClass(NativeClass::Make<ScriptArray>("Array"));
-		ImportClass(NativeClass::Make<ScriptObject>("Map"));
+		ImportClass(NativeClass::Make<ScriptIterable>("Iterable"));
+		ImportClass(NativeClass::Make<ScriptIterator>("Iterator"));
+		ImportClass(NativeClass::Make<ScriptArray>("Array", ClassPath("Iterable")));
+		ImportClass(NativeClass::Make<ScriptArrayIterator>("Array", ClassPath("Iterator")));
+		ImportClass(NativeClass::Make<ScriptObject>("Map", ClassPath("Iterable")));
+		ImportClass(NativeClass::Make<ScriptObjectIterator>("MapIterator", ClassPath("Iterator")));
 		ImportClass(NativeClass::Make<ClassData>("ClassData"));
 		ImportClass(NativeClass::Make<Reflection>("Reflection"));
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));
@@ -1775,7 +1897,7 @@ namespace sakura {
 				}
 			}
 			else {
-				context.ThrowRuntimeError<RuntimeError>(callingNode, "このクラスはインスタンス化できません。", context);
+				context.ThrowRuntimeError<RuntimeError>("このクラスはインスタンス化できません。", context);
 				return nullptr;
 			}
 		}
@@ -1885,10 +2007,10 @@ namespace sakura {
 			//ユニットエイリアスを解決してその中身を取得
 			Reference<UnitObject> unit = interpreter.GetUnit(unitAlias->targetName);
 			if (unit != nullptr) {
-				auto result = unit->Get(unit, unitAlias->targetName, *this);
+				auto result = unit->Get(unitAlias->targetName, *this);
 				if (result != nullptr) {
 					//参照先がある場合その名前で書きこむ
-					unit->Set(unit, unitAlias->targetName, value, *this);
+					unit->Set(unitAlias->targetName, value, *this);
 					return;
 				}
 			}
@@ -1899,9 +2021,9 @@ namespace sakura {
 			Reference<UnitObject> unit = interpreter.GetUnit(sourcemeta.GetAlias().GetWildcardAlias(i));
 			if (unit != nullptr) {
 				//ユニット名から名前検索
-				auto result = unit->Get(unit, name, *this);
+				auto result = unit->Get(name, *this);
 				if (result != nullptr) {
-					unit->Set(unit, name, value, *this);
+					unit->Set(name, value, *this);
 					return;
 				}
 			}
@@ -1911,7 +2033,7 @@ namespace sakura {
 		Reference<UnitObject> currentUnit = interpreter.GetUnit(sourcemeta.GetScriptUnit()->GetUnit());
 		assert(currentUnit != nullptr);
 		if (currentUnit != nullptr) {
-			currentUnit->Set(currentUnit, name, value, *this);
+			currentUnit->Set(name, value, *this);
 		}
 	}
 

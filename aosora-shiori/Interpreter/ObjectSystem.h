@@ -29,7 +29,8 @@ namespace sakura {
 	};
 
 	//参照型
-	//TODO: 参照カウンタも導入して可能ならGCを待たずに捨ててもいいかも
+	//TODO: 参照カウンタも導入して可能ならGCを待たずに捨ててもいいかも。この場合、Referenceにはカウンタは持たず、Collectableのほうでもつこと。
+	//(取り回し的にオブジェクト自身がC++ this からReferenceをつくることができるように。）
 	template<typename CollectableType>
 	class Reference{
 	private:

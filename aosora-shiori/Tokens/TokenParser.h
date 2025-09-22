@@ -51,6 +51,7 @@ namespace sakura {
 		Word,
 		Function,
 
+		Foreach,
 		For,
 		While,
 		If,
@@ -73,6 +74,7 @@ namespace sakura {
 		Use,
 		This,
 		Base,
+		In,
 
 		BlockBegin,
 		BlockEnd,

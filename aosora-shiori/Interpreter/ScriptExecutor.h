@@ -34,6 +34,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteFunctionInitializer(const ASTNodeFunctionInitializer& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteLocalVariableDeclaration(const ASTNodeLocalVariableDeclaration& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteLocalVariableDeclarationList(const ASTNodeLocalVariableDeclarationList& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteForeach(const ASTNodeForeach& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteFor(const ASTNodeFor& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteWhile(const ASTNodeWhile& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteIf(const ASTNodeIf& node, ScriptExecuteContext& executeContext);
@@ -782,17 +783,21 @@ namespace sakura {
 		ScriptInterpreter& interpreter;
 		ScriptInterpreterStack& stack;
 		Reference<BlockScope> blockScope;
+		const ASTNodeBase* currentNode;
 
 	public:
 		ScriptExecuteContext(ScriptInterpreter& vm, ScriptInterpreterStack& st, const Reference<BlockScope>& scope) :
 			interpreter(vm),
 			stack(st),
-			blockScope(scope)
+			blockScope(scope),
+			currentNode(stack.GetCallingASTNode())
 		{}
 
 		ScriptInterpreterStack& GetStack() { return stack; }
 		ScriptInterpreter& GetInterpreter() { return interpreter; }
 		const Reference<BlockScope>& GetBlockScope() { return blockScope; }
+		const ASTNodeBase* GetCurrentASTNode() { return currentNode; }
+		void SetCurrentASTNode(const ASTNodeBase* node) { currentNode = node; }
 
 		//新しいブロックスコープのコンテキストを作る
 		ScriptExecuteContext CreateChildBlockScopeContext();
@@ -808,9 +813,9 @@ namespace sakura {
 
 		//エラーのスローヘルパ
 		template<typename T>
-		Reference<ScriptError> ThrowRuntimeError(const ASTNodeBase& throwAstNode, const std::string& message, ScriptExecuteContext& context) {
+		Reference<ScriptError> ThrowRuntimeError(const std::string& message, ScriptExecuteContext& context) {
 			Reference<ScriptError> err = interpreter.CreateNativeObject<T>(message);
-			ThrowError(throwAstNode, context.GetBlockScope(), GetStack().GetFunctionName(), err, context);
+			ThrowError(*context.GetCurrentASTNode(), context.GetBlockScope(), GetStack().GetFunctionName(), err, context);
 			return err;
 		}
 

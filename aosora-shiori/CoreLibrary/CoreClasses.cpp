@@ -63,7 +63,7 @@ namespace sakura {
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
 			assert(instance->GetNativeBaseInstance() != nullptr);
-			instance->GetNativeBaseInstance()->Set(instance->GetNativeBaseInstance(), key, value, executeContext);
+			instance->GetNativeBaseInstance()->Set(key, value, executeContext);
 			return;
 		}
 
@@ -85,7 +85,7 @@ namespace sakura {
 		else {
 			//ネイティブクラスの場合はインスタンス内のネイティブオブジェクトに問い合わせを回す
 			assert(instance->GetNativeBaseInstance() != nullptr);
-			return instance->GetNativeBaseInstance()->Get(instance->GetNativeBaseInstance(), key, executeContext);
+			return instance->GetNativeBaseInstance()->Get(key, executeContext);
 		}
 
 		//見つからない場合さらに親を見る
@@ -110,7 +110,7 @@ namespace sakura {
 		}
 	}
 
-	void ClassData::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void ClassData::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		if (metadata->IsScriptClass()) {
 			//いまのところスクリプトクラスにstaticがない
 		}
@@ -123,7 +123,7 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef ClassData::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ClassData::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (metadata->IsScriptClass()) {
 			//いまのところない
 		}
@@ -143,9 +143,9 @@ namespace sakura {
 		//なし
 	}
 
-	ScriptValueRef ScriptError::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ScriptError::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "ToString") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptError::ScriptToString, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptError::ScriptToString, GetRef()));
 		}
 		return ScriptValue::Null;
 	}
@@ -232,7 +232,7 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef OverloadedFunctionList::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef OverloadedFunctionList::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "length") {
 			return ScriptValue::Make(static_cast<number>(functions.size()));
 		}
@@ -333,6 +333,10 @@ namespace sakura {
 		}
 	}
 
+	Reference<ScriptIterator> ScriptArray::CreateIterator(ScriptExecuteContext& executeContext) {
+		return executeContext.GetInterpreter().CreateNativeObject<ScriptArrayIterator>(Reference<ScriptArray>(this));
+	}
+
 	std::string ScriptArray::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
 		if (members.empty()) {
 			//からっぽ
@@ -360,7 +364,12 @@ namespace sakura {
 		return result;
 	}
 
-	void TalkBuilderSettings::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void ScriptArrayIterator::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		ScriptIterator::FetchReferencedItems(result);
+		result.push_back(targetArray.Get());
+	}
+
+	void TalkBuilderSettings::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		if (key == "AutoLineBreak") {
 			autoLineBreak = value->ToString();
 		}
@@ -372,7 +381,7 @@ namespace sakura {
 		}
 	}
 
-	ScriptValueRef TalkBuilderSettings::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef TalkBuilderSettings::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "AutoLineBreak") {
 			return ScriptValue::Make(autoLineBreak);
 		}
@@ -429,7 +438,7 @@ namespace sakura {
 	}
 
 	//ユニットオブジェクト
-	ScriptValueRef UnitObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef UnitObject::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (!path.empty()) {
 			return executeContext.GetInterpreter().GetUnitVariable(key, path);
 		}
@@ -439,7 +448,7 @@ namespace sakura {
 		}
 	}
 
-	void UnitObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void UnitObject::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		if (!path.empty()) {
 			executeContext.GetInterpreter().SetUnitVariable(key, value, path);
 		}

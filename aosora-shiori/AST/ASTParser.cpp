@@ -561,6 +561,8 @@ namespace sakura {
 			return ParseASTFunctionStatement(parseContext, isRootBlock);
 		case ScriptTokenType::Talk:
 			return ParseASTTalkStatement(parseContext, isRootBlock);
+		case ScriptTokenType::Foreach:
+			return ParseASTForeach(parseContext);
 		case ScriptTokenType::For:
 			return ParseASTFor(parseContext);
 		case ScriptTokenType::While:
@@ -2068,9 +2070,8 @@ namespace sakura {
 					break;
 				}
 				else {
-					//セミコロンでもカンマでもないとエラー。ここは来ないはず
-					assert(false);
-					parseContext.Error(ERROR_AST_999, parseContext.GetPrev());
+					//セミコロンでもカンマでもないとエラー
+					parseContext.Error(ERROR_AST_000, parseContext.GetPrev());
 					return false;
 				}
 			}
@@ -2095,6 +2096,75 @@ namespace sakura {
 
 		
 		return true;
+	}
+
+	//foreach文
+	ASTNodeRef ASTParser::ParseASTForeach(ASTParseContext& parseContext) {
+		const ScriptToken& beginToken = parseContext.GetCurrent();
+
+		//対象外の情報にはエラーを返す
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Foreach);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Foreach) {
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+		parseContext.FetchNext();
+
+		//開き括弧
+		if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+		parseContext.FetchNext();
+
+		//local(任意)
+		bool isRegisterLoopVariable = false;
+		if (parseContext.GetCurrent().type == ScriptTokenType::Local) {
+			isRegisterLoopVariable = true;
+			parseContext.FetchNext();
+		}
+
+		//変数シンボル
+		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+		}
+		std::string valueName = parseContext.GetCurrent().body;
+		std::string keyName = "";
+		parseContext.FetchNext();
+
+		//カンマ（任意）
+		if (parseContext.GetCurrent().type == ScriptTokenType::Comma) {
+			parseContext.FetchNext();
+			//キー変数シンボル
+			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
+				return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+			}
+			keyName = parseContext.GetCurrent().body;
+			parseContext.FetchNext();
+		}
+
+		//in
+		if (parseContext.GetCurrent().type != ScriptTokenType::In) {
+			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+		}
+		parseContext.FetchNext();
+
+		//ターゲット式
+		auto target = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_BLACKET);
+
+		//ブロック開始のカッコがあるかを調べる
+		ConstASTNodeRef loopStatement;
+		if (parseContext.GetCurrent().type == ScriptTokenType::BlockBegin) {
+			//ブロック開始であればtrue処理はコードブロックになる
+			parseContext.FetchNext();
+			loopStatement = ParseASTCodeBlock(parseContext, true);
+		}
+		else {
+			//ブロック開始でなければ単体ステートメントになる
+			loopStatement = ParseASTStatement(parseContext, true);
+		}
+
+		ASTNodeForeach* const node = new ASTNodeForeach(valueName, keyName, isRegisterLoopVariable, target, loopStatement, parseContext.GetSourceMetadata());
+		node->SetSourceRange(beginToken, parseContext.GetPrev());
+		return ASTNodeRef(node);
 	}
 
 	//for文

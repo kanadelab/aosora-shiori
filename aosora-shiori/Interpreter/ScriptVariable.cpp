@@ -2,6 +2,7 @@
 #include "Interpreter/ScriptVariable.h"
 #include "Interpreter/ScriptExecutor.h"
 #include "CoreLibrary/CoreLibrary.h"
+#include "Misc/Message.h"
 
 namespace sakura {
 	const ScriptValueRef ScriptValue::Null(new ScriptValue(ScriptValueType::Null));
@@ -10,11 +11,11 @@ namespace sakura {
 	const ScriptValueRef ScriptValue::True(new ScriptValue(true));
 	const ScriptValueRef ScriptValue::False(new ScriptValue(false));
 
-	ScriptValueRef ObjectBase::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ObjectBase::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		return nullptr;
 	}
 
-	void ObjectBase::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void ObjectBase::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 	}
 
 	std::string ObjectBase::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
@@ -24,10 +25,42 @@ namespace sakura {
 		return result;
 	}
 
+	bool ScriptIterable::ValidateCollectionLock(const FunctionRequest& request, FunctionResponse& response) {
+		//コレクションがロックされているなら例外を投げてfalseを返す
+		if (IsCollectionLocked()) {
+			response.SetThrewError(
+				request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_ITERATOR_ERROR_001"))
+			);
+			return false;
+		}
+		return true;
+	}
+
+	bool ScriptIterable::ValidateCollectionLock(ScriptExecuteContext& executeContext) {
+		if (IsCollectionLocked()) {
+			executeContext.ThrowRuntimeError<RuntimeError>(TextSystem::Find("AOSORA_ITERATOR_ERROR_001"), executeContext);
+			return false;
+		}
+		return true;
+	}
+
+	void ScriptIterator::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (target != nullptr) {
+			result.push_back(target.Get());
+		}
+	}
+
 	void ScriptObject::ScriptAdd(const FunctionRequest& request, FunctionResponse& response) {
 		if (request.GetArgumentCount() >= 2) {
+
 			std::string key = request.GetArgument(0)->ToString();
 			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+
+			//要素が増えようとしている場合、foreach操作では不可
+			if (!obj->ValidateCollectionLock(request, response)) {
+				return;
+			}
+
 			obj->Add(key, request.GetArgument(1));
 		}
 	}
@@ -42,6 +75,12 @@ namespace sakura {
 
 	void ScriptObject::ScriptClear(const FunctionRequest& request, FunctionResponse& response) {
 		ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+
+		//要素が増えようとしている場合、foreach操作では不可
+		if (!obj->ValidateCollectionLock(request, response)) {
+			return;
+		}
+
 		obj->Clear();
 	}
 
@@ -58,6 +97,12 @@ namespace sakura {
 	void ScriptObject::ScriptRemove(const FunctionRequest& request, FunctionResponse& response) {
 		if (request.GetArgumentCount() > 0) {
 			ScriptObject* obj = request.GetContext().GetInterpreter().InstanceAs<ScriptObject>(request.GetContext().GetBlockScope()->GetThisValue());
+
+			//要素が増えようとしている場合、foreach操作では不可
+			if (!obj->ValidateCollectionLock(request, response)) {
+				return;
+			}
+
 			std::string k = request.GetArgument(0)->ToString();
 			obj->Remove(k);
 		}
@@ -89,16 +134,19 @@ namespace sakura {
 		return members.contains(key);
 	}
 
-	void ScriptObject::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
-
-		//クラスデータが設定されている場合そちらに設定する
+	void ScriptObject::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext)  {
 		assert(value != nullptr);
+		if (!Contains(key)) {
+			//要素が増えようとしている場合、foreach操作では不可
+			if (!ValidateCollectionLock(executeContext)) {
+				return;
+			}
+		}
 		members[key] = value;
 	}
 
-	ScriptValueRef ScriptObject::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef ScriptObject::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 
-		//クラスデータが設定されている場合そちら経由で取得する
 		auto rawgetResult = RawGet(key);
 		if (rawgetResult != nullptr) {
 			return rawgetResult;
@@ -109,19 +157,19 @@ namespace sakura {
 			return ScriptValue::Make(static_cast<number>(members.size()));
 		}
 		else if (key == "Add") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptAdd, GetRef()));
 		}
 		else if (key == "Contains") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptContains, GetRef()));
 		}
 		else if (key == "Clear") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptClear, GetRef()));
 		}
 		else if (key == "Remove") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptRemove, GetRef()));
 		}
 		else if (key == "Keys") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, self));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptObject::ScriptKeys, GetRef()));
 		}
 
 		return nullptr;
@@ -155,6 +203,16 @@ namespace sakura {
 		debugOutputContext.AppendNewLine(result);
 		result.append("}");
 		return result;
+	}
+
+	Reference<ScriptIterator> ScriptObject::CreateIterator(ScriptExecuteContext& executeContext) {
+		//NOTE: shared_ptr と違ってポインタからリファレンスを作成しても問題ないはず、カウンタをもつにしてもオブジェクト側がもつはずなので･･･
+		return executeContext.GetInterpreter().CreateNativeObject<ScriptObjectIterator>(Reference<ScriptObject>(this));
+	}
+
+	void ScriptObjectIterator::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		ScriptIterator::FetchReferencedItems(result);
+		result.push_back(targetObject.Get());
 	}
 
 	void ScriptObject::FetchReferencedItems(std::list<CollectableBase*>& result) {
@@ -209,12 +267,12 @@ namespace sakura {
 		return executeContext.GetInterpreter().CreateNativeObject<UpcastClassInstance>(self, classRef->GetObjectRef().Cast<ClassData>()->GetParentClass());
 	}
 
-	void ClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
-		SetInternal(self.Cast<ClassInstance>(), classData, key, value, executeContext);
+	void ClassInstance::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+		SetInternal(GetRef().Cast<ClassInstance>(), classData, key, value, executeContext);
 	}
 
-	ScriptValueRef ClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
-		return GetInternal(self.Cast<ClassInstance>(), classData, key, executeContext);
+	ScriptValueRef ClassInstance::Get(const std::string& key, ScriptExecuteContext& executeContext) {
+		return GetInternal(GetRef().Cast<ClassInstance>(), classData, key, executeContext);
 	}
 
 	void ClassInstance::FetchReferencedItems(std::list<CollectableBase*>& result) {
@@ -229,12 +287,12 @@ namespace sakura {
 		}
 	}
 
-	void UpcastClassInstance::Set(const ObjectRef& self, const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
+	void UpcastClassInstance::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 		//ClassInstanceに対して型指定形式で問い合わせる
 		classInstance->SetInternal(classInstance, upcastedClassData, key, value, executeContext);
 	}
 
-	ScriptValueRef UpcastClassInstance::Get(const ObjectRef& self, const std::string& key, ScriptExecuteContext& executeContext) {
+	ScriptValueRef UpcastClassInstance::Get(const std::string& key, ScriptExecuteContext& executeContext) {
 		return classInstance->GetInternal(classInstance, upcastedClassData, key, executeContext);
 	}
 

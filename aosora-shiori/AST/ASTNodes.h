@@ -441,6 +441,45 @@ namespace sakura {
 		}
 	};
 
+	//foreach相当のfor文
+	class ASTNodeForeach : public ASTNodeBase {
+	private:
+		std::string valueName;
+		std::string keyName;
+		bool isRegisterLocalVariable;
+		ConstASTNodeRef targetExpression;
+		ConstASTNodeRef loopStatement;
+
+	public:
+		ASTNodeForeach(const std::string& valueName, const std::string& keyName, bool isLoopVariableRegister, const ConstASTNodeRef& target, const ConstASTNodeRef& stmt, const ScriptSourceMetadataRef& metadata) : ASTNodeBase(metadata),
+			valueName(valueName),
+			keyName(keyName),
+			isRegisterLocalVariable(isLoopVariableRegister),
+			targetExpression(target),
+			loopStatement(stmt)
+		{
+		}
+
+		const std::string& GetLoopKeyName() const { return keyName; }
+		const std::string& GetLoopValueName() const { return valueName; }
+		bool IsRegisterLocalVariable() const { return isRegisterLocalVariable; }
+		const ConstASTNodeRef& GetTargetExpression() const { return targetExpression; }
+		const ConstASTNodeRef& GetLoopStatement() const { return loopStatement; }
+
+		virtual ASTNodeType GetType() const override { return ASTNodeType::Foreach; }
+		virtual void GetChildren(std::vector<ConstASTNodeRef>& nodes) const override {
+			nodes.push_back(targetExpression);
+			nodes.push_back(loopStatement);
+		}
+
+		virtual const char* DebugName() const override { return "Foreach"; }
+		virtual void DebugDump(int32_t indent) const override {
+			ASTNodeBase::DebugDump(indent);
+			targetExpression->DebugDump(indent + 1);
+			loopStatement->DebugDump(indent + 1);
+		}
+	};
+
 	//for文
 	class ASTNodeFor : public ASTNodeBase {
 	private:
