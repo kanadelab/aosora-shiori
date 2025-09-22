@@ -61,6 +61,9 @@ namespace sakura {
 	const std::string ERROR_AST_046 = "A046";
 	const std::string ERROR_AST_047 = "A047";
 	const std::string ERROR_AST_049 = "A049";	//048はクラスリレーションエラーなのでここにはない
+	const std::string ERROR_AST_050 = "A050";
+	const std::string ERROR_AST_051 = "A051";
+	const std::string ERROR_AST_052 = "A052";
 
 	//四則演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -2111,7 +2114,7 @@ namespace sakura {
 
 		//開き括弧
 		if (parseContext.GetCurrent().type != ScriptTokenType::BracketBegin) {
-			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_050, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
@@ -2124,7 +2127,7 @@ namespace sakura {
 
 		//変数シンボル
 		if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_051, parseContext.GetCurrent());
 		}
 		std::string valueName = parseContext.GetCurrent().body;
 		std::string keyName = "";
@@ -2135,7 +2138,7 @@ namespace sakura {
 			parseContext.FetchNext();
 			//キー変数シンボル
 			if (parseContext.GetCurrent().type != ScriptTokenType::Symbol) {
-				return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+				return parseContext.Error(ERROR_AST_051, parseContext.GetCurrent());
 			}
 			keyName = parseContext.GetCurrent().body;
 			parseContext.FetchNext();
@@ -2143,7 +2146,7 @@ namespace sakura {
 
 		//in
 		if (parseContext.GetCurrent().type != ScriptTokenType::In) {
-			return parseContext.Error(ERROR_AST_000, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_052, parseContext.GetCurrent());
 		}
 		parseContext.FetchNext();
 
