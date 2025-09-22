@@ -194,8 +194,7 @@ talk OnItemList {
 function かいものリスト表示 {
 
 	local result = "";
-	for(local i = 0; i < itemList.length; i++){
-		local itemName = itemList[i];
+	foreach(local itemName in itemList){
 		local item = itemListCount[itemName];
 		result += "\q[▲増やす,OnIncrementItem,{itemName}] \q[▼減らす,OnDecrementItem,{itemName}] {item.name}: {item.ToString()}\n";
 	}
