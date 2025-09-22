@@ -2256,7 +2256,7 @@ namespace sakura {
 			//最初のトーク内容を設定
 			const std::string talkHead = TalkBuilder::GetScriptHead(interpreter);
 			if (!talkHead.empty()) {
-				talkBody = TalkStringCombiner::CombineTalk(talkBody, talkHead, interpreter, &speakedCache, false);
+				talkBody = talkHead;
 			}
 		}
 	}
