@@ -76,6 +76,8 @@ namespace sakura {
 		Mul,
 		Div,
 		Mod,
+		NullCoalescing,
+
 		Minus,
 		Plus,
 
@@ -96,6 +98,7 @@ namespace sakura {
 		AssignMul,
 		AssignDiv,
 		AssignMod,
+		AssignNullCoalescing,
 
 		Call,
 		Bracket,

@@ -19,12 +19,14 @@ namespace sakura {
 	const std::string TOKEN_OPERATOR_SLASH = "/";
 	const std::string TOKEN_OPERATOR_EQUAL = "=";
 	const std::string TOKEN_OPERATOR_PERCENT = "%";
+	const std::string TOKEN_OPERATOR_NULL_COALESCING = "??";
 	
 	const std::string TOKEN_OPERATOR_ASSIGN_ADD = "+=";
 	const std::string TOKEN_OPERATOR_ASSIGN_SUB = "-=";
 	const std::string TOKEN_OPERATOR_ASSIGN_MUL = "*=";
 	const std::string TOKEN_OPERATOR_ASSIGN_DIV = "/=";
 	const std::string TOKEN_OPERATOR_ASSIGN_MOD = "%=";
+	const std::string TOKEN_OPERATOR_ASSIGN_NULL_COALESCING = "??=";
 
 	const std::string TOKEN_OPERATOR_INCREMENT = "++";
 	const std::string TOKEN_OPERATOR_DECREMENT = "--";
@@ -120,6 +122,9 @@ namespace sakura {
 		{TOKEN_OPERATOR_ASSIGN_MUL, ScriptTokenType::AssignMul},
 		{TOKEN_OPERATOR_ASSIGN_DIV, ScriptTokenType::AssignDiv},
 		{TOKEN_OPERATOR_ASSIGN_MOD, ScriptTokenType::AssignMod},
+		{TOKEN_OPERATOR_ASSIGN_NULL_COALESCING, ScriptTokenType::AssignNullCoalescing},
+
+		{TOKEN_OPERATOR_NULL_COALESCING, ScriptTokenType::NullCoalescing},
 
 		{TOKEN_OPERATOR_INCREMENT, ScriptTokenType::Increment},
 		{TOKEN_OPERATOR_DECREMENT, ScriptTokenType::Decrement},

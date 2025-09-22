@@ -65,12 +65,13 @@ namespace sakura {
 	const std::string ERROR_AST_051 = "A051";
 	const std::string ERROR_AST_052 = "A052";
 
-	//四則演算
+	//２値演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
 	const OperatorInformation OPERATOR_SUB = { OperatorType::Sub, 6, 2, true, "-" };
 	const OperatorInformation OPERATOR_MUL = { OperatorType::Mul, 5, 2, true, "*" };
 	const OperatorInformation OPERATOR_DIV = { OperatorType::Div, 5, 2, true, "/" };
 	const OperatorInformation OPERATOR_MOD = { OperatorType::Mod, 5, 2, true, "%" };
+	const OperatorInformation OPERATOR_NULL_COALESCING = { OperatorType::NullCoalescing, 15, 2, true, "??" };
 
 	//単項プラスマイナス
 	const OperatorInformation OPERATOR_MINUS = { OperatorType::Minus, 3, 1, false, "-" };
@@ -105,12 +106,13 @@ namespace sakura {
 	const OperatorInformation OPERATOR_NEW = { OperatorType::New, 3, 1, false, "new" };
 
 	//代入
-	const OperatorInformation OPERATOR_ASSIGN = { OperatorType::Assign, 15, 2, false, "="};
-	const OperatorInformation OPERAOTR_ASSIGN_ADD = { OperatorType::AssignAdd, 15, 2, false, "+=" };
-	const OperatorInformation OPERATOR_ASSIGN_SUB = { OperatorType::AssignSub, 15, 2, false, "-=" };
-	const OperatorInformation OPERATOR_ASSIGN_MUL = { OperatorType::AssignMul, 15, 2, false, "*=" };
-	const OperatorInformation OPERATOR_ASSIGN_DIV = { OperatorType::AssignDiv, 15, 2, false, "/=" };
-	const OperatorInformation OPERATOR_ASSIGN_MOD = { OperatorType::AssignMod, 15, 2, false, "%=" };
+	const OperatorInformation OPERATOR_ASSIGN = { OperatorType::Assign, 16, 2, false, "="};
+	const OperatorInformation OPERAOTR_ASSIGN_ADD = { OperatorType::AssignAdd, 16, 2, false, "+=" };
+	const OperatorInformation OPERATOR_ASSIGN_SUB = { OperatorType::AssignSub, 16, 2, false, "-=" };
+	const OperatorInformation OPERATOR_ASSIGN_MUL = { OperatorType::AssignMul, 16, 2, false, "*=" };
+	const OperatorInformation OPERATOR_ASSIGN_DIV = { OperatorType::AssignDiv, 16, 2, false, "/=" };
+	const OperatorInformation OPERATOR_ASSIGN_MOD = { OperatorType::AssignMod, 16, 2, false, "%=" };
+	const OperatorInformation OPERATOR_ASSIGN_NULL_COALESCING = { OperatorType::AssignNullCoalescing, 16, 2, false, "??=" };
 
 	//式やステートメントの終端として認めるもののフラグ
 	const uint32_t SEQUENCE_END_FLAG_COMMA = 1u << 0u;
@@ -519,6 +521,8 @@ namespace sakura {
 				return &OPERATOR_DIV;
 			case ScriptTokenType::Percent:
 				return &OPERATOR_MOD;
+			case ScriptTokenType::NullCoalescing:
+				return &OPERATOR_NULL_COALESCING;
 			case ScriptTokenType::Asterisk:
 				return &OPERATOR_MUL;
 			case ScriptTokenType::RelationalEq:
@@ -549,6 +553,8 @@ namespace sakura {
 				return &OPERATOR_ASSIGN_DIV;
 			case ScriptTokenType::AssignMod:
 				return &OPERATOR_ASSIGN_MOD;
+			case ScriptTokenType::AssignNullCoalescing:
+				return &OPERATOR_ASSIGN_NULL_COALESCING;
 			}
 		}
 		
@@ -634,6 +640,7 @@ namespace sakura {
 			case OperatorType::AssignMul:
 			case OperatorType::AssignDiv:
 			case OperatorType::AssignMod:
+			case OperatorType::AssignNullCoalescing:
 				return true;
 			}
 			return false;
@@ -670,6 +677,9 @@ namespace sakura {
 					break;
 				case OperatorType::AssignMod:
 					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_MOD, operandLeft, operandRight, parseContext.GetSourceMetadata()));
+					break;
+				case OperatorType::AssignNullCoalescing:
+					operandRight = ASTNodeRef(new ASTNodeEvalOperator2(OPERATOR_NULL_COALESCING, operandLeft, operandRight, parseContext.GetSourceMetadata()));
 					break;
 				}
 

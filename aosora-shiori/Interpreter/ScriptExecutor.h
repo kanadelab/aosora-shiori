@@ -64,6 +64,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteOpLe(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteOpLogicalOr(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteOpLogicalAnd(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteOpNullCoalescing(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext);
 
 		//単項演算子
 		static ScriptValueRef ExecuteOpMinus(const ASTNodeEvalOperator1& node, ScriptExecuteContext& executeContext);

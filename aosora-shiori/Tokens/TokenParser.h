@@ -19,12 +19,14 @@ namespace sakura {
 		Slash,
 		Percent,
 		Equal,
-		
+		NullCoalescing,
+
 		AssignAdd,
 		AssignSub,
 		AssignMul,
 		AssignDiv,
 		AssignMod,
+		AssignNullCoalescing,
 
 		LogicalAnd,
 		LogicalOr,

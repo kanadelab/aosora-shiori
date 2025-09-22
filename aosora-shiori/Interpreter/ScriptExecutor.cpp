@@ -571,6 +571,8 @@ namespace sakura {
 			return ExecuteOpLogicalOr(node, executeContext);
 		case OperatorType::LogicalAnd:
 			return ExecuteOpLogicalAnd(node, executeContext);
+		case OperatorType::NullCoalescing:
+			return ExecuteOpNullCoalescing(node, executeContext);
 		default:
 			assert(false);
 			return ScriptValue::Null;
@@ -903,6 +905,29 @@ namespace sakura {
 			return right;
 		}
 		else {
+			return left;
+		}
+	}
+
+	//null合体
+	ScriptValueRef ScriptExecutor::ExecuteOpNullCoalescing(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext) {
+		ScriptValueRef left = ExecuteInternal(*node.GetOperandLeft(), executeContext);
+		if (executeContext.RequireLeave()) {
+			return ScriptValue::Null;
+		}
+
+		if (left->IsNull()) {
+			//leftがnullと評価された場合rightを返す
+
+			ScriptValueRef right = ExecuteInternal(*node.GetOperandRight(), executeContext);
+			if (executeContext.RequireLeave()) {
+				return ScriptValue::Null;
+			}
+
+			return right;
+		}
+		else {
+			//非nullなら左
 			return left;
 		}
 	}
