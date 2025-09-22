@@ -4,7 +4,6 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-
 #include <windows.h>
 #include <winsock2.h>
 #include <WS2tcpip.h>
@@ -684,8 +683,11 @@ namespace sakura {
 				recvThread.reset(new std::thread(&DebugConnection::CallRecvThread));
 
 #if defined(AOSORA_REQUIRED_WIN32)
+				/*
+				//Windows10以降でないと起動しないので一旦消す
 				SetThreadDescription(sendThread->native_handle(), L"Aosora Debug Send");
 				SetThreadDescription(recvThread->native_handle(), L"Aosora Debug Receive");
+				*/
 #endif // AOSORA_REQUIRED_WIN32
 			}
 		}
@@ -852,7 +854,10 @@ namespace sakura {
 				//リッスンスレッドからやり直す
 				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
 #if defined(AOSORA_REQUIRED_WIN32)
+				/*
+				//Windows10以降でないと起動しないので一旦消す
 				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+				*/
 #endif // AOSORA_REQUIRED_WIN32
 			}
 		}
@@ -871,7 +876,10 @@ namespace sakura {
 				//リッスンスレッド起動
 				listenThread.reset(new std::thread(&DebugConnection::CallListenThread));
 #if defined(AOSORA_REQUIRED_WIN32)
+				/*
+				//Windows10以降でないと起動しないので一旦消す
 				SetThreadDescription(listenThread->native_handle(), L"Aosora Debug Listen");
+				*/
 #endif // AOSORA_REQUIRED_WIN32
 			}
 		}
