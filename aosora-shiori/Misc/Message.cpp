@@ -75,8 +75,9 @@ namespace sakura {
 			ERROR_MESSAGES("T004", "開き括弧 { が必要です。", "トークブロック本文の開始前に中括弧 { が必要です。")
 			ERROR_MESSAGES("T005", "構文的に認識できない文字です。", "スクリプトのどの構文にも当てはまらない文字です。書き方が間違ってないか確認してみてください。")
 
-			ERROR_MESSAGES("S001", "設定ファイル ghost.asproj が開けませんでした。", "")
-			ERROR_MESSAGES("S002", "スクリプトファイルが開けませんでした。", "")
+			ERROR_MESSAGES("S001", "設定ファイル ghost.asproj が開けませんでした。", "蒼空を起動するために ghost.asproj ファイルが必須です")
+			ERROR_MESSAGES("S002", "スクリプトファイルが開けませんでした。", "指定されたファイルが見つからない可能性があります。")
+			ERROR_MESSAGES("S003", "ユニットファイルを開けませんでした。", "指定されたファイルが見つからない可能性があります。")
 
 			.Register("AOSORA_ERROR_RELOADED_0", "蒼空 リロード完了")
 			.Register("AOSORA_ERROR_RELOADED_1", "リロードして、起動エラーはありませんでした。")

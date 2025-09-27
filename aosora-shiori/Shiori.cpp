@@ -1,5 +1,6 @@
 ﻿#include <fstream>
 #include <cstdio>
+#include <filesystem>
 #include "Version.h"
 #include "Shiori.h"
 #include "Misc/Message.h"
@@ -13,6 +14,7 @@ namespace sakura {
 	//SHIORI 起動エラー
 	const std::string ERROR_SHIORI_001 = "S001";
 	const std::string ERROR_SHIORI_002 = "S002";
+	const std::string ERROR_SHIORI_003 = "S003";
 
 	Shiori::Shiori():
 		isBooted(false),
@@ -44,7 +46,7 @@ namespace sakura {
 	void Shiori::Load(const std::string& path) {
 
 		ProjectSettings projectSettings;
-		ghostMasterPath = path;
+		ghostMasterPath = std::filesystem::path(path).make_preferred().string();
 		interpreter.SetWorkingDirectory(path);
 
 		//他の言語を用意するまで無効
@@ -77,7 +79,7 @@ namespace sakura {
 				scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<SourceFilePath>(new SourceFilePath("ghost.asproj", scriptProjPath)), 0, 0, 0, 0)));
 				return;
 			}
-			LoadProjectFile(settingsStream, projectSettings);
+			LoadProjectFile(settingsStream, projectSettings, "", false);
 		}
 
 		//デバッグ用の設定ファイルはあればロードする
@@ -86,7 +88,27 @@ namespace sakura {
 			debugProjPath.append("debug.asproj");
 			std::ifstream settingsStream(debugProjPath, std::ios_base::in);
 			if (!settingsStream.fail()) {
-				LoadProjectFile(settingsStream, projectSettings);
+				LoadProjectFile(settingsStream, projectSettings, "", false);
+			}
+		}
+
+		//列挙されたユニットファイルをロードする
+		{
+			for (size_t i = 0; i < projectSettings.unitFiles.size(); i++) {
+				std::string target = projectSettings.unitFiles[i];
+				std::ifstream settingsStream(target);
+
+				if (settingsStream.fail()) {
+					//読み込みエラー
+					ScriptParseErrorData errorData;
+					errorData.errorCode = ERROR_SHIORI_003;
+					errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + ERROR_SHIORI_003);
+					errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + ERROR_SHIORI_003);
+					scriptLoadErrors.push_back(ScriptParseError(errorData, SourceCodeRange(std::shared_ptr<SourceFilePath>(new SourceFilePath(target, ghostMasterPath + target)), 0, 0, 0, 0)));
+					return;
+				}
+
+				LoadProjectFile(settingsStream, projectSettings, std::filesystem::path(target).parent_path().string(), true);
 			}
 		}
 
@@ -203,7 +225,7 @@ namespace sakura {
 		isBooted = true;
 	}
 
-	void Shiori::LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings) {
+	void Shiori::LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings, const std::string& basePath, bool isUnitFile) {
 		std::string line;
 		while (std::getline(loadStream, line)) {
 #if !(defined(WIN32) || defined(_WIN32))
@@ -235,38 +257,53 @@ namespace sakura {
 				std::string settingsKey = commands[0];
 				std::string settingsValue = commands[1];
 
-				//実行ステップ制限
-				if (settingsKey == "limit_script_steps") {
-					try {
-						projectSettings.limitScriptSteps = std::stol(settingsValue);
-						projectSettings.setLimitScriptSteps = true;
+				//ユニットファイルの列挙
+				if (settingsKey == "unit") {
+					std::filesystem::path path(basePath);
+					path.append(settingsValue);
+					std::string pathStr = path.make_preferred().string();
+
+					if (projectSettings.unitFilesSet.insert(pathStr).second) {
+						 projectSettings.unitFiles.push_back(pathStr);
 					}
-					catch (const std::exception&) {}
-					continue;
 				}
 
-				//デバッグシステムが無効な場合は無視する
-				if (!isForceDisableDebugSystem) {
-					//デバッグモード
-					if (settingsKey == "debug") {
-						projectSettings.enableDebug = StringToSettingsBool(settingsValue);
+				//非ユニットファイルでは各種設定を仕込むことが可能
+				if (!isUnitFile) {
+
+					//実行ステップ制限
+					if (settingsKey == "limit_script_steps") {
+						try {
+							projectSettings.limitScriptSteps = std::stol(settingsValue);
+							projectSettings.setLimitScriptSteps = true;
+						}
+						catch (const std::exception&) {}
 						continue;
 					}
 
-					if (settingsKey == "debug.logfile.name") {
-						projectSettings.debugOutputFilename = settingsValue;
-						continue;
-					}
+					//デバッグシステムが無効な場合は無視する
+					if (!isForceDisableDebugSystem) {
+						//デバッグモード
+						if (settingsKey == "debug") {
+							projectSettings.enableDebug = StringToSettingsBool(settingsValue);
+							continue;
+						}
 
-					if (settingsKey == "debug.logfile.enable") {
-						projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
-						continue;
-					}
+						if (settingsKey == "debug.logfile.name") {
+							projectSettings.debugOutputFilename = settingsValue;
+							continue;
+						}
 
-					if (settingsKey == "debug.debugger.port") {
-						size_t port;
-						if (StringToIndex(settingsValue, port)) {
-							projectSettings.debuggerPort = static_cast<uint32_t>(port);
+						if (settingsKey == "debug.logfile.enable") {
+							projectSettings.enableDebugLog = StringToSettingsBool(settingsValue);
+							continue;
+						}
+
+						if (settingsKey == "debug.debugger.port") {
+							size_t port;
+							if (StringToIndex(settingsValue, port)) {
+								projectSettings.debuggerPort = static_cast<uint32_t>(port);
+							}
 						}
 					}
 				}
@@ -274,8 +311,12 @@ namespace sakura {
 			else
 			{
 				//カンマがない行はロードするファイルの列挙
-				std::string filename = line;
-				projectSettings.scriptFiles.push_back(filename);
+				std::filesystem::path path(basePath);
+				path.append(line);
+				std::string pathStr = path.make_preferred().string();
+				if (projectSettings.scriptFilesSet.insert(pathStr).second) {
+					projectSettings.scriptFiles.push_back(pathStr);
+				}
 			}
 		}
 	}
