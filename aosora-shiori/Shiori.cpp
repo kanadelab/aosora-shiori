@@ -325,6 +325,17 @@ namespace sakura {
 
 		//起動時エラーがあればセーブを読めてない可能性もあるので保存しない
 		if (!HasBootError()) {
+
+			//セーブ前にアンロードイベント
+			{
+				ShioriResponse response;
+				Request(ShioriRequest("OnAosoraUnload"), response);
+
+				if (response.HasError()) {
+					//エラーが出ても無視するほかない
+				}
+			}
+
 			//セーブして終了
 			SaveData::Save(interpreter);
 		}
