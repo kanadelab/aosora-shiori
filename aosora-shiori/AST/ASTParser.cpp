@@ -1917,7 +1917,6 @@ namespace sakura {
 	//unit宣言のパース
 	void ASTParser::ParseASTUnitDef(ASTParseContext& parseContext) {
 
-
 		//ユニットを多重で設定不可
 		if (parseContext.GetScriptUnit()->IsExplicitUnit()) {
 			parseContext.Error(ERROR_AST_043, parseContext.GetCurrent());
@@ -1925,22 +1924,33 @@ namespace sakura {
 		}
 
 		//ユニット名
-		const auto& unitName = parseContext.GetCurrent();
-		if (unitName.type != ScriptTokenType::Symbol) {
-			//ユニット名でないなにかがある
-			parseContext.Error(ERROR_AST_042, parseContext.GetCurrent());
-			return;
-		}
-		parseContext.GetScriptUnit()->SetUnit(unitName.body);
-		parseContext.FetchNext();
+		std::string unitName = "";
 
-		//セミコロン
-		const auto& semiColon = parseContext.GetCurrent();
-		if (semiColon.type != ScriptTokenType::Semicolon) {
-			parseContext.Error(ERROR_AST_041, parseContext.GetCurrent());
-			return;
+		while (true) {
+			if (parseContext.GetCurrent().type == ScriptTokenType::Symbol) {
+				//ユニット名でないなにかがある
+				unitName.append(parseContext.GetCurrent().body);
+				parseContext.FetchNext();
+			}
+			else {
+				parseContext.Error(ERROR_AST_042, parseContext.GetCurrent());
+				return;
+			}
+
+			if (parseContext.GetCurrent().type == ScriptTokenType::Dot) {
+				parseContext.FetchNext();
+				unitName.append(".");
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Semicolon) {
+				parseContext.FetchNext();
+				break;
+			}
+			else {
+				parseContext.Error(ERROR_AST_041, parseContext.GetCurrent());
+				return;
+			}
 		}
-		parseContext.FetchNext();
+		parseContext.GetScriptUnit()->SetUnit(unitName);
 	}
 
 	void ASTParser::ParseASTUse(ASTParseContext& parseContext) {
