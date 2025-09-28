@@ -29,3 +29,11 @@ namespace sakura {
 	//パースエラー発生時にassertで止める
 	extern bool DEBUG_ENABLE_ASSERT_PARSE_ERROR;
 }
+
+
+//開発デバッグ出力
+#if defined(AOSORA_REQUIRED_WIN32)
+#define DebugOut	OutputDebugStringA
+#else
+#define DebugOut
+#endif

@@ -102,6 +102,7 @@ class AosoraDebugSession extends DebugSession {
 		response.body = {
 			supportsExceptionInfoRequest: true,
 			supportsLoadedSourcesRequest: true,
+			supportsEvaluateForHovers: true,
 			//supportsBreakpointLocationsRequest: true,
 			supportedChecksumAlgorithms: ['MD5'],
 			exceptionBreakpointFilters: [
@@ -336,10 +337,57 @@ class AosoraDebugSession extends DebugSession {
 	protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request): Promise<void> {
 
 		//変数
-		let variables: DebugProtocol.Variable[] = (await this.debugInterface.RequestObject(args.variablesReference)).map(o => this.convertVariable(o));;
+		let variables: DebugProtocol.Variable[] = (await this.debugInterface.RequestObject(args.variablesReference)).map(o => this.convertVariable(o));
 
 		response.body = {
 			variables
+		};
+		this.sendResponse(response);
+	}
+
+	protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request): Promise<void> {
+
+		if(args.frameId !== undefined){
+			const expression = args.expression;
+			const frameId = args.frameId;
+
+			switch (args.context) {
+				case 'watch':
+				case 'hover':
+					const result = await this.debugInterface.RequestEvaluateExpression(expression, frameId);
+
+					if(result.value){
+						const variable = this.convertVariable(result.value);
+						response.body = {
+							result: variable.value ?? "",
+							variablesReference: variable.variablesReference,
+							type: variable.type
+						};
+						this.sendResponse(response);
+						return;
+					}
+					else if(result.exception && args.context !== 'hover') {
+						const variable = this.convertVariable(result.exception);
+						response.body = {
+							result: "Error: " + (variable.value ?? ""),
+							variablesReference: variable.variablesReference,
+							type: variable.type
+						};
+						this.sendResponse(response);
+						return;
+					}
+					
+			}
+		}
+
+		if(args.context === 'hover'){
+			//ホバー時はなにもしない
+			this.sendResponse(response);
+		}
+
+		response.body = {
+			result: 'not supported',
+			variablesReference: 0
 		};
 		this.sendResponse(response);
 	}

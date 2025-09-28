@@ -87,6 +87,13 @@ namespace sakura {
 		std::map<std::string, ScriptValueRef> unitVariables;	//ユニット変数
 	};
 
+	struct EvaluateExpressionResult {
+		//パースエラー類(パースエラーで実行失敗している場合に入る)
+		std::shared_ptr<ScriptParseError> error;
+		//実行結果
+		ScriptValueRef value;
+	};
+
 	//スクリプト実行インタプリタ
 	class ScriptInterpreter {
 	private:
@@ -256,7 +263,7 @@ namespace sakura {
 		ToStringFunctionCallResult Execute(const ConstASTNodeRef& node, bool toStringResult);
 
 		//文字列をスクリプト式として評価
-		ScriptValueRef Eval(const std::string& expr);
+		EvaluateExpressionResult Eval(const std::string& expr, ScriptExecuteContext& executeContext, const ScriptSourceMetadataRef& importSourceMeta);
 
 		//関数実行
 		void CallFunction(const ScriptValue& funcVariable, FunctionResponse& response, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& executeContext, const ASTNodeBase* callingAstNode, const std::string& funcName = "");
@@ -739,6 +746,7 @@ namespace sakura {
 
 	//出力用のコールスタック情報
 	struct CallStackInfo {
+		const ASTNodeBase* executingAstNode;
 		SourceCodeRange sourceRange;
 		Reference<BlockScope> blockScope;
 		std::string funcName;

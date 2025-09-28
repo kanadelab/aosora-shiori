@@ -15,6 +15,9 @@ namespace sakura {
 		class ProjectSettings {
 		public:
 			std::vector<std::string> scriptFiles;
+			std::vector<std::string> unitFiles;
+			std::set<std::string> scriptFilesSet;
+			std::set<std::string> unitFilesSet;
 			std::string debugOutputFilename;
 			size_t limitScriptSteps;
 			uint32_t debuggerPort;
@@ -47,7 +50,7 @@ namespace sakura {
 
 	private:
 		void RequestInternal(const ShioriRequest& request, ShioriResponse& response);
-		void LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings);
+		void LoadProjectFile(std::ifstream& loadStream, ProjectSettings& projectSettings, const std::string& basePath, bool isUnitFile);
 
 		//エラーガイダンス用のエラー情報取得
 		std::string ShowErrors();

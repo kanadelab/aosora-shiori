@@ -260,6 +260,11 @@ namespace sakura {
 			return sourceMetaData;
 		}
 
+		//メタデータを設定。デバッガなどの目的でほかのソースの一部としてエイリアス情報を共有するための用途
+		void ImportScriptSourceMetadata(ScriptSourceMetadataRef sourceMeta) {
+			sourceMetaData = sourceMeta;
+		}
+
 		const ScriptUnitRef& GetScriptUnit() const {
 			return sourceMetaData->GetScriptUnit();
 		}
@@ -323,9 +328,13 @@ namespace sakura {
 	}
 
 	//式としてパース
-	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens) {
+	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens, const ScriptSourceMetadataRef* importSourceMeta) {
 		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
 		ASTParseContext parseContext(tokens->tokens, *parseResult);
+
+		if (importSourceMeta != nullptr) {
+			parseContext.ImportScriptSourceMetadata(*importSourceMeta);
+		}
 
 		auto expression = ParseASTExpression(parseContext, 0);
 		parseResult->success = !parseContext.HasError();
