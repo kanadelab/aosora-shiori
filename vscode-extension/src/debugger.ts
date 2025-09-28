@@ -369,7 +369,7 @@ class AosoraDebugSession extends DebugSession {
 					else if(result.exception && args.context !== 'hover') {
 						const variable = this.convertVariable(result.exception);
 						response.body = {
-							result: "Error: " + (variable.value ?? ""),
+							result: (result.errorType ?? "Error") + "Error: " + (variable.value ?? ""),
 							variablesReference: variable.variablesReference,
 							type: variable.type
 						};
@@ -381,7 +381,7 @@ class AosoraDebugSession extends DebugSession {
 		}
 
 		if(args.context === 'hover'){
-			//ホバー時はなにもしない
+			//ホバー時情報が正しくなくてもはなにもしない
 			this.sendResponse(response);
 		}
 

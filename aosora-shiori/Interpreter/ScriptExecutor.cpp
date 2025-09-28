@@ -1577,19 +1577,17 @@ namespace sakura {
 			return result;
 		}
 
-		//NOTE:デバッガのウォッチのように外部ブロックに影響を受ける場合は、対応する情報をコンテキストとしてもらってくる必要がある
-		//ScriptInterpreterStack rootStack;
-		//Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
-		//ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
 		result.value = ScriptExecutor::ExecuteASTNode(*ast->root, executeContext);
 		return result;
 	}
 
 	ScriptInterpreter::ScriptInterpreter() :
 		scriptSteps(0),
-		limitScriptSteps(100 * 10000),	//100万ステップでエラーにしておく
+		debuggerScriptSteps(0),
+		limitScriptSteps(DEFAULT_EXECUTE_LIMIT_STEPS),
 		scriptClassCount(0),
-		debugOutputStream(nullptr)
+		debugOutputStream(nullptr),
+		isDebuggerScope(false)
 	{
 		//組み込みのクラスを登録
 		RegisterNativeFunction("print", &ScriptInterpreter::Print);

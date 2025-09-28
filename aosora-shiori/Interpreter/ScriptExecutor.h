@@ -96,8 +96,30 @@ namespace sakura {
 
 	//スクリプト実行インタプリタ
 	class ScriptInterpreter {
+	public:
+		// デフォルト100万ステップでエラーにしておく
+		static const size_t DEFAULT_EXECUTE_LIMIT_STEPS = 100 * 1000;
+
+		//デバッガ処理の実行中を示す
+		class DebuggerScope {
+		private:
+			ScriptInterpreter& interpreter;
+
+		public:
+			DebuggerScope(ScriptInterpreter& interpreter):
+				interpreter(interpreter) {
+				assert(!interpreter.isDebuggerScope);
+				interpreter.isDebuggerScope = true;
+			}
+
+			~DebuggerScope() {
+				interpreter.isDebuggerScope = false;
+			}
+		};
+
 	private:
 		size_t scriptSteps;
+		size_t debuggerScriptSteps;
 		size_t limitScriptSteps;
 		uint32_t scriptClassCount;
 		SecurityLevel securityLevel;
@@ -124,6 +146,9 @@ namespace sakura {
 		//デバッグ出力
 		std::ofstream* debugOutputStream;
 
+		//デバッガ処理中
+		bool isDebuggerScope;
+
 	private:
 		void CallFunctionInternal(const ScriptValue& funcVariable, const std::vector<ScriptValueRef>& args, ScriptInterpreterStack& funcStack, FunctionResponse& response);
 
@@ -141,11 +166,20 @@ namespace sakura {
 
 		//ステップ数を計測、無限ループの強制脱出用
 		uint64_t IncrementScriptStep() {
+			if (isDebuggerScope) {
+				debuggerScriptSteps++;
+				return debuggerScriptSteps;
+			}
 			scriptSteps++;
 			return scriptSteps;
 		}
 
 		void ResetScriptStep() {
+			if (isDebuggerScope) {
+				debuggerScriptSteps = 0;
+				return;
+			}
+
 			scriptSteps = 0;
 		}
 
@@ -154,6 +188,11 @@ namespace sakura {
 		}
 
 		size_t GetLimitScriptSteps() const {
+			if (isDebuggerScope) {
+				//デバッガスコープににいる場合、ステップ制限は必ずデフォルトで適用される
+				//デバッガ側によって無限ループに入らないように
+				return DEFAULT_EXECUTE_LIMIT_STEPS;
+			}
 			return limitScriptSteps;
 		}
 
@@ -393,6 +432,9 @@ namespace sakura {
 		void OpenDebugOutputStream(const std::string& filename);
 		std::ofstream* GetDebugOutputStream();
 		void CloseDebugOutputStream();
+
+		//デバッガ処理スコープか？
+		bool IsDebuggerScope() const { return isDebuggerScope; }
 
 	};
 

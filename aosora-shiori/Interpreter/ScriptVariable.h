@@ -144,6 +144,7 @@ namespace sakura {
 		//オブジェクトタイプIDの取得
 		uint32_t GetInstanceTypeId() const { return typeId; }
 		uint32_t GetNativeInstanceTypeId() const { return nativeObjectTypeId; }
+		std::string GetClassTypeName(ScriptInterpreter& interpreter);
 
 		//ゲッタとセッタ
 		virtual ScriptValueRef Get(const std::string& key, ScriptExecuteContext& executeContext);

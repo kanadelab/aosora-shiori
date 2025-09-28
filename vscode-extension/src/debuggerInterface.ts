@@ -69,7 +69,8 @@ export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 
 const EvaliuateExpressionResponse = z.object({
 	value: z.optional(VariableInformation),
-	exception: z.optional(VariableInformation)
+	exception: z.optional(VariableInformation),
+	errorType: z.optional(z.string())
 });
 export type EvaliuateExpressionResponse = z.infer<typeof EvaliuateExpressionResponse>;
 

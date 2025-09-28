@@ -18,6 +18,10 @@ namespace sakura {
 	void ObjectBase::Set(const std::string& key, const ScriptValueRef& value, ScriptExecuteContext& executeContext) {
 	}
 
+	std::string ObjectBase::GetClassTypeName(ScriptInterpreter& interpreter) {
+		return interpreter.GetClassTypeName(GetInstanceTypeId());
+	}
+
 	std::string ObjectBase::DebugToString(ScriptExecuteContext& executeContext, DebugOutputContext& debugOutputContext) {
 		std::string result("[");
 		result.append(executeContext.GetInterpreter().GetClassTypeName(GetInstanceTypeId()));

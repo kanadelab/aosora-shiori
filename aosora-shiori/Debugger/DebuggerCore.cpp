@@ -1193,6 +1193,14 @@ namespace sakura {
 	//ASTノード実行時
 	void DebugSystem::NotifyASTExecute(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
 
+		if (executeContext.GetInterpreter().IsDebuggerScope()) {
+			//すでにデバッガスコープにある場合は、再入禁止
+			//ウォッチなどからブレークにはまるのを避けるため
+			return;
+		}
+
+		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
+
 		bool isBreak = false;
 
 		//エディタスタックレベルの確認
@@ -1248,6 +1256,8 @@ namespace sakura {
 
 	//例外発生時
 	void DebugSystem::NotifyThrowExceotion(const ScriptError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
+		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
+
 		if (breakPoints.IsBreakOnAllRuntimeError()) {
 			//エディタスタックレベルの確認
 			auto stackLevel = executeContext.MakeStackTrace(executingNode, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
@@ -1871,6 +1881,10 @@ namespace sakura {
 				Reference<BlockScope> debugWatchBlock = interpreter.CreateNativeObject<BlockScope>(frame.blockScope);
 				ScriptExecuteContext debugWatchContext(interpreter, debugWatchStack, debugWatchBlock);
 
+				//実行制限をリセット
+				//デバッガ中は専用のリミッターに切り替わるので、ウォッチの評価毎にリセットしてよい
+				interpreter.ResetScriptStep();
+
 				//ユニットエイリアス等の参照を同じようにできるようメタデータをインポートして式を実行する
 				auto result = interpreter.Eval(expression, debugWatchContext, frame.executingAstNode->GetSourceMetadata());
 
@@ -1882,6 +1896,7 @@ namespace sakura {
 				else if (debugWatchStack.IsThrew()) {
 					//例外が出ている場合、結果としてそのエラーということを返す
 					responseBody->Add("exception", MakeVariableInfo("error", ScriptValue::Make(debugWatchStack.GetThrewError()), breakSession));
+					responseBody->Add("errorType", JsonSerializer::From(debugWatchStack.GetThrewError()->GetClassTypeName(interpreter)));
 				}
 				else {
 					//AST実行結果をレスポンスとして返す
