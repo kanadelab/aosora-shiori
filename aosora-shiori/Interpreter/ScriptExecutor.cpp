@@ -1383,6 +1383,52 @@ namespace sakura {
 		return true;
 	}
 
+	//現在のユニット変数を取得
+	ScriptValueRef ScriptInterpreter::GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
+
+		//unitがない場合は追加
+		//TODO: 追加を許容しなくなるかも?
+		if (!units.contains(scriptUnit)) {
+			RegisterUnit(scriptUnit);
+		}
+
+		auto& variables = units.find(scriptUnit)->second.unitVariables;
+		auto it = variables.find(name);
+		if (it != variables.end()) {
+			return it->second;
+		}
+		else {
+
+			//子ユニット参照
+			std::string childUnitKey = scriptUnit + "." + name;
+			auto childUnit = units.find(childUnitKey);
+			if (childUnit != units.end()) {
+				return ScriptValue::Make(GetUnit(childUnitKey));
+			}
+
+			return nullptr;
+		}
+	}
+
+	//現在のユニット変数を設定
+	void ScriptInterpreter::SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
+
+		//unitがない場合は追加
+		//TODO: 追加を許容しなくなるかも?
+		if (!units.contains(scriptUnit)) {
+			RegisterUnit(scriptUnit);
+		}
+
+		auto& variables = units.find(scriptUnit)->second.unitVariables;
+		auto it = variables.find(name);
+		if (it != variables.end()) {
+			it->second = value;
+		}
+		else {
+			variables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
+		}
+	}
+
 	//ユニットを登録
 	void ScriptInterpreter::RegisterUnit(const std::string& unitName) {
 		units.insert(decltype(units)::value_type(unitName, UnitData()));

@@ -215,42 +215,10 @@ namespace sakura {
 		}
 
 		//現在のユニット変数を取得
-		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit) {
-
-			//unitがない場合は追加
-			//TODO: 追加を許容しなくなるかも?
-			if (!units.contains(scriptUnit)) {
-				RegisterUnit(scriptUnit);
-			}
-
-			auto& variables = units.find(scriptUnit)->second.unitVariables;
-			auto it = variables.find(name);
-			if (it != variables.end()) {
-				return it->second;
-			}
-			else {
-				return nullptr;
-			}
-		}
+		ScriptValueRef GetUnitVariable(const std::string& name, const std::string& scriptUnit);
 
 		//現在のユニット変数を設定
-		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit) {
-
-			//unitがない場合は追加
-			//TODO: 追加を許容しなくなるかも?
-			if (!units.contains(scriptUnit)) {
-				RegisterUnit(scriptUnit);
-			}
-
-			auto& variables = units.find(scriptUnit)->second.unitVariables;
-			auto it = variables.find(name);
-			if (it != variables.end()) {
-				it->second = value;
-			}
-			else {
-				variables.insert(std::map<std::string, ScriptValueRef>::value_type(name, value));
-			}
-		}
+		void SetUnitVariable(const std::string& name, const ScriptValueRef& value, const std::string& scriptUnit);
 
 		//ユニットを登録
 		void RegisterUnit(const std::string& unitName);
