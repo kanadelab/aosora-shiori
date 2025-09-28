@@ -1512,21 +1512,31 @@ namespace sakura {
 	}
 
 	//文字列を式として評価
-	ScriptValueRef ScriptInterpreter::Eval(const std::string& expr) {
+	EvaluateExpressionResult ScriptInterpreter::Eval(const std::string& expr, ScriptExecuteContext& executeContext, const ScriptSourceMetadataRef& importSourceMeta) {
 
-		//TODO: とりあえずいけそう⋯というところまで。続きの実装を。
+		EvaluateExpressionResult result;
 
 		//その場で解析を行い、実行する		
-		auto tokens = TokensParser::Parse(expr, SourceFilePath("eval", "eval"));	//一時的なファイル名として入力しておく
-		auto ast = ASTParser::Parse(tokens);
+		auto tokens = TokensParser::Parse(expr, SourceFilePath("__eval__", "__eval__"));	//一時的なファイル名として入力しておく
+		if (tokens->error != nullptr) {
+			result.error = tokens->error;
+			return result;
+		}
 
-		ScriptInterpreterStack rootStack;
-		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
-		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
-		ScriptExecutor::ExecuteASTNode(*ast->root, executeContext);
+		//ASTにユニットエイリアスをインポートしないといけない
+		auto ast = ASTParser::ParseExpression(tokens, &importSourceMeta);
 
-		//結果をかえす(失敗した場合とかはどうする？）
-		return nullptr;
+		if (ast->error != nullptr) {
+			result.error = ast->error;
+			return result;
+		}
+
+		//NOTE:デバッガのウォッチのように外部ブロックに影響を受ける場合は、対応する情報をコンテキストとしてもらってくる必要がある
+		//ScriptInterpreterStack rootStack;
+		//Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
+		//ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
+		result.value = ScriptExecutor::ExecuteASTNode(*ast->root, executeContext);
+		return result;
 	}
 
 	ScriptInterpreter::ScriptInterpreter() :
@@ -1560,6 +1570,7 @@ namespace sakura {
 		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
 		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
 		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));
+		ImportClass(NativeClass::Make<UnitObject>("ScriptUnit"));
 
 		ImportClass(NativeClass::Make<ScriptJsonSerializer>("JsonSerializer", nullptr, "std"));
 		ImportClass(NativeClass::Make<ScriptFileAccess>("File", nullptr, "std"));
@@ -2066,6 +2077,7 @@ namespace sakura {
 		{
 			CallStackInfo stackFrame;
 			stackFrame.hasSourceRange = true;
+			stackFrame.executingAstNode = &currentAstNode;
 			stackFrame.sourceRange = currentAstNode.GetSourceRange();
 			stackFrame.funcName = currentFuncName;
 			stackFrame.blockScope = callingBlockScope;
@@ -2081,10 +2093,12 @@ namespace sakura {
 			if (st->GetCallingASTNode() != nullptr) {
 				stackFrame.hasSourceRange = true;
 				stackFrame.sourceRange = st->GetCallingASTNode()->GetSourceRange();
+				stackFrame.executingAstNode = st->GetCallingASTNode();
 				stackFrame.blockScope = st->GetCallingBlockScope();
 			}
 			else {
 				stackFrame.hasSourceRange = false;
+				stackFrame.executingAstNode = nullptr;
 			}
 			stackFrame.funcName = st->GetFunctionName();
 			stackFrame.isJumping = st->IsTalkJump();

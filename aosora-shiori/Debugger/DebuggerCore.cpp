@@ -705,11 +705,16 @@ namespace sakura {
 						sendObject = *sendQueue.begin();
 						sendQueue.pop_front();
 					}
+					else {
+						sendObject = nullptr;
+					}
 				}
 
 				if (sendObject != nullptr) {
 					//文字列にシリアライズしてそのまま送信
 					const std::string sendStr = JsonSerializer::Serialize(sendObject);
+					DebugOut(sendStr.c_str());
+					DebugOut("\n");
 					//末尾\0まで送信する
 					if (send(clientSocket, sendStr.c_str(), sendStr.size()+1, 0) == SOCKET_ERROR) {
 
@@ -866,6 +871,10 @@ namespace sakura {
 		void Send(const std::shared_ptr<JsonObject>& sendObj) {
 			LockScope ls(sendQueueLock);
 			sendQueue.push_back(sendObj);
+
+			//
+			DebugOut(JsonSerializer::Serialize(sendObj).c_str());
+			DebugOut("\n");
 		}
 
 		void Start()
@@ -989,6 +998,28 @@ namespace sakura {
 				return ExecutingState::Break;
 			}
 		};
+
+
+		//式評価コマンド(ウォッチ式など)
+		class EvaluateExpressionCommand : public IBreakingCommand {
+		private:
+			uint32_t stackIndex;
+			std::string expression;
+			std::string requestId;
+
+		public:
+			EvaluateExpressionCommand(uint32_t stackIndex, const std::string& expression, const std::string& requestId):
+				stackIndex(stackIndex),
+				expression(expression),
+				requestId(requestId)
+			{ }
+
+			virtual ExecutingState Execute(BreakSession& breakSession) override {
+				instance->SendResponse(instance->RequestEvaluateExpression(stackIndex, expression, breakSession), requestId);
+				return ExecutingState::Break;
+			}
+		};
+
 #pragma endregion
 
 	private:
@@ -1152,6 +1183,7 @@ namespace sakura {
 
 		JsonObjectRef RequestMembers(uint32_t handle, BreakSession& breakSession);
 		JsonObjectRef RequestScopes(uint32_t stackIndex, BreakSession& breakSession);
+		JsonObjectRef RequestEvaluateExpression(uint32_t stackIndex, const std::string& expression, BreakSession& breakSession);
 	};
 
 	DebugConnection* DebugConnection::instance = nullptr;
@@ -1579,8 +1611,7 @@ namespace sakura {
 			return EnumMembers(*inst->GetScriptStore().Get(), breakSession);
 		}
 
-		//対応する型がない: 本来展開できないものについてはハンドルを発行しないはず⋯。
-		assert(false);
+		//対応する型がない: 組み込みオブジェクトなど。ただハンドルは生成するので（evalなどで･･･）とりあえず何もないことをかえす
 		return JsonSerializer::MakeArray();
 	}
 
@@ -1770,6 +1801,14 @@ namespace sakura {
 				return;
 			}
 		}
+		else if (requestType == "evaluate") {
+			uint32_t stackIndex;
+			std::string expression;
+			if (JsonSerializer::As(body->Get("stackIndex"), stackIndex) && JsonSerializer::As(body->Get("expression"), expression)) {
+				AddBreakingCommand(new EvaluateExpressionCommand(stackIndex, expression, requestId));
+				return;
+			}
+		}
 		else if (requestType == "loaded_sources") {
 			auto responseData = JsonSerializer::MakeObject();
 			auto files = JsonSerializer::MakeArray();
@@ -1808,6 +1847,54 @@ namespace sakura {
 	JsonObjectRef DebugSystem::RequestScopes(uint32_t stackIndex, BreakSession& breakSession) {
 		auto responseBody = JsonSerializer::MakeObject();
 		responseBody->Add("scopes", EnumScopes(stackIndex, breakSession));
+		return responseBody;
+	}
+
+	//式を評価する
+	JsonObjectRef DebugSystem::RequestEvaluateExpression(uint32_t stackIndex, const std::string& expression, BreakSession& breakSession) {
+		auto& context = breakSession.GetContext();
+		auto& interpreter = context.GetInterpreter();
+		auto responseBody = JsonSerializer::MakeObject();
+
+		//スタックトレースを取得、対象のスタックインデックスを探す
+		uint32_t nativeStackLevel = 0;
+		auto stackFrame = breakSession.GetContext().MakeStackTrace(breakSession.GetBreakASTNode(), breakSession.GetContext().GetBlockScope(), breakSession.GetContext().GetStack().GetFunctionName());
+		for (auto& frame : stackFrame) {
+			if (!frame.hasSourceRange) {
+				nativeStackLevel++;	//純粋な数を数える
+				continue;	//スクリプトのスタックフレームのみ
+			}
+
+			if (stackIndex == nativeStackLevel) {
+				//例外が発生しても影響しないように独立したスタックで実行する、変数参照は影響しないようにブロックスコープは継承する
+				ScriptInterpreterStack debugWatchStack;
+				Reference<BlockScope> debugWatchBlock = interpreter.CreateNativeObject<BlockScope>(frame.blockScope);
+				ScriptExecuteContext debugWatchContext(interpreter, debugWatchStack, debugWatchBlock);
+
+				//ユニットエイリアス等の参照を同じようにできるようメタデータをインポートして式を実行する
+				auto result = interpreter.Eval(expression, debugWatchContext, frame.executingAstNode->GetSourceMetadata());
+
+				//内容にあわせて結果を格納
+				if (result.error != nullptr) {
+					//パースエラーが出ている場合、パースエラー本文をエラーメッセージとして返す
+					responseBody->Add("exception", MakeVariableInfo("error", ScriptValue::Make(result.error->GetData().message), breakSession));
+				}
+				else if (debugWatchStack.IsThrew()) {
+					//例外が出ている場合、結果としてそのエラーということを返す
+					responseBody->Add("exception", MakeVariableInfo("error", ScriptValue::Make(debugWatchStack.GetThrewError()), breakSession));
+				}
+				else {
+					//AST実行結果をレスポンスとして返す
+					responseBody->Add("value", MakeVariableInfo("value", result.value, breakSession));
+				}
+			}
+			nativeStackLevel++;
+		}
+
+		//
+		DebugOut(JsonSerializer::Serialize(responseBody).c_str());
+		DebugOut("\n");
+
 		return responseBody;
 	}
 

@@ -67,6 +67,12 @@ const EnumScopeResponse = z.object({
 });
 export type EnumScopeResponse = z.infer<typeof EnumScopeResponse>;
 
+const EvaliuateExpressionResponse = z.object({
+	value: z.optional(VariableInformation),
+	exception: z.optional(VariableInformation)
+});
+export type EvaliuateExpressionResponse = z.infer<typeof EvaliuateExpressionResponse>;
+
 const LoadedSource = z.object({
 	path: z.string(), 
 	md5: z.optional(z.string()),
@@ -361,10 +367,28 @@ export class AosoraDebuggerInterface {
 					resolve(parsedVariables.data.variables);
 				}
 				else {
-					resolve([]);
+					reject();
 				}
 
 			});
+		});
+	}
+
+	public RequestEvaluateExpression(expression:string, stackIndex:number){
+		return new Promise<EvaliuateExpressionResponse>((resolve, reject) => {
+			this.Send('evaluate', {expression, stackIndex}, (response, error) => {
+				if(error){
+					reject();
+				}
+
+				const parsedVariable = EvaliuateExpressionResponse.safeParse(response);
+				if(parsedVariable.success){
+					resolve(parsedVariable.data);
+				}
+				else {
+					reject();
+				}
+			})
 		});
 	}
 
