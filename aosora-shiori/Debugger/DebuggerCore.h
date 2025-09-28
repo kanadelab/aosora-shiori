@@ -9,6 +9,7 @@
 #include "Base.h"
 #include "AST/AST.h"
 #include "Interpreter/Interpreter.h"
+#include "CoreLibrary/CoreLibrary.h"
 
 namespace sakura {
 

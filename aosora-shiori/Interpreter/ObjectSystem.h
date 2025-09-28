@@ -1,23 +1,38 @@
 ﻿#pragma once
 #include <vector>
 #include <list>
+#include <cassert>
 
 namespace sakura {
 
+	class ReferenceBase;
+	class ObjectSystem;
+	
 	//GC対象オブジェクト
 	class CollectableBase {
 		friend class ObjectSystem;
+		friend class ReferenceBase;
 	private:
 		//登録リスト管理
 		CollectableBase* listNext;
 		CollectableBase* listPrev;
+		ObjectSystem* manager;
 		bool isMarked;
+
+		//参照カウンタ
+		uint32_t referenceCount;
+
+	private:
+		void IncrementReference();
+		void DecrementReference();
 
 	protected:
 		CollectableBase() :
 			listNext(nullptr),
 			listPrev(nullptr),
-			isMarked(false)
+			manager(nullptr),
+			isMarked(false),
+			referenceCount(0)
 		{}
 
 		virtual ~CollectableBase() {}
@@ -26,26 +41,61 @@ namespace sakura {
 
 		//参照先の収集
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) = 0;
+		
+	};
+
+	class ReferenceBase {
+	protected:
+		//TODO: コンパイル通すために無茶苦茶になってる。void* 使わない方向で整理したいけど…
+		void IncrementReference(CollectableBase* reference) {
+			if (reference != nullptr) {
+				reference->IncrementReference();
+			}
+		}
+
+		void DecrementReference(CollectableBase* reference) {
+			if (reference != nullptr) {
+				reference->DecrementReference();
+			}
+		}
 	};
 
 	//参照型
 	//TODO: 参照カウンタも導入して可能ならGCを待たずに捨ててもいいかも。この場合、Referenceにはカウンタは持たず、Collectableのほうでもつこと。
 	//(取り回し的にオブジェクト自身がC++ this からReferenceをつくることができるように。）
 	template<typename CollectableType>
-	class Reference{
+	class Reference : protected ReferenceBase {
 	private:
 		CollectableType* reference;
 
 	public:
 		Reference(CollectableType* obj):
 			reference(obj)
-		{}
+		{
+			IncrementReference(reference);
+		}
 
 		Reference(const Reference<CollectableType>& ref):
 			reference(ref.reference)
-		{}
+		{
+			IncrementReference(reference);
+		}
 
 		Reference():reference(nullptr){}
+
+		~Reference() {
+			DecrementReference(reference);
+		}
+
+		void operator= (const Reference<CollectableType>& ref) {
+
+			//前の参照を捨てる
+			DecrementReference(reference);
+			reference = ref.reference;
+
+			//今の参照を足す
+			IncrementReference(reference);
+		}
 
 		//よくつかうインターフェース
 		CollectableType* operator->() const{
@@ -84,6 +134,7 @@ namespace sakura {
 	//GCオブジェクトマネージャ
 	//とても簡易的なマークアンドスイープとして実装
 	class ObjectSystem {
+		friend class CollectableBase;
 	private:
 		CollectableBase* itemFirst;
 		CollectableBase* itemLast;
@@ -108,6 +159,7 @@ namespace sakura {
 				itemLast = item;
 			}
 
+			item->manager = this;
 			itemCount++;
 		}
 
@@ -131,6 +183,7 @@ namespace sakura {
 				itemFirst = item->listNext;
 			}
 
+			item->manager = nullptr;
 			delete item;
 			itemCount--;
 		}
@@ -149,6 +202,26 @@ namespace sakura {
 				if (!c->isMarked) {
 					c->isMarked = true;
 					MarkReferences(c);
+				}
+			}
+		}
+
+		//リファレンスカウンタ加算
+		void IncrementReference(CollectableBase* item) {
+			if (item != nullptr) {
+				item->referenceCount++;
+			}
+		}
+
+		//リファレンスカウンタ減算
+		void DecrementReference(CollectableBase* item) {
+			if (item != nullptr) {
+				assert(item->referenceCount > 0);
+				if (item->referenceCount == 1) {
+					RemoveItem(item);
+				}
+				else if (item->referenceCount > 0) {
+					item->referenceCount--;
 				}
 			}
 		}
