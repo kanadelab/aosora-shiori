@@ -65,6 +65,7 @@ namespace sakura {
 		Const,
 		True,
 		False,
+		Null,
 		Try,
 		Catch,
 		Finally,

@@ -54,97 +54,100 @@ namespace sakura {
 			result = ExecuteFormatString(static_cast<const ASTNodeFormatString&>(node), executeContext);
 			break;
 		case ASTNodeType::StringLiteral:
-			 result = ExecuteStringLiteral(static_cast<const ASTNodeStringLiteral&>(node), executeContext);
-			 break;
+			result = ExecuteStringLiteral(static_cast<const ASTNodeStringLiteral&>(node), executeContext);
+			break;
 		case ASTNodeType::NumberLiteral:
-			result =  ExecuteNumberLiteral(static_cast<const ASTNodeNumberLiteral&>(node), executeContext);
+			result = ExecuteNumberLiteral(static_cast<const ASTNodeNumberLiteral&>(node), executeContext);
 			break;
 		case ASTNodeType::BooleanLiteral:
-			result =  ExecuteBooleanLiteral(static_cast<const ASTNodeBooleanLiteral&>(node), executeContext);
+			result = ExecuteBooleanLiteral(static_cast<const ASTNodeBooleanLiteral&>(node), executeContext);
+			break;
+		case ASTNodeType::Null:
+			result = ExecuteNull(static_cast<const ASTNodeNull&>(node), executeContext);
 			break;
 		case ASTNodeType::ResolveSymbol:
-			result =  ExecuteResolveSymbol(static_cast<const ASTNodeResolveSymbol&>(node), executeContext);
+			result = ExecuteResolveSymbol(static_cast<const ASTNodeResolveSymbol&>(node), executeContext);
 			break;
 		case ASTNodeType::AssignSymbol:
-			result =  ExecuteAssignSymbol(static_cast<const ASTNodeAssignSymbol&>(node), executeContext);
+			result = ExecuteAssignSymbol(static_cast<const ASTNodeAssignSymbol&>(node), executeContext);
 			break;
 		case ASTNodeType::ArrayInitializer:
-			result =  ExecuteArrayInitializer(static_cast<const ASTNodeArrayInitializer&>(node), executeContext);
+			result = ExecuteArrayInitializer(static_cast<const ASTNodeArrayInitializer&>(node), executeContext);
 			break;
 		case ASTNodeType::ObjectInitializer:
-			result =  ExecuteObjectInitializer(static_cast<const ASTNodeObjectInitializer&>(node), executeContext);
+			result = ExecuteObjectInitializer(static_cast<const ASTNodeObjectInitializer&>(node), executeContext);
 			break;
 		case ASTNodeType::FunctionStatement:
-			result =  ExecuteFunctionStatement(static_cast<const ASTNodeFunctionStatement&>(node), executeContext);
+			result = ExecuteFunctionStatement(static_cast<const ASTNodeFunctionStatement&>(node), executeContext);
 			break;
 		case ASTNodeType::FunctionInitializer:
-			result =  ExecuteFunctionInitializer(static_cast<const ASTNodeFunctionInitializer&>(node), executeContext);
+			result = ExecuteFunctionInitializer(static_cast<const ASTNodeFunctionInitializer&>(node), executeContext);
 			break;
 		case ASTNodeType::LocalVariableDeclaration:
-			result =  ExecuteLocalVariableDeclaration(static_cast<const ASTNodeLocalVariableDeclaration&>(node), executeContext);
+			result = ExecuteLocalVariableDeclaration(static_cast<const ASTNodeLocalVariableDeclaration&>(node), executeContext);
 			break;
 		case ASTNodeType::LocalVariableDeclarationList:
-			result =  ExecuteLocalVariableDeclarationList(static_cast<const ASTNodeLocalVariableDeclarationList&>(node), executeContext);
+			result = ExecuteLocalVariableDeclarationList(static_cast<const ASTNodeLocalVariableDeclarationList&>(node), executeContext);
 			break;
 		case ASTNodeType::Foreach:
-			result =  ExecuteForeach(static_cast<const ASTNodeForeach&>(node), executeContext);
+			result = ExecuteForeach(static_cast<const ASTNodeForeach&>(node), executeContext);
 			break;
 		case ASTNodeType::For:
-			result =  ExecuteFor(static_cast<const ASTNodeFor&>(node), executeContext);
+			result = ExecuteFor(static_cast<const ASTNodeFor&>(node), executeContext);
 			break;
 		case ASTNodeType::While:
-			result =  ExecuteWhile(static_cast<const ASTNodeWhile&>(node), executeContext);
+			result = ExecuteWhile(static_cast<const ASTNodeWhile&>(node), executeContext);
 			break;
 		case ASTNodeType::If:
-			result =  ExecuteIf(static_cast<const ASTNodeIf&>(node), executeContext);
+			result = ExecuteIf(static_cast<const ASTNodeIf&>(node), executeContext);
 			break;
 		case ASTNodeType::Break:
-			result =  ExecuteBreak(static_cast<const ASTNodeBreak&>(node), executeContext);
+			result = ExecuteBreak(static_cast<const ASTNodeBreak&>(node), executeContext);
 			break;
 		case ASTNodeType::Continue:
-			result =  ExecuteContinue(static_cast<const ASTNodeContinue&>(node), executeContext);
+			result = ExecuteContinue(static_cast<const ASTNodeContinue&>(node), executeContext);
 			break;
 		case ASTNodeType::Return:
-			result =  ExecuteReturn(static_cast<const ASTNodeReturn&>(node), executeContext);
+			result = ExecuteReturn(static_cast<const ASTNodeReturn&>(node), executeContext);
 			break;
 		case ASTNodeType::Operator2:
-			result =  ExecuteOperator2(static_cast<const ASTNodeEvalOperator2&>(node), executeContext);
+			result = ExecuteOperator2(static_cast<const ASTNodeEvalOperator2&>(node), executeContext);
 			break;
 		case ASTNodeType::Operator1:
-			result =  ExecuteOperator1(static_cast<const ASTNodeEvalOperator1&>(node), executeContext);
+			result = ExecuteOperator1(static_cast<const ASTNodeEvalOperator1&>(node), executeContext);
 			break;
 		case ASTNodeType::NewClassInstance:
-			result =  ExecuteNewClassInstance(static_cast<const ASTNodeNewClassInstance&>(node), executeContext);
+			result = ExecuteNewClassInstance(static_cast<const ASTNodeNewClassInstance&>(node), executeContext);
 			break;
 		case ASTNodeType::FunctionCall:
-			result =  ExecuteFunctionCall(static_cast<const ASTNodeFunctionCall&>(node), executeContext);
+			result = ExecuteFunctionCall(static_cast<const ASTNodeFunctionCall&>(node), executeContext);
 			break;
 		case ASTNodeType::ContextValue:
-			result =  ExecuteContextValue(static_cast<const ASTNodeContextValue&>(node), executeContext);
+			result = ExecuteContextValue(static_cast<const ASTNodeContextValue&>(node), executeContext);
 			break;
 		case ASTNodeType::ResolveMember:
-			result =  ExecuteResolveMember(static_cast<const ASTNodeResolveMember&>(node), executeContext);
+			result = ExecuteResolveMember(static_cast<const ASTNodeResolveMember&>(node), executeContext);
 			break;
 		case ASTNodeType::AssignMember:
-			result =  ExecuteAssignMember(static_cast<const ASTNodeAssignMember&>(node), executeContext);
+			result = ExecuteAssignMember(static_cast<const ASTNodeAssignMember&>(node), executeContext);
 			break;
 		case ASTNodeType::Try:
-			result =  ExecuteTry(static_cast<const ASTNodeTry&>(node), executeContext);
+			result = ExecuteTry(static_cast<const ASTNodeTry&>(node), executeContext);
 			break;
 		case ASTNodeType::Throw:
-			result =  ExecuteThrow(static_cast<const ASTNodeThrow&>(node), executeContext);
+			result = ExecuteThrow(static_cast<const ASTNodeThrow&>(node), executeContext);
 			break;
 		case ASTNodeType::TalkJump:
-			result =  ExecuteTalkJump(static_cast<const ASTNodeTalkJump&>(node), executeContext);
+			result = ExecuteTalkJump(static_cast<const ASTNodeTalkJump&>(node), executeContext);
 			break;
 		case ASTNodeType::TalkSpeak:
-			result =  ExecuteTalkSpeak(static_cast<const ASTNodeTalkSpeak&>(node), executeContext);
+			result = ExecuteTalkSpeak(static_cast<const ASTNodeTalkSpeak&>(node), executeContext);
 			break;
 		case ASTNodeType::TalkSetSpeaker:
-			result =  ExecuteTalkSetSpeaker(static_cast<const ASTNodeTalkSetSpeaker&>(node), executeContext);
+			result = ExecuteTalkSetSpeaker(static_cast<const ASTNodeTalkSetSpeaker&>(node), executeContext);
 			break;
 		case ASTNodeType::UnitRoot:
-			result =  ExecuteUnitRoot(static_cast<const ASTNodeUnitRoot&>(node), executeContext);
+			result = ExecuteUnitRoot(static_cast<const ASTNodeUnitRoot&>(node), executeContext);
 			break;
 
 		default:
@@ -226,6 +229,11 @@ namespace sakura {
 	//boolリテラル
 	ScriptValueRef ScriptExecutor::ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext) {
 		return node.GetValue() ? ScriptValue::True : ScriptValue::False;
+	}
+
+	//null
+	ScriptValueRef ScriptExecutor::ExecuteNull(const ASTNodeNull& node, ScriptExecuteContext& executeContext) {
+		return ScriptValue::Null;
 	}
 
 	//コンテキスト値

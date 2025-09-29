@@ -24,6 +24,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteStringLiteral(const ASTNodeStringLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteNumberLiteral(const ASTNodeNumberLiteral& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteBooleanLiteral(const ASTNodeBooleanLiteral& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteNull(const ASTNodeNull& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteContextValue(const ASTNodeContextValue& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteUnitRoot(const ASTNodeUnitRoot& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteResolveSymbol(const ASTNodeResolveSymbol& node, ScriptExecuteContext& executeContext);

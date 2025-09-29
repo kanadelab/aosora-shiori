@@ -65,6 +65,7 @@ namespace sakura {
 	const std::string TOKEN_KEYWORD_CONST = "const";
 	const std::string TOKEN_KEYWORD_TRUE = "true";
 	const std::string TOKEN_KEYWORD_FALSE = "false";
+	const std::string TOKEN_KEYWORD_NULL = "null";
 	const std::string TOKEN_KEYWORD_TRY = "try";
 	const std::string TOKEN_KEYWORD_CATCH = "catch";
 	const std::string TOKEN_KEYWORD_FINALLY = "finally";
@@ -167,6 +168,7 @@ namespace sakura {
 		{TOKEN_KEYWORD_CONST, ScriptTokenType::Const},
 		{TOKEN_KEYWORD_TRUE, ScriptTokenType::True},
 		{TOKEN_KEYWORD_FALSE, ScriptTokenType::False},
+		{TOKEN_KEYWORD_NULL, ScriptTokenType::Null},
 		{TOKEN_KEYWORD_TRY, ScriptTokenType::Try},
 		{TOKEN_KEYWORD_CATCH, ScriptTokenType::Catch},
 		{TOKEN_KEYWORD_FINALLY, ScriptTokenType::Finally},

@@ -154,7 +154,7 @@ namespace sakura {
 		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
 		ScriptParseErrorData errorData;
-		ScriptToken errorToken;
+		SourceCodeRange errorSourceRange;
 
 	public:
 		ASTParseContext(const std::list<ScriptToken>& tokenList, ASTParseResult& parseResult) :
@@ -197,8 +197,7 @@ namespace sakura {
 			return scriptClass;
 		}
 
-		//エラーのセット
-		ASTNodeRef Error(const std::string& errorCode, const ScriptToken& token) {
+		ASTNodeRef Error(const std::string& errorCode, const SourceCodeRange& sourceRange) {
 
 #if defined(AOSORA_DEBUG)
 			if (DEBUG_ENABLE_ASSERT_PARSE_ERROR) {
@@ -212,12 +211,17 @@ namespace sakura {
 				errorData.errorCode = errorCode;
 				errorData.message = TextSystem::Find(std::string("ERROR_MESSAGE") + errorCode);
 				errorData.hint = TextSystem::Find(std::string("ERROR_HINT") + errorCode);
-				errorToken = token;
+				errorSourceRange = sourceRange;
 				hasError = true;
 			}
 
 			//エラー情報を返してそのまま脱出させる
 			return ASTNodeRef(new ASTError());
+		}
+
+		//エラーのセット
+		ASTNodeRef Error(const std::string& errorCode, const ScriptToken& token) {
+			return Error(errorCode, token.sourceRange);
 		}
 
 		//次へ
@@ -252,8 +256,8 @@ namespace sakura {
 			return errorData;
 		}
 
-		ScriptToken GetErrorToken() const {
-			return errorToken;
+		SourceCodeRange GetErrorSourceRange() const {
+			return errorSourceRange;
 		}
 
 		const ScriptSourceMetadataRef& GetSourceMetadata() const {
@@ -293,7 +297,7 @@ namespace sakura {
 				printf("Position: %s\n", parseContext.GetErrorToken()->sourceRange.ToString().c_str());
 			}
 #endif
-			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken().sourceRange));
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorSourceRange()));
 		}
 
 		parseResult->root = codeBlock;
@@ -340,7 +344,7 @@ namespace sakura {
 		parseResult->success = !parseContext.HasError();
 
 		if (parseContext.HasError()) {
-			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorToken().sourceRange));
+			parseResult->error.reset(new ScriptParseError(parseContext.GetErrorData(), parseContext.GetErrorSourceRange()));
 		}
 		parseResult->root = expression;
 		return parseResult;
@@ -759,6 +763,12 @@ namespace sakura {
 			while (expressionStack.size() > 2) {
 				const OperatorInformation* operatorInfo = expressionStack[expressionStack.size() - 2].operatorInfo;
 
+				if (operatorInfo == nullptr) {
+					//オペレータでないなら処理しない
+					//２項演算子のあとで単項演算子を入れようとしている場合など
+					break;
+				}
+
 				if (operatorInfo->type == OperatorType::Bracket) {
 					//開カッコは常に解決しない
 					break;
@@ -888,10 +898,16 @@ namespace sakura {
 
 				switch (parseContext.GetCurrent().type) {
 				case ScriptTokenType::Number:
+				case ScriptTokenType::True:
+				case ScriptTokenType::False:
+				case ScriptTokenType::Null:
 				case ScriptTokenType::Symbol:
 				case ScriptTokenType::StringBegin:
 				case ScriptTokenType::Function:
 				case ScriptTokenType::Talk:
+				case ScriptTokenType::Base:
+				case ScriptTokenType::This:
+				case ScriptTokenType::Unit:
 					return parseContext.Error(ERROR_AST_004, parseContext.GetCurrent());
 				case ScriptTokenType::BlockBegin:
 					//BlockBeginで式を終えられるなら許容
@@ -923,6 +939,12 @@ namespace sakura {
 			}
 			else if (parseContext.GetCurrent().type == ScriptTokenType::False) {
 				ASTNodeRef node = ASTNodeRef(new ASTNodeBooleanLiteral(false, parseContext.GetSourceMetadata()));
+				node->SetSourceRange(parseContext.GetCurrent());
+				parseContext.FetchNext();
+				parseStack.PushOperand(node);
+			}
+			else if (parseContext.GetCurrent().type == ScriptTokenType::Null) {
+				ASTNodeRef node = ASTNodeRef(new ASTNodeNull(parseContext.GetSourceMetadata()));
 				node->SetSourceRange(parseContext.GetCurrent());
 				parseContext.FetchNext();
 				parseStack.PushOperand(node);
@@ -1724,7 +1746,7 @@ namespace sakura {
 
 		//target側がゲット系のノードになっているはずなのでセット系のノードに変換する
 		if (!target->CanConvertToSetter()) {
-			return parseContext.Error(ERROR_AST_023, parseContext.GetCurrent());
+			return parseContext.Error(ERROR_AST_023, SourceCodeRange(target->GetSourceRange(), value->GetSourceRange()));
 		}
 		return target->ConvertToSetter(value);
 	}

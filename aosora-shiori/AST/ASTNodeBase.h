@@ -36,6 +36,7 @@ namespace sakura {
 		StringLiteral,
 		NumberLiteral,
 		BooleanLiteral,
+		Null,
 		UnitRoot,
 		ResolveSymbol,
 		AssignSymbol,
