@@ -23,8 +23,7 @@ namespace sakura {
 		uint32_t referenceCount;
 
 	private:
-		void IncrementReference();
-		void DecrementReference();
+		ObjectSystem* GetManager() { return manager; }
 
 	protected:
 		CollectableBase() :
@@ -44,88 +43,93 @@ namespace sakura {
 		
 	};
 
+	//参照基底。テンプレートに依存しない部分として。
 	class ReferenceBase {
+	private:
+		CollectableBase* reference;
+		ObjectSystem* manager;
+
+		void IncrementReference();
+		void DecrementReference();
 	protected:
-		//TODO: コンパイル通すために無茶苦茶になってる。void* 使わない方向で整理したいけど…
-		void IncrementReference(CollectableBase* reference) {
-			if (reference != nullptr) {
-				reference->IncrementReference();
+		ReferenceBase(CollectableBase* ref):
+			reference(nullptr),
+			manager(nullptr)
+		{
+			SetReference(ref);
+		}
+
+		void SetReference(CollectableBase* ref) {
+			DecrementReference();
+			if (ref != nullptr) {
+				//マネージャもここでもつ。
+				//スイープステップ中に、スイープ中か知る必要があるのにオブジェクトが既に解放されていてオブジェクト経由で参照できない状況をふせぐため。
+				reference = ref;
+				manager = ref->manager;
+				IncrementReference();
 			}
 		}
 
-		void DecrementReference(CollectableBase* reference) {
-			if (reference != nullptr) {
-				reference->DecrementReference();
-			}
+		CollectableBase* GetReference() const {
+			return reference;
+		}
+
+		void ReleaseReference() {
+			SetReference(nullptr);
 		}
 	};
 
 	//参照型
-	//TODO: 参照カウンタも導入して可能ならGCを待たずに捨ててもいいかも。この場合、Referenceにはカウンタは持たず、Collectableのほうでもつこと。
-	//(取り回し的にオブジェクト自身がC++ this からReferenceをつくることができるように。）
 	template<typename CollectableType>
 	class Reference : protected ReferenceBase {
 	private:
-		CollectableType* reference;
+		CollectableType* GetReference() const { return static_cast<CollectableType*>(ReferenceBase::GetReference()); }
 
 	public:
-		Reference(CollectableType* obj):
-			reference(obj)
-		{
-			IncrementReference(reference);
-		}
+		Reference(CollectableType* obj): ReferenceBase(obj) {}
 
-		Reference(const Reference<CollectableType>& ref):
-			reference(ref.reference)
-		{
-			IncrementReference(reference);
-		}
+		Reference(const Reference<CollectableType>& ref):ReferenceBase(ref.GetReference()) {}
 
-		Reference():reference(nullptr){}
+		Reference():ReferenceBase(nullptr){}
 
 		~Reference() {
-			DecrementReference(reference);
+			ReleaseReference();
 		}
 
 		void operator= (const Reference<CollectableType>& ref) {
 
-			//前の参照を捨てる
-			DecrementReference(reference);
-			reference = ref.reference;
-
-			//今の参照を足す
-			IncrementReference(reference);
+			SetReference(ref.GetReference());
 		}
 
 		//よくつかうインターフェース
 		CollectableType* operator->() const{
-			return static_cast<CollectableType*>(reference);
+			return static_cast<CollectableType*>(GetReference());
 		}
 
 		bool operator== (const CollectableType* v) const {
-			return reference == v;
+			return GetReference() == v;
 		}
 
 		bool operator!= (const CollectableType* v) const {
-			return reference != v;
+			return GetReference() != v;
 		}
 
-		CollectableType* Get() { return static_cast<CollectableType*>(reference); }
+		CollectableType* Get() { return static_cast<CollectableType*>(GetReference()); }
 
 		template<typename T>
 		operator Reference<T>() const
 		{
-			return Reference<T>(reference);
+			return Reference<T>(GetReference());
 		}
 
 		template<typename T>
 		Reference<T> Cast() const
 		{
-			return Reference<T>(static_cast<T*>(reference));
+			return Reference<T>(static_cast<T*>(GetReference()));
 		}
 
 		CollectableType* Get() const {
-			return reference;
+			return GetReference();
 		}
 	};
 
@@ -135,7 +139,9 @@ namespace sakura {
 	//とても簡易的なマークアンドスイープとして実装
 	class ObjectSystem {
 		friend class CollectableBase;
+		friend class ReferenceBase;
 	private:
+		bool isSweeping_;
 		CollectableBase* itemFirst;
 		CollectableBase* itemLast;
 		std::size_t itemCount;
@@ -217,7 +223,8 @@ namespace sakura {
 		void DecrementReference(CollectableBase* item) {
 			if (item != nullptr) {
 				assert(item->referenceCount > 0);
-				if (item->referenceCount == 1) {
+				if (!isSweeping_ && item->referenceCount == 1) {
+					//スイープ中は開放しない。スイープ中に参照が0になるということはGCに開放されるはずなのでそのままでいい
 					RemoveItem(item);
 				}
 				else if (item->referenceCount > 0) {
@@ -228,12 +235,14 @@ namespace sakura {
 
 	public:
 		ObjectSystem() :
+			isSweeping_(false),
 			itemFirst(nullptr),
 			itemLast(nullptr),
 			itemCount(0)
 		{}
 
 		~ObjectSystem() {
+			isSweeping_ = true;
 			CollectableBase* item = itemFirst;
 			while (item != nullptr) {
 				CollectableBase* next = item->listNext;
@@ -253,6 +262,10 @@ namespace sakura {
 		//オブジェクト回収
 		//引数で渡すコレクションから辿れるすべての参照をマークし、マークされなかったものを破棄
 		void CollectObjects(const std::vector<CollectableBase*> rootObjects) {
+
+			//スイープ中としてマーク
+			assert(!isSweeping_);
+			isSweeping_ = true;
 
 			//状態をリセット
 			CollectableBase* current = itemFirst;
@@ -282,6 +295,9 @@ namespace sakura {
 			for (CollectableBase* item : removeItems) {
 				RemoveItem(item);
 			}
+
+			//スイープ中マークを解除
+			isSweeping_ = false;
 		}
 
 	};
