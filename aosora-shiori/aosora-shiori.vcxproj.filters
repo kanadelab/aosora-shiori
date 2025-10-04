@@ -53,6 +53,12 @@
     <ClCompile Include="CommonLibrary\StandardLibrary.cpp">
       <Filter>CommonLibrary</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\PluginLoader.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
+    <ClCompile Include="CommonLibrary\PluginContextManager.cpp">
+      <Filter>CommonLibrary</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -122,6 +128,12 @@
       <Filter>Debugger</Filter>
     </ClInclude>
     <ClInclude Include="CommonLibrary\StandardLibrary.h">
+      <Filter>CommonLibrary</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\PluginLoader.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonLibrary\PluginContextManager.h">
       <Filter>CommonLibrary</Filter>
     </ClInclude>
   </ItemGroup>

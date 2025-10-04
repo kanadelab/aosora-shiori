@@ -387,6 +387,13 @@ namespace sakura {
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 	};
 
+	//プラグインマネージャ
+	class PluginManager : public Object<SaoriManager> {
+	public:
+		static void Load(const FunctionRequest& request, FunctionResponse& response);
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
+
 	//デバッグ関係
 	class ScriptDebug : public Object<ScriptDebug> {
 	private:

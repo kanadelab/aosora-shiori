@@ -5,6 +5,7 @@
 #include "Misc/Json.h"
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
+#include "Misc/PluginLoader.h"
 #include "Debugger/Debugger.h"
 
 namespace sakura {
@@ -605,6 +606,19 @@ namespace sakura {
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
 		UnloadSaori(loadedModule);
 #endif // #if defined(AOSORA_ENABLE_SAORI_LOADER)
+	}
+
+	void PluginManager::Load(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() > 0) {
+			//指定パスでプラグインDLLをロードしてオブジェクトを返す
+
+			//ロード済みのものをチェック
+			std::string pluginPath = "";
+			auto loadResult = LoadPlugin(pluginPath);
+
+			//ここでプラグイン呼び出しコンテキストが必要になる
+
+		}
 	}
 
 	void ScriptDebug::WriteLine(const FunctionRequest& request, FunctionResponse& response) {

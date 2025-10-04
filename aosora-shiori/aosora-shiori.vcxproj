@@ -77,7 +77,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDIr)aosora-plugin-core\</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -144,6 +144,7 @@
     <ClInclude Include="AST\ASTParser.h" />
     <ClInclude Include="Base.h" />
     <ClInclude Include="CommonLibrary\CommonClasses.h" />
+    <ClInclude Include="CommonLibrary\PluginContextManager.h" />
     <ClInclude Include="CommonLibrary\StandardLibrary.h" />
     <ClInclude Include="CoreLibrary\CoreClasses.h" />
     <ClInclude Include="CoreLibrary\CoreLibrary.h" />
@@ -157,6 +158,7 @@
     <ClInclude Include="Interpreter\ScriptVariable.h" />
     <ClInclude Include="Misc\Json.h" />
     <ClInclude Include="Misc\Message.h" />
+    <ClInclude Include="Misc\PluginLoader.h" />
     <ClInclude Include="Misc\SaoriLoader.h" />
     <ClInclude Include="Misc\Utility.h" />
     <ClInclude Include="Shiori.h" />
@@ -168,6 +170,7 @@
     <ClCompile Include="AST\ASTNodeBase.cpp" />
     <ClCompile Include="AST\ASTParser.cpp" />
     <ClCompile Include="CommonLibrary\CommonClasses.cpp" />
+    <ClCompile Include="CommonLibrary\PluginContextManager.cpp" />
     <ClCompile Include="CommonLibrary\StandardLibrary.cpp" />
     <ClCompile Include="CoreLibrary\CoreClasses.cpp" />
     <ClCompile Include="CoreLibrary\PrimitiveMethod.cpp" />
@@ -179,10 +182,16 @@
     <ClCompile Include="Interpreter\ScriptVariable.cpp" />
     <ClCompile Include="Misc\Json.cpp" />
     <ClCompile Include="Misc\Message.cpp" />
+    <ClCompile Include="Misc\PluginLoader.cpp" />
     <ClCompile Include="Misc\SaoriLoader.cpp" />
     <ClCompile Include="Misc\Utility.cpp" />
     <ClCompile Include="Shiori.cpp" />
     <ClCompile Include="Tokens\TokenParser.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\aosora-plugin-core\aosora-plugin-core.vcxproj">
+      <Project>{62e08af2-0609-4a88-8430-84f4b96d4c63}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -10,6 +10,9 @@
 //SAORIローダの有効化
 #define AOSORA_ENABLE_SAORI_LOADER
 
+//aosoraプラグインローダの有効化
+#define AOSORA_ENABLE_PLUGIN_LOADER
+
 //aosoraデバッガ(VSCodeに対する通信)の有効化
 #define AOSORA_ENABLE_DEBUGGER
 
