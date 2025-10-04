@@ -611,13 +611,41 @@ namespace sakura {
 	void PluginManager::Load(const FunctionRequest& request, FunctionResponse& response) {
 		if (request.GetArgumentCount() > 0) {
 			//指定パスでプラグインDLLをロードしてオブジェクトを返す
+			std::string pluginRelativePath = request.GetArgument(0)->ToString();
 
 			//ロード済みのものをチェック
 			std::string pluginPath = "";
 			auto loadResult = LoadPlugin(pluginPath);
 
-			//ここでプラグイン呼び出しコンテキストが必要になる
+			//ロード済みのSAORIをチェックする、ロード済みならそのまま返す
+			auto staticStore = request.GetContext().GetInterpreter().StaticStore<PluginManager>();
+			auto loadedPlugin = staticStore->RawGet(pluginRelativePath);
+			if (loadedPlugin != nullptr) {
+				response.SetReturnValue(loadedPlugin);
+				return;
+			}
 
+			//ここでプラグイン呼び出しコンテキストが必要になる
+			std::string saoriPath = request.GetContext().GetInterpreter().GetWorkingDirectory() + pluginRelativePath;
+
+			//SAORIのロードを試みる
+			auto loadResult = LoadPlugin(saoriPath);
+			if (loadResult.type == PluginResultType::SUCCESS) {
+				//ロード成功: プラグインを初期化する、帰ってきたオブジェクトをキャッシュする
+
+				//ここでプラグインコンテキストを使用してプラグイン呼び出しを行う形になる
+				//loadResult.plugin->fLoad
+
+				auto loadObj = ScriptValue::Make(request.GetContext().GetInterpreter().CreateNativeObject<PluginModule>(loadResult.saori));
+				staticStore->RawSet(pluginRelativePath, loadObj);
+				response.SetReturnValue(loadObj);
+			}
+			else {
+				//ロード失敗
+				response.SetThrewError(request.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(
+					/*SaoriResultTypeToString(loadResult.type)*/ "プラグインロードエラー"
+				));
+			}
 		}
 	}
 

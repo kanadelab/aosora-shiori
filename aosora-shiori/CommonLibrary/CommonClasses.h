@@ -394,6 +394,26 @@ namespace sakura {
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
 	};
 
+	//プラグイン関数ラッパー
+	class PluginFunctionWrapper : public Object<PluginFunctionWrapper> {
+	private:
+		//呼び出しターゲット
+		aosora::PluginFunctionType functionPtr;
+
+		//thisオブジェクト
+		ScriptValueRef thisValue;
+	};
+
+	//汎用メモリバッファオブジェクト
+	class MemoryBuffer : public Object<MemoryBuffer> {
+	private:
+		void* ptr;
+		size_t size;
+
+	public:
+
+	};
+
 	//デバッグ関係
 	class ScriptDebug : public Object<ScriptDebug> {
 	private:

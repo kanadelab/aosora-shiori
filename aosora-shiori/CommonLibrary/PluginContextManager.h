@@ -14,6 +14,7 @@
 namespace sakura {
 
 	class PluginModule;
+	class ScriptExecuteContext;
 
 	struct PluginCallContext {
 		std::vector<ScriptValueRef> args;
@@ -139,11 +140,15 @@ namespace sakura {
 
 		static aosora::AosoraAccessor MakeAccessor();
 
+		//プラグイン関数のコール
+		static void ExecuteModuleLoadFunction(PluginModule* module, ScriptExecuteContext& executeContext);
+		
 		//アクセサ関数
 		static aosora::ValueHandle CreateNumber(double value);
 		static aosora::ValueHandle CreateBool(bool value);
 		static aosora::ValueHandle CreateString(aosora::StringContainer value);
 		static aosora::ValueHandle CreateNull();
+		static aosora::ValueHandle CreateFunction(aosora::ValueHandle thisValue, aosora::PluginFunctionType functionBody);
 
 		static double ToNumber(aosora::ValueHandle handle);
 		static bool ToBool(aosora::ValueHandle handle);

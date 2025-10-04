@@ -13,13 +13,23 @@ namespace sakura {
 
 		if (loadedModule.hModule == nullptr) {
 			//DLLロード失敗
+			loadResult.type = PluginResultType::SUCCESS;
+			return loadResult;
 		}
 
 		loadedModule.fLoad = reinterpret_cast<aosora::LoadFunctionType>(GetProcAddress(loadedModule.hModule, "load"));
 
-		//get version?
+		if (loadedModule.fLoad == nullptr) {
+			//loadがみつからない
+			loadResult.type = PluginResultType::LOAD_FUNCTION_NOT_FOUND;
+			return loadResult;
+		}
+
+		//TODO: get version?
+		
 		//ヒープにコピー
 		loadResult.plugin = new LoadedPluginModule(loadedModule);
+		loadResult.type = PluginResultType::SUCCESS;
 		return loadResult;
 	}
 

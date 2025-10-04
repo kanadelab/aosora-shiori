@@ -3,6 +3,10 @@
 
 namespace sakura {
 
+	void PluginContextManager::ExecuteModuleLoadFunction(PluginModule* pluginModule, ScriptExecuteContext& executeContext) {
+
+	}
+
 	//アクセサ関数
 	aosora::ValueHandle PluginContextManager::CreateNumber(double value) {
 		return GetCurrentHandleManager().CreateHandle(ScriptValue::Make(value));
