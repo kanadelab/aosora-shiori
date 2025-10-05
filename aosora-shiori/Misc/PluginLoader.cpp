@@ -13,7 +13,7 @@ namespace sakura {
 
 		if (loadedModule.hModule == nullptr) {
 			//DLLロード失敗
-			loadResult.type = PluginResultType::SUCCESS;
+			loadResult.type = PluginResultType::LOAD_DLL_FAILED;
 			return loadResult;
 		}
 

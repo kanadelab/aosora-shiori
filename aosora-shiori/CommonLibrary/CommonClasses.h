@@ -1,13 +1,15 @@
 ﻿#pragma once
+#include <ctime>
+#include <AosoraPlugin.h>
 #include "AST/AST.h"
 #include "Interpreter/Interpreter.h"
 #include "CoreLibrary/CoreLibrary.h"
 #include "Misc/Json.h"
-#include <ctime>
 
 namespace sakura {
 
 	struct LoadedSaoriModule;
+	struct LoadedPluginModule;
 
 	//日付と時刻
 	class Time : public Object<Time> {
@@ -395,13 +397,27 @@ namespace sakura {
 	};
 
 	//プラグイン関数ラッパー
-	class PluginFunctionWrapper : public Object<PluginFunctionWrapper> {
+	class PluginDelegate : public Object<PluginDelegate> {
 	private:
+		//プラグインモジュール
+		LoadedPluginModule* pluginModule;
+
 		//呼び出しターゲット
 		aosora::PluginFunctionType functionPtr;
 
 		//thisオブジェクト
 		ScriptValueRef thisValue;
+
+	public:
+		PluginDelegate(LoadedPluginModule* pluginModule, aosora::PluginFunctionType functionPtr, const ScriptValueRef& thisValue):
+			pluginModule(pluginModule),
+			functionPtr(functionPtr),
+			thisValue(thisValue)
+		{ }
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+		virtual bool CanCall() const override { return true; }
+		virtual void Call(const FunctionRequest& request, FunctionResponse& response) override;
 	};
 
 	//汎用メモリバッファオブジェクト

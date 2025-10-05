@@ -18,7 +18,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
-void TestFunction(aosora::AosoraAccessor* accessor) {
+void TestFunction(const aosora::AosoraAccessor* accessor) {
     std::string keyString("Test Return Value");
 
     aosora::ValueHandle returnValueHandle = accessor->CreateString({ keyString.c_str(), keyString.length() });
@@ -26,7 +26,7 @@ void TestFunction(aosora::AosoraAccessor* accessor) {
     accessor->ReleaseHandle(returnValueHandle);
 }
 
-void load(aosora::AosoraAccessor* accessor) {
+extern "C" __declspec(dllexport) void __cdecl load(const aosora::AosoraAccessor* accessor) {
     std::string keyString("TestFunction");
 
     aosora::ValueHandle mapHandle = accessor->CreateMap();

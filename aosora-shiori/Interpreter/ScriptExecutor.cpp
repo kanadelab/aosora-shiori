@@ -1619,6 +1619,8 @@ namespace sakura {
 		ImportClass(NativeClass::Make<Random>("Random"));
 		ImportClass(NativeClass::Make<SaoriManager>("Saori"));
 		ImportClass(NativeClass::Make<SaoriModule>("SaoriModule"));
+		ImportClass(NativeClass::Make<PluginManager>("PluginManager"));
+		ImportClass(NativeClass::Make<PluginDelegate>("PluginDelegate"));
 		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
 		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
 		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));

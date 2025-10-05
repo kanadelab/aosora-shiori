@@ -12,10 +12,11 @@ namespace aosora {
 	};
 
 	using ValueHandle = uint64_t;
-	using PluginFunctionType = void(*)(AosoraAccessor* accessor);
+	using PluginFunctionType = void(*)(const AosoraAccessor* accessor);
 	const ValueHandle INVALID_VALUE_HANDLE = 0;
 
 	using ReleaseHandleFunctionType = void(*)(ValueHandle handle);
+	using AddRefHandleFunctionType = void(*)(ValueHandle handle);
 
 	using CreateNumberFunctionType = ValueHandle(*)(double value);
 	using CreateBoolFunctionType = ValueHandle(*)(bool value);
@@ -32,13 +33,21 @@ namespace aosora {
 	using ToBufferFunctionType = void* (*)(ValueHandle handle);
 
 	using SetValueFunctionType = void(*)(ValueHandle target, ValueHandle key, ValueHandle value);
-	using GetValueFunctionType = void(*)(ValueHandle target, ValueHandle key);
+	using GetValueFunctionType = aosora::ValueHandle(*)(ValueHandle target, ValueHandle key);
 
 	using GetArgumentCountFunctionType = size_t(*)();
 	using GetArgumentFunctionType = ValueHandle(*)(size_t index);
 
 	using SetReturnValueFunctionType = void(*)(ValueHandle returnValue);
 	using SetErrorFunctionType = void(*)(ValueHandle errorObject);
+
+	using CallFunctionFunctionType = void(*)(ValueHandle function, const ValueHandle* argv, size_t argc);
+	using CreateInstanceFunctionType = void(*)(ValueHandle function, const ValueHandle* argv, size_t argc);
+
+	using GetLastFunctionCallReturnValueFunctionType = ValueHandle(*)();
+	using GetLastFunctionCallErrorFunctionType = ValueHandle(*)();
+
+	using GetUnitObjectFunctionType = ValueHandle(*)(StringContainer unitName);
 
 	//ここにまとめて関数ポインタを渡す
 	struct AosoraAccessor {
@@ -56,8 +65,8 @@ namespace aosora {
 		ToBoolFunctionType ToBool;
 		ToStringFunctionType ToString;
 
-		SetValueFunctionType SetValue;
 		GetValueFunctionType GetValue;
+		SetValueFunctionType SetValue;
 
 		GetArgumentCountFunctionType GetArgumentCount;
 		GetArgumentFunctionType GetArgument;
@@ -82,7 +91,7 @@ namespace aosora {
 	
 
 	//変数ハンドル
-	using LoadFunctionType = void(*)(AosoraAccessor* accessor);
+	using LoadFunctionType = void(*)(const AosoraAccessor* accessor);
 	using UnloadFunctionType = void(*)();
 
 	double ToNumber(ValueHandle v);

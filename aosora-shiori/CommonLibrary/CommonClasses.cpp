@@ -6,6 +6,7 @@
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
 #include "Misc/PluginLoader.h"
+#include "CommonLibrary/PluginContextManager.h"
 #include "Debugger/Debugger.h"
 
 namespace sakura {
@@ -613,10 +614,6 @@ namespace sakura {
 			//指定パスでプラグインDLLをロードしてオブジェクトを返す
 			std::string pluginRelativePath = request.GetArgument(0)->ToString();
 
-			//ロード済みのものをチェック
-			std::string pluginPath = "";
-			auto loadResult = LoadPlugin(pluginPath);
-
 			//ロード済みのSAORIをチェックする、ロード済みならそのまま返す
 			auto staticStore = request.GetContext().GetInterpreter().StaticStore<PluginManager>();
 			auto loadedPlugin = staticStore->RawGet(pluginRelativePath);
@@ -626,17 +623,14 @@ namespace sakura {
 			}
 
 			//ここでプラグイン呼び出しコンテキストが必要になる
-			std::string saoriPath = request.GetContext().GetInterpreter().GetWorkingDirectory() + pluginRelativePath;
+			std::string pluginPath = request.GetContext().GetInterpreter().GetWorkingDirectory() + pluginRelativePath;
 
 			//SAORIのロードを試みる
-			auto loadResult = LoadPlugin(saoriPath);
+			auto loadResult = LoadPlugin(pluginPath);
 			if (loadResult.type == PluginResultType::SUCCESS) {
-				//ロード成功: プラグインを初期化する、帰ってきたオブジェクトをキャッシュする
 
-				//ここでプラグインコンテキストを使用してプラグイン呼び出しを行う形になる
-				//loadResult.plugin->fLoad
-
-				auto loadObj = ScriptValue::Make(request.GetContext().GetInterpreter().CreateNativeObject<PluginModule>(loadResult.saori));
+				//プラグイン初期化実行
+				auto loadObj = PluginContextManager::ExecuteModuleLoadFunction(*loadResult.plugin, request.GetContext());
 				staticStore->RawSet(pluginRelativePath, loadObj);
 				response.SetReturnValue(loadObj);
 			}
@@ -647,6 +641,22 @@ namespace sakura {
 				));
 			}
 		}
+	}
+
+	ScriptValueRef PluginManager::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "Load") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&PluginManager::Load));
+		}
+		return nullptr;
+	}
+
+	void PluginDelegate::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		result.push_back(thisValue->GetObjectRef().Get());
+	}
+
+	void PluginDelegate::Call(const FunctionRequest& request, FunctionResponse& response) {
+		//プラグイン関数を呼び出す
+		PluginContextManager::ExecutePluginFunction(*pluginModule, functionPtr, thisValue, request, response);
 	}
 
 	void ScriptDebug::WriteLine(const FunctionRequest& request, FunctionResponse& response) {
