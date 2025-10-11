@@ -32,6 +32,12 @@ namespace aosora {
 	using ToStringFunctionType = StringContainer(*)(ValueHandle handle);
 	using ToBufferFunctionType = void* (*)(ValueHandle handle);
 
+	using GetTypeFunctionType = uint32_t(*)(ValueHandle);
+	using GetObjectTypeFunctionType = uint32_t(*)(ValueHandle);
+	using IsCallableFunctionType = bool(*)(ValueHandle);
+
+	//TODO: 無効ハンドルやタイプIDなどもまとめて関数で取得できるといいかも? 定数であるべきか? aosoraのバージョンで変わる場合がある、というのが１理由のつか。
+
 	using SetValueFunctionType = void(*)(ValueHandle target, ValueHandle key, ValueHandle value);
 	using GetValueFunctionType = aosora::ValueHandle(*)(ValueHandle target, ValueHandle key);
 
@@ -52,6 +58,7 @@ namespace aosora {
 	//ここにまとめて関数ポインタを渡す
 	struct AosoraAccessor {
 		ReleaseHandleFunctionType ReleaseHandle;
+		AddRefHandleFunctionType AddRefHandle;
 
 		CreateNumberFunctionType CreateNumber;
 		CreateBoolFunctionType CreateBool;
@@ -72,6 +79,17 @@ namespace aosora {
 		GetArgumentFunctionType GetArgument;
 
 		SetReturnValueFunctionType SetReturnValue;
+
+		//TODO: まともな並べ方をするためにスペーシングしたほうがいいかも、あとで変えられるように
+
+		uint32_t TYPE_ID_NULL;
+		uint32_t TYPE_ID_NUMBER;
+		uint32_t TYPE_ID_BOOL;
+		uint32_t TYPE_ID_STRING;
+		uint32_t TYPE_ID_OBJECT;
+
+		uint32_t OBJECT_TYPE_ID_ARRAY;
+		uint32_t OBJECT_TYPE_ID_MAP;
 	};
 
 	struct FunctionContext {

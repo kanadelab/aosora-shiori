@@ -206,10 +206,29 @@ namespace sakura {
 				*functionValue, response, args, GetCurrentExecuteContext(), nullptr
 			);
 
-			// TODO: 戻り値と例外の記録
-			// response.GetReturnValue();
+			// 戻り値と例外の記録
+			PeekContext().SetLastFunctionReturnValue(response.GetReturnValue());
+			if (response.IsThrew()) {
+				PeekContext().SetLastError(ScriptValue::Make(response.GetThrewError()));
+			}
 
 		}
+	}
+
+	aosora::ValueHandle PluginContextManager::NewClassInstance(aosora::ValueHandle classObject, const aosora::ValueHandle* argv, size_t argc) {
+		ScriptValueRef classValue = GetCurrentHandleManager().GetValue(classObject);
+
+		if (GetCurrentInterpreter().InstanceIs<ScriptClass>(classValue)) {
+
+			//引数の展開
+			std::vector<ScriptValueRef> args;
+			for (size_t i = 0; i < argc; i++) {
+				args.push_back(GetCurrentHandleManager().GetValue(argv[i]));
+			}
+
+			ObjectRef inst = PeekContext().GetInterpreter().NewClassInstance(classValue, args, GetCurrentExecuteContext());
+		}
+
 	}
 
 }

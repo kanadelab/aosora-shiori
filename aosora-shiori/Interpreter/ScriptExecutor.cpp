@@ -1068,7 +1068,7 @@ namespace sakura {
 			}
 		}
 
-		return ScriptValue::Make(executeContext.GetInterpreter().NewClassInstance(node, classData, callArgs, executeContext));
+		return ScriptValue::Make(executeContext.GetInterpreter().NewClassInstance(classData, callArgs, executeContext));
 	}
 
 	//関数呼び出し
@@ -1880,12 +1880,12 @@ namespace sakura {
 	}
 
 	//クラスインスタンス生成
-	ObjectRef ScriptInterpreter::NewClassInstance(const ASTNodeBase& callingNode, const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context) {
+	ObjectRef ScriptInterpreter::NewClassInstance(const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context) {
 
 		ClassData* c = context.GetInterpreter().InstanceAs<ClassData>(classData);
 		if (c != nullptr) {
 			//まずクラスを取得
-			return NewClassInstance(callingNode, c, args, context, nullptr);
+			return NewClassInstance(c, args, context, nullptr);
 		}
 		else {
 			return nullptr;
@@ -1893,7 +1893,7 @@ namespace sakura {
 	}
 
 	//クラスインスタンス生成
-	ObjectRef ScriptInterpreter::NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance) {
+	ObjectRef ScriptInterpreter::NewClassInstance(const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance) {
 
 		//スクリプトクラスとネイティブクラスで初期化が異なる
 		if (classData->GetMetadata().IsScriptClass()) {
@@ -1903,7 +1903,7 @@ namespace sakura {
 			ScriptFunctionRef initFunc = scriptClassData.GetInitFunc();
 
 			//コンストラクタ用のスタックフレームとブロックスコープを作成して引数を登録
-			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(&callingNode, context.GetBlockScope(), "init");
+			ScriptInterpreterStack initStack = context.GetStack().CreateChildStackFrame(context.GetCurrentASTNode(), context.GetBlockScope(), "init");
 			Reference<BlockScope> initScope = context.GetInterpreter().CreateNativeObject<BlockScope>(context.GetBlockScope());
 
 			ScriptExecuteContext funcContext(*this, initStack, initScope);
@@ -1940,7 +1940,7 @@ namespace sakura {
 				}
 
 				//親クラスを初期化、その際スクリプトオブジェクトを渡してそこに書き込んでもらう
-				ObjectRef r = NewClassInstance(callingNode, parentClass, parentArgs, funcContext, createdObject);
+				ObjectRef r = NewClassInstance(parentClass, parentArgs, funcContext, createdObject);
 
 				//戻り値と同じインスタンスを示しているはず
 				assert(r.Get() == createdObject.Get());
@@ -1968,7 +1968,7 @@ namespace sakura {
 				nativeClass.GetInitFunc()(request, response);
 				
 				if (response.IsThrew()) {
-					context.ThrowError(callingNode, context.GetBlockScope(), "init", response.GetThrewError(), context);
+					context.ThrowError(*context.GetCurrentASTNode(), context.GetBlockScope(), "init", response.GetThrewError(), context);
 					return nullptr;
 				}
 				else {

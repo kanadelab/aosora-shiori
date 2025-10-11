@@ -422,11 +422,47 @@ namespace sakura {
 
 	//汎用メモリバッファオブジェクト
 	class MemoryBuffer : public Object<MemoryBuffer> {
+	public:
+		enum class BufferUsage {
+			Plugin
+		};
+
 	private:
+		BufferUsage usage;	// 用途
+		void* tagPtr;		// 用途に対応して任意の識別のための情報
 		void* ptr;
 		size_t size;
 
 	public:
+		MemoryBuffer(BufferUsage usage, void* tagPtr, size_t bufferSize) :
+			usage(usage),
+			tagPtr(tagPtr),
+			ptr(nullptr),
+			size(bufferSize) {
+			ptr = malloc(bufferSize);
+		}
+
+		~MemoryBuffer() {
+			free(ptr);
+		}
+
+		BufferUsage GetUsage() const {
+			return usage;
+		}
+
+		void* GetTagPtr() const {
+			return tagPtr;
+		}
+
+		void* GetPtr() const {
+			return ptr;
+		}
+
+		size_t GetSize() const {
+			return size;
+		}
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}
 
 	};
 

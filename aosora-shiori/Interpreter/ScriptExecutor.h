@@ -323,8 +323,8 @@ namespace sakura {
 		}
 
 		//クラスインスタンス生成
-		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context);
-		ObjectRef NewClassInstance(const ASTNodeBase& callingNode, const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance);
+		ObjectRef NewClassInstance(const ScriptValueRef& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context);
+		ObjectRef NewClassInstance(const Reference<ClassData>& classData, const std::vector<ScriptValueRef>& args, ScriptExecuteContext& context, Reference<ClassInstance> scriptObjInstance);
 
 
 		//オブジェクト型判定

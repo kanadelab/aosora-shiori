@@ -59,6 +59,19 @@ namespace sakura {
 			return callContext;
 		}
 
+		void ClearReturnValueAndError() {
+			lastFunctionError = ScriptValue::Null;
+			lastFunctionReturnValue = ScriptValue::Null;
+		}
+
+		void SetLastFunctionReturnValue(const ScriptValueRef& returnValue) {
+			lastFunctionReturnValue = returnValue;
+		}
+
+		void SetLastError(const ScriptValueRef& errorObject) {
+			lastFunctionError = errorObject;
+		}
+
 		//文字列をキャッシュする
 		//プラグイン側に文字列を転送するために、コンテキストの生存期間だけ生存を保証する文字列インスタンスを作成する
 		const std::string& CacheString(const std::string& str) {
@@ -70,6 +83,7 @@ namespace sakura {
 
 	//ハンドルマネージャ
 	//ハンドルとScriptValueを交換する
+	//TODO: こいつがハンドルとして持ってるオブジェクト類をGCに通知して開放しないようにする必要がある
 	class PluginHandleManager {
 	public:
 		static const aosora::ValueHandle INVALID_HANDLE = 0;
@@ -198,6 +212,9 @@ namespace sakura {
 		static void ExecutePluginFunction(LoadedPluginModule& module, aosora::PluginFunctionType pluginFunction, const ScriptValueRef& thisValue, const FunctionRequest& request, FunctionResponse& response);
 		
 		//アクセサ関数
+
+		//TODO: AddRef, バージョン処理関係
+
 		static void ReleaseHandle(aosora::ValueHandle handle);
 		static aosora::ValueHandle CreateNumber(double value);
 		static aosora::ValueHandle CreateBool(bool value);
@@ -206,10 +223,16 @@ namespace sakura {
 		static aosora::ValueHandle CreateFunction(aosora::ValueHandle thisValue, aosora::PluginFunctionType functionBody);
 		static aosora::ValueHandle CreateMap();
 		static aosora::ValueHandle CreateArray();
+		//static aosora::ValueHandle CreateMemoryBuffer(size_t size, void** buffer);	//TODO: デストラクタ相当の処理が無いと使いづらそう
 
 		static double ToNumber(aosora::ValueHandle handle);
 		static bool ToBool(aosora::ValueHandle handle);
 		static aosora::StringContainer ToString(aosora::ValueHandle handle);
+		//static void* ToMemoryBuffer(aosora::ValueHandle handle, size_t* size);
+
+		static uint32_t GetTypeId(aosora::ValueHandle handle);
+		static uint32_t GetObjectTypeId(aosora::ValueHandle handle);
+		static uint32_t ObjectInstanceOf(aosora::ValueHandle handle, uint32_t objectTypeId);
 
 		static void SetValue(aosora::ValueHandle target, aosora::ValueHandle key, aosora::ValueHandle value);
 		static aosora::ValueHandle GetValue(aosora::ValueHandle target, aosora::ValueHandle key);
@@ -218,7 +241,10 @@ namespace sakura {
 		static aosora::ValueHandle GetArgument(size_t index);
 
 		static void SetReturnValue(aosora::ValueHandle value);
+		static void SetError(aosora::ValueHandle value);
+		static void SetPluginError(aosora::StringContainer errorMessage);
 
 		static void FunctionCall(aosora::ValueHandle function, const aosora::ValueHandle* argv, size_t argc);
+		static aosora::ValueHandle NewClassInstance(aosora::ValueHandle classObject, const aosora::ValueHandle* argv, size_t argc);
 	};
 }
