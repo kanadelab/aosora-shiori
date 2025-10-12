@@ -33,5 +33,5 @@ namespace sakura {
 	//aosoraプラグイン
 	PluginModuleLoadResult LoadPlugin(const std::string& pluginPath);
 	void UnloadPlugin(LoadedPluginModule* plugin);
-
+	const char* PluginResultTypeToString(PluginResultType type);
 }

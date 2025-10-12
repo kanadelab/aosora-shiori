@@ -9,6 +9,10 @@ namespace sakura {
 	std::vector<PluginContext*> PluginContextManager::contextStack;
 	std::map<LoadedPluginModule*, PluginHandleManager*> PluginContextManager::plugins;
 
+	namespace {
+		const aosora::StringContainer STRING_CONTAINER_EMPTY = { "", 0 };
+	}
+
 	//NOTE: ここズレるとおかしくなるので注意
 	const aosora::AosoraAccessor PluginContextManager::accessor = {
 		ReleaseHandle,
@@ -56,6 +60,9 @@ namespace sakura {
 		GetErrorMessage,
 		GetErrorCode,
 
+		FindUnit,
+		CreateUnit,
+
 		static_cast<uint32_t>(ScriptValueType::Null),
 		static_cast<uint32_t>(ScriptValueType::Number),
 		static_cast<uint32_t>(ScriptValueType::Boolean),
@@ -67,6 +74,21 @@ namespace sakura {
 		MemoryBuffer::TypeId(),
 		ClassData::TypeId()
 	};
+
+	void PluginHandleManager::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		for (auto it : valueMap) {
+			if (it.second.valueRef != nullptr && it.second.valueRef->IsObject()) {
+				result.push_back(it.second.valueRef->GetObjectRef().Get());
+			}
+		}
+	}
+
+	void PluginContextManager::FetchReferencedItems(LoadedPluginModule* pluginModule, std::list<CollectableBase*>& result) {
+		auto it = plugins.find(pluginModule);
+		if (it != plugins.end()) {
+			it->second->FetchReferencedItems(result);
+		}
+	}
 
 	//プラグインロード関数の実行
 	ScriptValueRef PluginContextManager::ExecuteModuleLoadFunction(LoadedPluginModule& pluginModule, ScriptExecuteContext& executeContext) {
@@ -122,6 +144,10 @@ namespace sakura {
 	//アクセサ関数
 	void PluginContextManager::ReleaseHandle(aosora::ValueHandle handle) {
 		GetCurrentHandleManager().Release(handle);
+	}
+
+	void PluginContextManager::AddRefHandle(aosora::ValueHandle handle) {
+		GetCurrentHandleManager().AddRef(handle);
 	}
 
 	aosora::ValueHandle PluginContextManager::CreateNumber(double value) {
@@ -344,7 +370,7 @@ namespace sakura {
 	aosora::ValueHandle PluginContextManager::NewClassInstance(aosora::ValueHandle classObject, const aosora::ValueHandle* argv, size_t argc) {
 		ScriptValueRef classValue = GetCurrentHandleManager().GetValue(classObject);
 
-		if (GetCurrentInterpreter().InstanceIs<ScriptClass>(classValue)) {
+		if (GetCurrentInterpreter().InstanceIs<ClassData>(classValue)) {
 
 			//引数の展開
 			std::vector<ScriptValueRef> args;
@@ -353,7 +379,9 @@ namespace sakura {
 			}
 
 			ObjectRef inst = PeekContext().GetInterpreter().NewClassInstance(classValue, args, GetCurrentExecuteContext());
+			return GetCurrentHandleManager().CreateHandle(ScriptValue::Make(inst));
 		}
+		return aosora::INVALID_VALUE_HANDLE;
 	}
 
 	aosora::ValueHandle PluginContextManager::GetLastReturnValue() {
@@ -381,12 +409,35 @@ namespace sakura {
 			const std::string& msg = PeekContext().CacheString(err->GetErrorMessage());
 			return { msg.c_str(), msg.size() };
 		}
-		return { nullptr, 0 };
+		return STRING_CONTAINER_EMPTY;
 	}
 
 	int32_t PluginContextManager::GetLastErrorCode() {
 		ScriptError* err = GetCurrentInterpreter().InstanceAs<ScriptError>(
 			PeekContext().GetLastError()
+		);
+
+		if (err != nullptr) {
+			return err->GetErrorCode();
+		}
+		return 0;
+	}
+
+	aosora::StringContainer PluginContextManager::GetErrorMessage(aosora::ValueHandle handle) {
+		ScriptError* err = GetCurrentInterpreter().InstanceAs<ScriptError>(
+			GetCurrentHandleManager().GetValue(handle)
+		);
+
+		if (err != nullptr) {
+			const std::string& msg = PeekContext().CacheString(err->GetErrorMessage());
+			return { msg.c_str(), msg.size() };
+		}
+		return STRING_CONTAINER_EMPTY;
+	}
+	
+	int32_t PluginContextManager::GetErrorCode(aosora::ValueHandle handle) {
+		ScriptError* err = GetCurrentInterpreter().InstanceAs<ScriptError>(
+			GetCurrentHandleManager().GetValue(handle)
 		);
 
 		if (err != nullptr) {

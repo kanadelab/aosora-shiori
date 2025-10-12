@@ -9,6 +9,7 @@
 /aosora-plugin-wrapper-cpp/Win32
 /aosora-plugin-sample/Win32
 /aosora-plugin-rust/target
+/aosora-plugin-rust-sample/target
 /Debug
 /Win32
 /ssp/temp

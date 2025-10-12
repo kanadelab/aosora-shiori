@@ -93,7 +93,6 @@ namespace sakura {
 
 	//ハンドルマネージャ
 	//ハンドルとScriptValueを交換する
-	//TODO: こいつがハンドルとして持ってるオブジェクト類をGCに通知して開放しないようにする必要がある
 	class PluginHandleManager {
 	public:
 		static const aosora::ValueHandle INVALID_HANDLE = 0;
@@ -165,6 +164,7 @@ namespace sakura {
 			}
 		}
 
+		void FetchReferencedItems(std::list<CollectableBase*>& result);
 	};
 
 	//プラグインコンテキスト、プラグインと内部処理の相互呼び出しをとりもつ
@@ -212,6 +212,8 @@ namespace sakura {
 				plugins.erase(it);
 			}
 		}
+		
+		static void FetchReferencedItems(LoadedPluginModule* pluginModule, std::list<CollectableBase*>& result);
 
 		static PluginHandleManager& GetCurrentHandleManager() {
 			return *plugins[&PeekContext().GetPluginModule()];
@@ -234,9 +236,6 @@ namespace sakura {
 		static void ExecutePluginFunction(LoadedPluginModule& module, aosora::PluginFunctionType pluginFunction, const ScriptValueRef& thisValue, const FunctionRequest& request, FunctionResponse& response);
 		
 		//アクセサ関数
-
-		//TODO: AddRef, バージョン処理関係
-
 		static void ReleaseHandle(aosora::ValueHandle handle);
 		static void AddRefHandle(aosora::ValueHandle handle);
 		static aosora::ValueHandle CreateNumber(double value);

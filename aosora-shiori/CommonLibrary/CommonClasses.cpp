@@ -610,6 +610,7 @@ namespace sakura {
 	}
 
 	void PluginManager::Load(const FunctionRequest& request, FunctionResponse& response) {
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 		if (request.GetArgumentCount() > 0) {
 			//指定パスでプラグインDLLをロードしてオブジェクトを返す
 			std::string pluginRelativePath = request.GetArgument(0)->ToString();
@@ -617,8 +618,9 @@ namespace sakura {
 			//ロード済みのSAORIをチェックする、ロード済みならそのまま返す
 			auto staticStore = request.GetContext().GetInterpreter().StaticStore<PluginManager>();
 			auto loadedPlugin = staticStore->RawGet(pluginRelativePath);
-			if (loadedPlugin != nullptr) {
-				response.SetReturnValue(loadedPlugin);
+			auto loadedPluginModule = request.GetInterpreter().InstanceAs<PluginModule>(loadedPlugin);
+			if (loadedPluginModule != nullptr) {
+				response.SetReturnValue(loadedPluginModule->GetPluginBody());
 				return;
 			}
 
@@ -631,16 +633,22 @@ namespace sakura {
 
 				//プラグイン初期化実行
 				auto loadObj = PluginContextManager::ExecuteModuleLoadFunction(*loadResult.plugin, request.GetContext());
-				staticStore->RawSet(pluginRelativePath, loadObj);
+				auto moduleData = request.GetInterpreter().CreateNativeObject<PluginModule>(loadObj, loadResult.plugin);
+				staticStore->RawSet(pluginRelativePath, ScriptValue::Make(moduleData));
 				response.SetReturnValue(loadObj);
 			}
 			else {
 				//ロード失敗
 				response.SetThrewError(request.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(
-					/*SaoriResultTypeToString(loadResult.type)*/ "プラグインロードエラー"
+					PluginResultTypeToString(loadResult.type)
 				));
 			}
 		}
+#else
+		response.SetThrewError(request.GetContext().GetInterpreter().CreateNativeObject<RuntimeError>(
+			"プラグインシステムに対応していない環境です"
+		));
+#endif
 	}
 
 	ScriptValueRef PluginManager::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
@@ -648,6 +656,21 @@ namespace sakura {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&PluginManager::Load));
 		}
 		return nullptr;
+	}
+
+	PluginModule::~PluginModule() {
+#if defined(AOSORA_ENABLE_SAORI_LOADER)
+		UnloadPlugin(loadedModule);
+#endif
+	}
+
+	void PluginModule::FetchReferencedItems(std::list<CollectableBase*>& result) {
+		if (pluginBody != nullptr && pluginBody->IsObject()) {
+			result.push_back(pluginBody->GetObjectRef().Get());
+		}
+
+		//プラグイン管理側が持っている参照も取り込む
+		PluginContextManager::FetchReferencedItems(loadedModule, result);
 	}
 
 	void PluginDelegate::FetchReferencedItems(std::list<CollectableBase*>& result) {

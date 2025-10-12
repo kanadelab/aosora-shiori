@@ -12,7 +12,7 @@ namespace aosora {
 		int32_t minor;					//aosoraのリリースバージョン
 		int32_t release;				//aosoraのマイナーバージョン
 		int32_t versionCheckResult;		//バージョンチェックの結果通知（0で成功、それ以外で失敗）
-		int32_t reserved;				//予約（何かのフラグを格納するかも）
+		uint32_t flags;				//予約（何かのフラグを格納するかも）
 
 		int32_t minMajor;				//プラグイン要求のバージョン
 		int32_t minMinor;
@@ -135,6 +135,9 @@ namespace aosora {
 
 		GetErrorMessageFunctionType GetErrorMessage;
 		GetErrorCodeFunctionType GetErrorCode;
+
+		FindUnitObjectFunctionType FindUnitObject;
+		CreateUnitObjectFunctionType CreateUnitObject;
 
 		//TODO: まともな並べ方をするためにスペーシングしたほうがいいかも、あとで変えられるように
 

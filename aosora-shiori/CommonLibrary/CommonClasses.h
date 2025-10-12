@@ -396,6 +396,27 @@ namespace sakura {
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
 	};
 
+	//プラグインモジュール
+	class PluginModule : public Object<PluginModule> {
+	private:
+		LoadedPluginModule* loadedModule;
+		ScriptValueRef pluginBody;
+
+	public:
+		PluginModule(const ScriptValueRef& pluginBody, LoadedPluginModule* loadedModule):
+			loadedModule(loadedModule),
+			pluginBody(pluginBody)
+		{ }
+
+		virtual ~PluginModule();
+
+		ScriptValueRef GetPluginBody() {
+			return pluginBody;
+		}
+
+		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override;
+	};
+
 	//プラグイン関数ラッパー
 	class PluginDelegate : public Object<PluginDelegate> {
 	private:

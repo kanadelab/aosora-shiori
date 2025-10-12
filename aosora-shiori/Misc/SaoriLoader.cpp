@@ -6,6 +6,7 @@
 #include "Base.h"
 #include "Misc/Utility.h"
 #include "Misc/SaoriLoader.h"
+#include "Misc/Message.h"
 
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
 
@@ -381,28 +382,29 @@ namespace sakura {
 	const char* SaoriResultTypeToString(SaoriResultType type) {
 		switch (type) {
 		case SaoriResultType::SUCCESS:
-			return "OK";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_SUCCESS");
 		case SaoriResultType::LOAD_DLL_FAILED:
-			return "ライブラリの読み込みに失敗しました";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_LOAD_DLL_FAILED");
 		case SaoriResultType::LOAD_REQUEST_NOT_FOUND:
-			return "request関数が見つかりませんでした";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_LOAD_REQUEST_NOT_FOUND");
 		case SaoriResultType::LOAD_RESULT_FALSE:
-			return "loadがFALSEを返しました";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_LOAD_RESULT_FALSE");
 		case SaoriResultType::PROTOCOL_ERROR:
-			return "SAORIとの通信が異常です";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_PROTOCOL_ERROR");
 		case SaoriResultType::BAD_REQUEST:
-			return "呼出の不備";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_BAD_REQUEST");
 		case SaoriResultType::INTERNAL_SERVER_ERROR:
-			return "SAORI内部のエラー";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_INTERNAL_SERVER_ERROR");
 		case SaoriResultType::UNKNOWN_CHARSET:
-			return "使用できない文字コードが返されました";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_UNKNOWN_CHARSET");
 		case SaoriResultType::UNKNOWN_STATUS:
-			return "認識できないステータスコードが返されました";
+			return TextSystem::Find("AOSORA_SAORI_RESULT_UNKNOWN_STATUS");
 		default:
 			assert(false);
 			return "不明なエラー";
 		}
 	}
+
 }
 
 #endif //#if defined(AOSORA_ENABLE_SAORI_LOADER)

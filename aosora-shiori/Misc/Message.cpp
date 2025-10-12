@@ -116,6 +116,22 @@ namespace sakura {
 
 			.Register("AOSORA_ITERATOR_ERROR_001", "foreachループ処理中にオブジェクトのサイズが変わる操作はできません。")
 			.Register("AOSORA_ITERATOR_ERROR_002", "foreachループにループできないオブジェクトが渡されています。")
+
+			.Register("AOSORA_SAORI_RESULT_SUCCESS", "OK")
+			.Register("AOSORA_SAORI_RESULT_LOAD_DLL_FAILED", "dllを読み込めませんでした。")
+			.Register("AOSORA_SAORI_RESULT_LOAD_REQUEST_NOT_FOUND", "request関数が見つかりませんでした。dll は SAORI-universal ではないかもしれません。")
+			.Register("AOSORA_SAORI_RESULT_LOAD_RESULT_FALSE", "SAORI の読み込み処理中にエラーが発生しました。")
+			.Register("AOSORA_SAORI_RESULT_PROTOCOL_ERROR", "SAORIとの通信が異常です。SAORIに不具合があるかもしれません。")
+			.Register("AOSORA_SAORI_RESULT_BAD_REQUEST", "SAORIが呼び出し方が正しくないエラーを発生させました。")
+			.Register("AOSORA_SAORI_RESULT_INTERNAL_SERVER_ERROR", "SAORIがエラーを発生させました。")
+			.Register("AOSORA_SAORI_RESULT_UNKNOWN_CHARSET", "蒼空が対応していない文字コードを使うSAORIのため読み込めませんでした。")
+			.Register("AOSORA_SAORI_RESULT_UNKNOWN_STATUS", "蒼空が対応していないステータスコードが発生しました。")
+
+			.Register("AOSORA_PLUGIN_RESULT_SUCCESS", "OK")
+			.Register("AOSORA_PLUGIN_RESULT_LOAD_DLL_FAILED", "dllを読み込めませんでした。")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FUNCTION_NOT_FOUND", "aosora_plugin_get_version 関数が見つかりませんでした。蒼空 プラグインdllではないかもしれません。")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FAILED", "このプラグインはこのバージョンの蒼空には対応していません。")
+			.Register("AOSORA_PLUGIN_RESULT_LOAD_FUNCTION_NOT_FOUND", "aosora_plugin_load 関数が見つかりませんでした。蒼空 プラグインdllではないかもしれません。")
 			;
 
 

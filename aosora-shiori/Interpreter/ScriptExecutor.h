@@ -339,6 +339,9 @@ namespace sakura {
 			}
 		}
 		bool InstanceIs(const ScriptValueRef& obj, uint32_t classId) {
+			if (obj == nullptr) {
+				return false;
+			}
 			return InstanceIs(*obj, classId);
 		}
 

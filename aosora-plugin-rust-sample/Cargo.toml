@@ -1,0 +1,10 @@
+[package]
+name = "aosora-plugin-rust-sample"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aosora-plugin-rust = { path = "../aosora-plugin-rust"}
+
+[lib]
+crate-type = ["cdylib"]

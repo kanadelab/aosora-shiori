@@ -1,6 +1,7 @@
 ﻿#include <cassert>
 #include "PluginLoader.h"
 #include "Misc/Utility.h"
+#include "Misc/Message.h"
 
 namespace sakura {
 
@@ -74,6 +75,24 @@ namespace sakura {
 			}
 			FreeLibrary(plugin->hModule);
 			delete plugin;
+		}
+	}
+
+	const char* PluginResultTypeToString(PluginResultType type) {
+		switch (type) {
+			case PluginResultType::SUCCESS:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_SUCCESS");
+			case PluginResultType::LOAD_DLL_FAILED:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_LOAD_DLL_FAILED");
+			case PluginResultType::GET_VERSION_FUNCTION_NOT_FOUND:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_FUNCTION_NOT_FOUND");
+			case PluginResultType::GET_VERSION_FAILED:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_FAILED");
+			case PluginResultType::LOAD_FUNCTION_NOT_FOUND:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_LOAD_FUNCTION_NOT_FOUND");
+			default:
+				assert(false);
+				return "不明なエラー";
 		}
 	}
 }

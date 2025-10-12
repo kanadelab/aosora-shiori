@@ -394,7 +394,7 @@ namespace sakura{
 		int32_t release;
 	};
 
-	VersionInfo GetVersion() {
+	inline VersionInfo GetVersion() {
 		VersionInfo result = { 0,0,0 };
 		std::vector<std::string> versions;
 		SplitString(std::string(AOSORA_SHIORI_VERSION), versions, '.');
@@ -410,5 +410,7 @@ namespace sakura{
 		if (versions.size() > 2) {
 			result.release = std::stoi(versions[2]);
 		}
+
+		return result;
 	}
 }
