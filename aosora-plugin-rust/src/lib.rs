@@ -1,12 +1,13 @@
 
 mod aosora {
-	use std::ffi::{c_char, c_double, CStr, CString};
+	use std::ffi::{c_char, c_double, CStr, CString, c_void};
 
 
 	type ValueHandle = u64;
 	type PluginFunctionType = extern "C" fn(raw: *const AosoraRawAccessor);
 
 	type ReleaseHandleFunctionType = extern "C" fn(handle: ValueHandle);
+	type AddRefHandleFunctionType = extern "C" fn(handle: ValueHandle);
 
 	type CreateNumberFunctionType = extern "C" fn(value: c_double) -> ValueHandle;
 	type CreateBoolFunctionType = extern "C" fn(value: bool) -> ValueHandle;
@@ -15,18 +16,43 @@ mod aosora {
 	type CreateMapFunctionType = extern "C" fn() -> ValueHandle;
 	type CreateArrayFunctionype = extern "C" fn() -> ValueHandle;
 	type CreateFunctionFunctionType = extern "C" fn(thisValue: ValueHandle, functionBody: PluginFunctionType) -> ValueHandle;
+	type CreateMemoryBufferFunctionType = extern "C" fn(size: usize, ptr: *mut *mut c_void) -> ValueHandle;
 
 	type ToNumberFunctionType = extern "C" fn(handle: ValueHandle) -> c_double;
 	type ToBoolFunctionType = extern "C" fn(handle: ValueHandle) -> bool;
 	type ToStringFunctionType = extern "C" fn(handle: ValueHandle) -> StringContainer;
+	type ToMemoryBufferFunctionType = extern "C" fn(handle: ValueHandle, size: *mut usize) -> *mut c_void;
+
+	type GetValueTypeFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
+	type GetObjectTypeIdFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
+	type GetClassObjectTypeIdFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
+	type ObjectInstanceOfFunctionType = extern "C" fn(handle: ValueHandle, objectTypeId: u32) -> bool;
+	type IsCallableFunctionType = extern "C" fn(handle: ValueHandle) -> bool;
 
 	type GetValueFunctionType = extern "C" fn(target: ValueHandle, key: ValueHandle) -> ValueHandle;
 	type SetValueFunctionType = extern "C" fn(target: ValueHandle, key: ValueHandle, value: ValueHandle);
 
 	type GetArgumentCountFunctionType = extern "C" fn() -> usize;
-	//type GetArgumentFunctionType = extern "C" fn(index: usize) -> ValueHandle;
+	type GetArgumentFunctionType = extern "C" fn(index: usize) -> ValueHandle;
 
 	type SetReturnValueFunctionType = extern "C" fn(value: ValueHandle);
+	type SetErrorFunctionType = extern "C" fn(errorObject: ValueHandle);
+	type SetPluginErrorFunctionType = extern "C" fn(errorMessage: StringContainer, errorCode: i32);
+	
+	type CallFunctionFunctionType = extern "C" fn(function: ValueHandle, argv: *const ValueHandle, argc: usize);
+	type CreateInstanceFunctionType = extern "C" fn(classType: ValueHandle, argv: *const ValueHandle, argc: usize) -> ValueHandle;
+
+	type GetLastReturnValueFunctionType = extern "C" fn() -> ValueHandle;
+	type HasLastErrorFunctionTyoe = extern "C" fn() -> bool;
+	type GetLastErrorFunctionType = extern "C" fn() -> ValueHandle;
+	type GetLastErrorMessageFunctionType = extern "C" fn() -> StringContainer;
+	type GetLastErrorCodeFunctionType = extern "C" fn() -> i32;
+
+	type GetErrorMessageFunctionType = extern "C" fn(handle: ValueHandle) -> StringContainer;
+	type GetErrorCodeFunctionType = extern "C" fn(handle: ValueHandle) -> i32;
+
+	type FindUnitObjectFunctionType = extern "C" fn(unitName:StringContainer) -> ValueHandle;
+	type CreateUnitObjectFunctionType = extern "C" fn(unitName:StringContainer) -> ValueHandle;
 
 	const INVALID_VALUE_HANDLE:ValueHandle = 0;
 
@@ -39,6 +65,7 @@ mod aosora {
 	#[repr(C)]
 	pub struct AosoraRawAccessor {
 		release_handle: ReleaseHandleFunctionType,
+		addref_handle: AddRefHandleFunctionType,
 
 		create_number: CreateNumberFunctionType,
 		create_bool: CreateBoolFunctionType,
@@ -47,10 +74,17 @@ mod aosora {
 		create_map: CreateMapFunctionType,
 		create_array: CreateArrayFunctionype,
 		create_function: CreateFunctionFunctionType,
+		create_memory_buffer: CreateMemoryBufferFunctionType,
 
 		to_number: ToNumberFunctionType,
 		to_bool: ToBoolFunctionType,
 		to_string: ToStringFunctionType,
+		to_memory_buffer: ToMemoryBufferFunctionType,
+
+		get_value_type: GetValueTypeFunctionType,
+		get_object_type_id: GetObjectTypeIdFunctionType,
+		get_class_object_type_id: GetClassObjectTypeIdFunctionType,
+		instance_of: ObjectInstanceOfFunctionType,
 
 		get_value: GetValueFunctionType,
 		set_value: SetValueFunctionType,
@@ -58,7 +92,25 @@ mod aosora {
 		get_argument_count: GetArgumentCountFunctionType,
 		get_argument: GetArgumentCountFunctionType,
 
-		set_return_value: SetReturnValueFunctionType
+		set_return_value: SetReturnValueFunctionType,
+		has_last_error: HasLastErrorFunctionTyoe,
+		get_last_error: GetLastErrorFunctionType,
+		get_last_error_message: GetLastErrorMessageFunctionType,
+		get_last_error_code: GetLastErrorCodeFunctionType,
+
+		get_error_message: GetErrorMessageFunctionType,
+		get_error_code: GetErrorCodeFunctionType,
+
+		value_type_null: u32,
+		value_type_number: u32,
+		value_type_bool: u32,
+		value_type_string: u32,
+		value_type_object: u32,
+
+		type_id_array: u32,
+		type_id_map: u32,
+		type_id_memory_buffer: u32,
+		type_id_class: u32
 	}
 
 	pub struct AosoraAccessor {

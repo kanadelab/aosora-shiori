@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <random>
+#include "Version.h"
 #include "Base.h"
 
 
@@ -385,4 +386,29 @@ namespace sakura{
 			return WriteAllText(filename.c_str(), content);
 		}
 	};
+
+	//aosoraバージョン取得(major, minor, release)
+	struct VersionInfo {
+		int32_t major;
+		int32_t minor;
+		int32_t release;
+	};
+
+	VersionInfo GetVersion() {
+		VersionInfo result = { 0,0,0 };
+		std::vector<std::string> versions;
+		SplitString(std::string(AOSORA_SHIORI_VERSION), versions, '.');
+
+		if (versions.size() > 0) {
+			result.major = std::stoi(versions[0]);
+		}
+
+		if (versions.size() > 1) {
+			result.minor = std::stoi(versions[1]);
+		}
+
+		if (versions.size() > 2) {
+			result.release = std::stoi(versions[2]);
+		}
+	}
 }

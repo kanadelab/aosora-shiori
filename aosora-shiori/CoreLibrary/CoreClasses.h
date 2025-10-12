@@ -234,6 +234,7 @@ namespace sakura {
 	private:
 		bool canCatch;
 		bool hasCallstackInfo;
+		int32_t errorCode;
 		std::string message;
 		std::vector<CallStackInfo> callStackInfo;
 
@@ -255,6 +256,14 @@ namespace sakura {
 
 		bool HasCallstackInfo() const {
 			return hasCallstackInfo;
+		}
+
+		void SetErrorCode(int32_t code) {
+			errorCode = code;
+		}
+
+		int32_t GetErrorCode() const {
+			return errorCode;
 		}
 
 		//メッセージ取得
@@ -305,6 +314,18 @@ namespace sakura {
 		//Object<>の継承からさらに継承なので別途TypeIdを定義しないといけない
 		static uint32_t TypeId() {
 			return ObjectTypeIdGenerator::Id<RuntimeError>();
+		}
+	};
+
+	//プラグインエラー、aosoraプラグインが標準で発生させるエラー
+	class PluginError : public ScriptError {
+	public:
+		PluginError(const std::string& errorMessage) : ScriptError(errorMessage) {
+			SetNativeOverrideInstanceId(TypeId());
+		}
+
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<PluginError>();
 		}
 	};
 

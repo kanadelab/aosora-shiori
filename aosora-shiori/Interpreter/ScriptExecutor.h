@@ -272,6 +272,7 @@ namespace sakura {
 
 		//ルート空間からユニットを取得
 		Reference<UnitObject> GetUnit(const std::string& unitName);
+		Reference<UnitObject> FindUnit(const std::string& unitNmae);
 
 		//エイリアス指定群から値の参照
 		ScriptValueRef GetFromAlias(const ScriptUnitAlias& alias, const std::string& name);

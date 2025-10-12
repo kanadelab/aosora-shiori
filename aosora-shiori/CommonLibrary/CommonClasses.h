@@ -427,31 +427,43 @@ namespace sakura {
 			Plugin
 		};
 
+		struct PluginData {
+			LoadedPluginModule* pluginModule;
+			aosora::BufferDestructFunctionType destructFunc;
+		};
+
 	private:
 		BufferUsage usage;	// 用途
-		void* tagPtr;		// 用途に対応して任意の識別のための情報
 		void* ptr;
 		size_t size;
 
+		//bufferusageに対応する情報
+		union {
+			PluginData pluginData;
+		};
+
 	public:
-		MemoryBuffer(BufferUsage usage, void* tagPtr, size_t bufferSize) :
+		MemoryBuffer(BufferUsage usage, size_t bufferSize) :
 			usage(usage),
-			tagPtr(tagPtr),
 			ptr(nullptr),
 			size(bufferSize) {
 			ptr = malloc(bufferSize);
 		}
 
 		~MemoryBuffer() {
+
+			//解放関数の呼び出し
+			if (usage == BufferUsage::Plugin) {
+				if (pluginData.destructFunc != nullptr) {
+					pluginData.destructFunc(ptr, size);
+				}
+			}
+
 			free(ptr);
 		}
 
 		BufferUsage GetUsage() const {
 			return usage;
-		}
-
-		void* GetTagPtr() const {
-			return tagPtr;
 		}
 
 		void* GetPtr() const {
@@ -460,6 +472,11 @@ namespace sakura {
 
 		size_t GetSize() const {
 			return size;
+		}
+
+		PluginData& GetPluginData() {
+			assert(usage == BufferUsage::Plugin);
+			return pluginData;
 		}
 
 		virtual void FetchReferencedItems(std::list<CollectableBase*>& result) override {}

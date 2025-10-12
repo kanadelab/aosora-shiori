@@ -39,7 +39,9 @@ namespace sakura {
 	public:
 		PluginContext(ScriptExecuteContext& executeContext, LoadedPluginModule& pluginModule):
 			executeContext(executeContext),
-			pluginModule(pluginModule) {
+			pluginModule(pluginModule),
+			lastFunctionReturnValue(ScriptValue::Null),
+			lastFunctionError(ScriptValue::Null) {
 
 		}
 
@@ -68,8 +70,16 @@ namespace sakura {
 			lastFunctionReturnValue = returnValue;
 		}
 
+		ScriptValueRef GetLastFunctionReturnValue() {
+			return lastFunctionReturnValue;
+		}
+
 		void SetLastError(const ScriptValueRef& errorObject) {
 			lastFunctionError = errorObject;
+		}
+
+		ScriptValueRef GetLastError() {
+			return lastFunctionError;
 		}
 
 		//文字列をキャッシュする
@@ -164,6 +174,18 @@ namespace sakura {
 		static std::map<LoadedPluginModule*, PluginHandleManager*> plugins;
 		static const aosora::AosoraAccessor accessor;
 
+		inline static std::string FromStringContainer(const aosora::StringContainer& str) {
+			if (str.len == 0 || str.body == nullptr) {
+				return std::string();
+			}
+			return std::string(str.body, str.len);
+		}
+
+		inline static aosora::StringContainer ToStringContainer(const std::string& str) {
+			const std::string& cache = PeekContext().CacheString(str);
+			return { cache.c_str(), cache.size() };
+		}
+
 	public:
 		static void PushContext(PluginContext* pluginContext) {
 			contextStack.push_back(pluginContext);
@@ -216,6 +238,7 @@ namespace sakura {
 		//TODO: AddRef, バージョン処理関係
 
 		static void ReleaseHandle(aosora::ValueHandle handle);
+		static void AddRefHandle(aosora::ValueHandle handle);
 		static aosora::ValueHandle CreateNumber(double value);
 		static aosora::ValueHandle CreateBool(bool value);
 		static aosora::ValueHandle CreateString(aosora::StringContainer value);
@@ -223,16 +246,18 @@ namespace sakura {
 		static aosora::ValueHandle CreateFunction(aosora::ValueHandle thisValue, aosora::PluginFunctionType functionBody);
 		static aosora::ValueHandle CreateMap();
 		static aosora::ValueHandle CreateArray();
-		//static aosora::ValueHandle CreateMemoryBuffer(size_t size, void** buffer);	//TODO: デストラクタ相当の処理が無いと使いづらそう
+		static aosora::ValueHandle CreateMemoryBuffer(size_t size, void** buffer, aosora::BufferDestructFunctionType destructFunc);
 
 		static double ToNumber(aosora::ValueHandle handle);
 		static bool ToBool(aosora::ValueHandle handle);
 		static aosora::StringContainer ToString(aosora::ValueHandle handle);
-		//static void* ToMemoryBuffer(aosora::ValueHandle handle, size_t* size);
+		static void* ToMemoryBuffer(aosora::ValueHandle handle, size_t* size);
 
-		static uint32_t GetTypeId(aosora::ValueHandle handle);
+		static uint32_t GetValueType(aosora::ValueHandle handle);
 		static uint32_t GetObjectTypeId(aosora::ValueHandle handle);
-		static uint32_t ObjectInstanceOf(aosora::ValueHandle handle, uint32_t objectTypeId);
+		static uint32_t GetClassObjectTypeId(aosora::ValueHandle handle);
+		static bool ObjectInstanceOf(aosora::ValueHandle handle, uint32_t objectTypeId);
+		static bool IsCallable(aosora::ValueHandle handle);
 
 		static void SetValue(aosora::ValueHandle target, aosora::ValueHandle key, aosora::ValueHandle value);
 		static aosora::ValueHandle GetValue(aosora::ValueHandle target, aosora::ValueHandle key);
@@ -241,10 +266,22 @@ namespace sakura {
 		static aosora::ValueHandle GetArgument(size_t index);
 
 		static void SetReturnValue(aosora::ValueHandle value);
-		static void SetError(aosora::ValueHandle value);
-		static void SetPluginError(aosora::StringContainer errorMessage);
+		static bool SetError(aosora::ValueHandle value);
+		static void SetPluginError(aosora::StringContainer errorMessage, int32_t errorCode);
 
 		static void FunctionCall(aosora::ValueHandle function, const aosora::ValueHandle* argv, size_t argc);
 		static aosora::ValueHandle NewClassInstance(aosora::ValueHandle classObject, const aosora::ValueHandle* argv, size_t argc);
+
+		static aosora::ValueHandle GetLastReturnValue();
+		static bool HasLastError();
+		static aosora::ValueHandle GetLastError();
+		static aosora::StringContainer GetLastErrorMessage();
+		static int32_t GetLastErrorCode();
+
+		static aosora::StringContainer GetErrorMessage(aosora::ValueHandle handle);
+		static int32_t GetErrorCode(aosora::ValueHandle handle);
+
+		static aosora::ValueHandle FindUnit(aosora::StringContainer unitName);
+		static aosora::ValueHandle CreateUnit(aosora::StringContainer unitName);
 	};
 }

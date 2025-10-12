@@ -23,7 +23,7 @@
 
 //型定義
 namespace sakura {
-	//必要な場合の制度変更用に
+	//必要な場合の精度変更用に
 	using number = double;
 }
 

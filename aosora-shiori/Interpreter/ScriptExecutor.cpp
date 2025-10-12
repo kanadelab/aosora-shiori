@@ -1459,6 +1459,20 @@ namespace sakura {
 		return CreateNativeObject<UnitObject>(unitName);
 	}
 
+	Reference<UnitObject> ScriptInterpreter::FindUnit(const std::string& unitName) {
+		if (unitName.empty()) {
+			//ユニットルートを示す
+			return CreateNativeObject<UnitObject>("");
+		}
+
+		//Find版は見つからなければnullを返す
+		if (!units.contains(unitName)) {
+			return nullptr;
+		}
+
+		return CreateNativeObject<UnitObject>(unitName);
+	}
+
 	ScriptValueRef ScriptInterpreter::GetFromAlias(const ScriptUnitAlias& alias, const std::string& name) {
 
 		//エイリアス
