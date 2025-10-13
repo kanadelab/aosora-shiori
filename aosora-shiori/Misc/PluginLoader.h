@@ -7,7 +7,7 @@
 #endif
 
 #if defined(AOSORA_ENABLE_PLUGIN_LOADER)
-#include "AosoraPlugin.h"
+#include "Misc/AosoraPluginRaw.h"
 
 namespace sakura {
 

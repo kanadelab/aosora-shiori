@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include <ctime>
-#include <AosoraPlugin.h>
 #include "AST/AST.h"
 #include "Interpreter/Interpreter.h"
 #include "CoreLibrary/CoreLibrary.h"
 #include "Misc/Json.h"
+#include "Misc/AosoraPluginRaw.h"
 
 namespace sakura {
 

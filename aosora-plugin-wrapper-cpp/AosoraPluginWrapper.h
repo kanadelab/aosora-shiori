@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <string>
-#include "AosoraPlugin.h"
+#include "AosoraPluginRaw.h"
 
 namespace aosora {
 	class AosoraAccessor;

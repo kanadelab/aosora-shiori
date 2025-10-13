@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <map>
-#include "AosoraPlugin.h"
+#include "Misc/AosoraPluginRaw.h"
 #include "Base.h"
 #include "Interpreter/Interpreter.h"
 
