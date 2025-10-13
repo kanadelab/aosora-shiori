@@ -282,5 +282,23 @@ namespace sakura {
 
 		static aosora::ValueHandle FindUnit(aosora::StringContainer unitName);
 		static aosora::ValueHandle CreateUnit(aosora::StringContainer unitName);
+
+		static uint32_t MapGetLength(aosora::ValueHandle handle);
+		static bool MapContains(aosora::ValueHandle handle, aosora::StringContainer key);
+		static void MapClear(aosora::ValueHandle handle);
+		static void MapRemove(aosora::ValueHandle handle, aosora::StringContainer key);
+		static aosora::ValueHandle MapGetKeys(aosora::ValueHandle handle);
+		static aosora::ValueHandle MapGetValue(aosora::ValueHandle handle, aosora::StringContainer key);
+		static void MapSetValue(aosora::ValueHandle handle, aosora::StringContainer key, aosora::ValueHandle value);
+
+		static void ArrayClear(aosora::ValueHandle handle);
+		static void ArrayAdd(aosora::ValueHandle handle, aosora::ValueHandle item);
+		static void ArrayAddRange(aosora::ValueHandle handle, aosora::ValueHandle items);
+		static void ArrayInsert(aosora::ValueHandle handle, aosora::ValueHandle item, uint32_t index);
+		static void ArrayRemove(aosora::ValueHandle handle, uint32_t index);
+		static uint32_t ArrayGetLength(aosora::ValueHandle handle);
+		static aosora::ValueHandle ArrayGetValue(aosora::ValueHandle handle, uint32_t index);
+		static void ArraySetValue(aosora::ValueHandle handle, uint32_t index, aosora::ValueHandle value);
+
 	};
 }

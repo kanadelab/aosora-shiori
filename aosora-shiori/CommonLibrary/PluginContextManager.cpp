@@ -63,6 +63,25 @@ namespace sakura {
 		FindUnit,
 		CreateUnit,
 
+		MapGetLength,
+		MapContains,
+		MapClear,
+		MapRemove,
+		MapGetKeys,
+		MapGetValue,
+		MapSetValue,
+
+		ArrayClear,
+		ArrayAdd,
+		ArrayAddRange,
+		ArrayInsert,
+		ArrayRemove,
+		ArrayGetLength,
+		ArrayGetValue,
+		ArraySetValue,
+
+		{},	//SPACE0
+
 		static_cast<uint32_t>(ScriptValueType::Null),
 		static_cast<uint32_t>(ScriptValueType::Number),
 		static_cast<uint32_t>(ScriptValueType::Boolean),
@@ -72,7 +91,10 @@ namespace sakura {
 		ScriptArray::TypeId(),
 		ScriptObject::TypeId(),
 		MemoryBuffer::TypeId(),
-		ClassData::TypeId()
+		ClassData::TypeId(),
+		ScriptError::TypeId(),
+		
+		{}	//SPACE1
 	};
 
 	void PluginHandleManager::FetchReferencedItems(std::list<CollectableBase*>& result) {
@@ -133,9 +155,16 @@ namespace sakura {
 
 		//戻り値をフェッチ
 		ScriptValueRef returnValue = PeekContext().GetCallContext().returnValue;
-		
-		//レスポンス設定
-		response.SetReturnValue(returnValue);
+		ScriptValueRef threwError = PeekContext().GetCallContext().threwError;
+	
+		if (threwError != nullptr && threwError->IsObject()) {
+			//例外が発生してる
+			response.SetThrewError(PeekContext().GetCallContext().threwError->GetObjectRef());
+		}
+		else if (returnValue != nullptr) {
+			//戻り値
+			response.SetReturnValue(returnValue);
+		}
 
 		//ポップ
 		PopContext();
@@ -461,6 +490,145 @@ namespace sakura {
 			return GetCurrentHandleManager().CreateHandle(ScriptValue::Make(obj));
 		}
 		return aosora::INVALID_VALUE_HANDLE;
+	}
+
+	uint32_t PluginContextManager::MapGetLength(aosora::ValueHandle handle) {
+		auto val =  GetCurrentHandleManager().GetValue(handle);
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(val);
+		if (m != nullptr) {
+			return m->GetLength();
+		}
+		return 0;
+	}
+
+	bool PluginContextManager::MapContains(aosora::ValueHandle handle, aosora::StringContainer key) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(val);
+		if (m != nullptr) {
+			return m->Contains(FromStringContainer(key));
+		}
+		return false;
+	}
+
+	void PluginContextManager::MapClear(aosora::ValueHandle handle) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(val);
+		if (m != nullptr) {
+			m->Clear();
+		}
+	}
+
+	void PluginContextManager::MapRemove(aosora::ValueHandle handle, aosora::StringContainer key) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(val);
+		if (m != nullptr) {
+			m->Remove(FromStringContainer(key));
+		}
+	}
+
+	aosora::ValueHandle PluginContextManager::MapGetKeys(aosora::ValueHandle handle) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(val);
+		if (m != nullptr) {
+			Reference<ScriptArray> items = GetCurrentInterpreter().CreateArray();
+			for (auto it : m->GetInternalCollection()) {
+				items->Add(it.second);
+			}
+			return GetCurrentHandleManager().CreateHandle(ScriptValue::Make(items));
+		}
+		return aosora::INVALID_VALUE_HANDLE;
+	}
+
+	aosora::ValueHandle PluginContextManager::MapGetValue(aosora::ValueHandle handle, aosora::StringContainer key) {
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(
+			GetCurrentHandleManager().GetValue(handle)
+		);
+		if (m != nullptr) {
+			return GetCurrentHandleManager().CreateHandle(m->RawGet(FromStringContainer(key)));
+		}
+		return aosora::INVALID_VALUE_HANDLE;
+	}
+
+	void PluginContextManager::MapSetValue(aosora::ValueHandle handle, aosora::StringContainer key, aosora::ValueHandle value) {
+		ScriptObject* m = GetCurrentInterpreter().InstanceAs<ScriptObject>(
+			GetCurrentHandleManager().GetValue(handle)
+		);
+		if (m != nullptr) {
+			m->RawSet(FromStringContainer(key), GetCurrentHandleManager().GetValue(value));
+		}
+	}
+
+	void PluginContextManager::ArrayClear(aosora::ValueHandle handle) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		if (a != nullptr) {
+			a->Clear();
+		}
+	}
+
+	void PluginContextManager::ArrayAdd(aosora::ValueHandle handle, aosora::ValueHandle item) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		if (a != nullptr) {
+			a->Add(GetCurrentHandleManager().GetValue(item));
+		}
+	}
+
+	void PluginContextManager::ArrayAddRange(aosora::ValueHandle handle, aosora::ValueHandle items) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		auto itemsVal = GetCurrentHandleManager().GetValue(items);
+
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		ScriptArray* itemsArray = GetCurrentInterpreter().InstanceAs<ScriptArray>(itemsVal);
+		if (a != nullptr && itemsArray != nullptr) {
+			for (size_t i = 0; i < itemsArray->Count(); i++) {
+				a->Add(itemsArray->At(i));
+			}
+		}
+	}
+
+	void PluginContextManager::ArrayInsert(aosora::ValueHandle handle, aosora::ValueHandle item, uint32_t index) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		if (a != nullptr) {
+			a->Insert(GetCurrentHandleManager().GetValue(item), index);
+		}
+	}
+
+	void PluginContextManager::ArrayRemove(aosora::ValueHandle handle, uint32_t index) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		if (a != nullptr) {
+			a->Remove(index);
+		}
+	}
+
+	uint32_t PluginContextManager::ArrayGetLength(aosora::ValueHandle handle) {
+		auto val = GetCurrentHandleManager().GetValue(handle);
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(val);
+		if (a != nullptr) {
+			return a->Count();
+		}
+		return 0;
+	}
+
+	aosora::ValueHandle PluginContextManager::ArrayGetValue(aosora::ValueHandle handle, uint32_t index) {
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(
+			GetCurrentHandleManager().GetValue(handle)
+		);
+		if (a != nullptr) {
+			return GetCurrentHandleManager().CreateHandle(a->At(index));
+		}
+		return aosora::INVALID_VALUE_HANDLE;
+	}
+
+	void PluginContextManager::ArraySetValue(aosora::ValueHandle handle, uint32_t index, aosora::ValueHandle value) {
+		ScriptArray* a = GetCurrentInterpreter().InstanceAs<ScriptArray>(
+			GetCurrentHandleManager().GetValue(handle)
+		);
+		if (a != nullptr) {
+			a->SetAt(index, GetCurrentHandleManager().GetValue(value));
+		}
 	}
 
 }

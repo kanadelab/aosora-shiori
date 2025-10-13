@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-using uint64_t = unsigned long long;
+#include <stdint.h>
 
 namespace aosora {
 
@@ -89,8 +89,26 @@ namespace aosora {
 	using FindUnitObjectFunctionType = ValueHandle(*)(StringContainer unitName);
 	using CreateUnitObjectFunctionType = ValueHandle(*)(StringContainer unitName);
 
+	using MapGetLengthFunctionType = uint32_t(*)(ValueHandle handle);
+	using MapContainsFunctionType = bool(*)(ValueHandle handle, StringContainer key);
+	using MapClearFunctionType = void(*)(ValueHandle handle);
+	using MapRemoveFunctionType = void(*)(ValueHandle handle, StringContainer key);
+	using MapGetKeysFunctionType = aosora::ValueHandle(*)(ValueHandle handle);
+	using MapGetValueFunctionType = ValueHandle(*)(ValueHandle handle, StringContainer key);
+	using MapSetValueFunctionType = void(*)(ValueHandle handle, StringContainer key, ValueHandle item);
+
+	using ArrayClearFunctionType = void(*)(ValueHandle handle);
+	using ArrayAddFunctionType = void(*)(ValueHandle handle, ValueHandle item);
+	using ArrayAddRangeFunctionType = void(*)(ValueHandle handle, ValueHandle items);
+	using ArrayInsertFunctionType = void(*)(ValueHandle handle, ValueHandle item, uint32_t index);
+	using ArrayRemoveFunctionType = void(*)(ValueHandle handle, uint32_t index);
+	using ArrayGetLengthFunctionType = uint32_t(*)(ValueHandle handle);
+	using ArrayGetValueFunctionType = ValueHandle(*)(ValueHandle handle, uint32_t index);
+	using ArraySetValueFunctionType = void(*)(ValueHandle handle, uint32_t index, ValueHandle item);
+
 	//ここにまとめて関数ポインタを渡す
 	struct AosoraAccessor {
+		
 		ReleaseHandleFunctionType ReleaseHandle;
 		AddRefHandleFunctionType AddRefHandle;
 
@@ -139,8 +157,26 @@ namespace aosora {
 		FindUnitObjectFunctionType FindUnitObject;
 		CreateUnitObjectFunctionType CreateUnitObject;
 
-		//TODO: まともな並べ方をするためにスペーシングしたほうがいいかも、あとで変えられるように
+		MapGetLengthFunctionType MapGetLength;
+		MapContainsFunctionType MapContains;
+		MapClearFunctionType MapClear;
+		MapRemoveFunctionType MapRemove;
+		MapGetKeysFunctionType MapGetKeys;
+		MapGetValueFunctionType MapGetValue;
+		MapSetValueFunctionType MapSetValue;
 
+		ArrayClearFunctionType ArrayClear;
+		ArrayAddFunctionType ArrayAdd;
+		ArrayAddRangeFunctionType ArrayAddRange;
+		ArrayInsertFunctionType ArrayInsert;
+		ArrayRemoveFunctionType ArrayRemove;
+		ArrayGetLengthFunctionType ArrayGetLength;
+		ArrayGetValueFunctionType ArrayGetValue;
+		ArraySetValueFunctionType ArraySetValue;
+		
+		//あとから関数をはさめるように固定領域で関数ポインタをもつ
+		void(*__SPACE0[204])();	//関数256
+		
 		uint32_t VALUE_TYPE_NULL;
 		uint32_t VALUE_TYPE_NUMBER;
 		uint32_t VALUE_TYPE_BOOL;
@@ -151,5 +187,10 @@ namespace aosora {
 		uint32_t TYPE_ID_MAP;
 		uint32_t TYPE_ID_BUFFER;
 		uint32_t TYPE_ID_CLASS;
+		uint32_t TYPE_ID_ERROR;
+
+		//あとから定数をはさめるように
+		uint32_t __SPACE1[246];	//定数256
+		
 	};
 }

@@ -592,6 +592,10 @@ namespace sakura {
 			members.erase(key);
 		}
 
+		uint32_t GetLength() const {
+			return static_cast<uint32_t>(members.size());
+		}
+
 		const InternalCollectionType& GetInternalCollection() const { return members; }
 
 		//操作

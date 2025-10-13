@@ -1625,6 +1625,7 @@ namespace sakura {
 		ImportClass(NativeClass::Make<Delegate>("Delegate"));
 		ImportClass(NativeClass::Make<ScriptError>("Error", &ScriptError::CreateObject));
 		ImportClass(NativeClass::Make<RuntimeError>("RuntimeError", ClassPath("Error")));
+		ImportClass(NativeClass::Make<PluginError>("PluginError", ClassPath("Error")));
 		ImportClass(NativeClass::Make<Time>("Time"));
 		ImportClass(NativeClass::Make<SaveData>("Save"));
 		ImportClass(NativeClass::Make<OverloadedFunctionList>("OverloadedFunctionList"));
@@ -1634,11 +1635,13 @@ namespace sakura {
 		ImportClass(NativeClass::Make<SaoriManager>("Saori"));
 		ImportClass(NativeClass::Make<SaoriModule>("SaoriModule"));
 		ImportClass(NativeClass::Make<PluginManager>("PluginManager"));
+		ImportClass(NativeClass::Make<PluginModule>("PluginModule"));
 		ImportClass(NativeClass::Make<PluginDelegate>("PluginDelegate"));
 		ImportClass(NativeClass::Make<TalkBuilder>("TalkBuilder"));
 		ImportClass(NativeClass::Make<TalkBuilderSettings>("TalkBuilderSettings"));
 		ImportClass(NativeClass::Make<ScriptDebug>("Debug"));
 		ImportClass(NativeClass::Make<UnitObject>("ScriptUnit"));
+		ImportClass(NativeClass::Make<MemoryBuffer>("MemoryBuffer"));
 
 		ImportClass(NativeClass::Make<ScriptJsonSerializer>("JsonSerializer", nullptr, "std"));
 		ImportClass(NativeClass::Make<ScriptFileAccess>("File", nullptr, "std"));

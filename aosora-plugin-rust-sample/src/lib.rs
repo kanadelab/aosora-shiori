@@ -2,10 +2,15 @@ use aosora_plugin_rust::aosora;
 
 // テストよびだし
 pub extern "C" fn test_function(accessor: aosora::AosoraAccessor) -> () {
+	
+	accessor.proc(|| {
 
-	//文字列をかえすだけ
-	//accessor.set_return_value(&accessor.create_string("へろー、あおそらすと!"));
-	accessor.set_plugin_error("えらーです！");
+		let main_unit = accessor.find_unit("main");
+		let user_name = main_unit.get_value_with_string_key("ユーザ名")?;
+		
+		Ok(Some(user_name.call_function(None)?))
+	});
+
 }
 
 // aosora plugin バージョンチェック
@@ -17,16 +22,13 @@ pub extern "C" fn aosora_plugin_get_version(version_info: aosora::PluginVersionI
 // aosora plugin エントリポイント
 #[no_mangle]
 pub extern "C" fn aosora_plugin_load(accessor: aosora::AosoraAccessor) -> () {
-	
-	/*
-		連想配列を作成
-		map["TestFunction"] = test_function;
-		return map;
-	*/
-	let map = accessor.create_map();
-	let key = accessor.create_string("TestFunction");
-	let function = accessor.create_function(&accessor.invalid_handle(), test_function);
 
-	accessor.set_value(&map, &key,&function);
-	accessor.set_return_value(&map);
+	accessor.proc(|| {
+		let map = accessor.create_map();
+
+		map.set_value_with_string_key("TestFunction", &accessor.create_function(None, test_function))?;
+
+		return Ok(Some(map));
+	});
+	
 }

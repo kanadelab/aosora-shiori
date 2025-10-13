@@ -459,13 +459,22 @@ namespace sakura {
 		}
 
 		void Remove(size_t index) {
-			assert(index < Count());
-			members.erase(members.begin() + index);
+			if (index < Count()) {
+				members.erase(members.begin() + index);
+			}
 		}
 
 		ScriptValueRef At(size_t index) const {
-			assert(index < Count());
-			return members.at(index);
+			if (index < Count()) {
+				return members.at(index);
+			}
+			return ScriptValue::Null;
+		}
+
+		void SetAt(size_t index, const ScriptValueRef& value) {
+			if (index < Count()) {
+				members[index] = value;
+			}
 		}
 
 		void Clear() {

@@ -37,11 +37,11 @@ type GetArgumentCountFunctionType = extern "C" fn() -> usize;
 type GetArgumentFunctionType = extern "C" fn(index: usize) -> ValueHandle;
 
 type SetReturnValueFunctionType = extern "C" fn(value: ValueHandle);
-type SetErrorFunctionType = extern "C" fn(errorObject: ValueHandle);
-type SetPluginErrorFunctionType = extern "C" fn(errorMessage: StringContainer, errorCode: i32);
+type SetErrorFunctionType = extern "C" fn(error_object: ValueHandle);
+type SetPluginErrorFunctionType = extern "C" fn(error_message: StringContainer, error_code: i32);
 
 type CallFunctionFunctionType = extern "C" fn(function: ValueHandle, argv: *const ValueHandle, argc: usize);
-type CreateInstanceFunctionType = extern "C" fn(classType: ValueHandle, argv: *const ValueHandle, argc: usize) -> ValueHandle;
+type CreateInstanceFunctionType = extern "C" fn(class_type: ValueHandle, argv: *const ValueHandle, argc: usize) -> ValueHandle;
 
 type GetLastReturnValueFunctionType = extern "C" fn() -> ValueHandle;
 type HasLastErrorFunctionTyoe = extern "C" fn() -> bool;
@@ -52,8 +52,26 @@ type GetLastErrorCodeFunctionType = extern "C" fn() -> i32;
 type GetErrorMessageFunctionType = extern "C" fn(handle: ValueHandle) -> StringContainer;
 type GetErrorCodeFunctionType = extern "C" fn(handle: ValueHandle) -> i32;
 
-type FindUnitObjectFunctionType = extern "C" fn(unitName:StringContainer) -> ValueHandle;
-type CreateUnitObjectFunctionType = extern "C" fn(unitName:StringContainer) -> ValueHandle;
+type FindUnitObjectFunctionType = extern "C" fn(unit_name:StringContainer) -> ValueHandle;
+type CreateUnitObjectFunctionType = extern "C" fn(unit_name:StringContainer) -> ValueHandle;
+
+type MapGetLengthFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
+type MapContainsFunctionType = extern "C" fn(handle: ValueHandle, key: StringContainer) -> bool;
+type MapClearFunctionType = extern "C" fn(handle: ValueHandle);
+type MapRemoveFunctionType = extern "C" fn(handle: ValueHandle, key: StringContainer);
+type MapGetKeysFunctionType = extern "C" fn(handle: ValueHandle) -> ValueHandle;
+type MapGetValueFunctionType = extern "C" fn(handle: ValueHandle, key: StringContainer) -> ValueHandle;
+type MapSetValueFunctionType = extern "C" fn(handle: ValueHandle, key: StringContainer, item: ValueHandle);
+
+type ArrayClearFunctionType = extern "C" fn(handle: ValueHandle);
+type ArrayAddFunctionType = extern "C" fn(handle: ValueHandle, item: ValueHandle);
+type ArrayAddRangeFunctionType = extern "C" fn(handle: ValueHandle, items: ValueHandle);
+type ArrayInsertFunctionType = extern "C" fn(handle: ValueHandle, item: ValueHandle, index: u32);
+type ArrayRemoveFunctionType = extern "C" fn(handle: ValueHandle, index: u32);
+type ArrayGetLengthFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
+type ArrayGetValueFunctionType = extern "C" fn(handle: ValueHandle, index: u32) -> ValueHandle;
+type ArraySetValueFunctionType = extern "C" fn(handle: ValueHandle, index: u32, item: ValueHandle);
+
 
 pub const INVALID_VALUE_HANDLE:ValueHandle = 0;
 
@@ -135,6 +153,25 @@ pub struct AosoraRawAccessor {
 	pub(super) find_unit: FindUnitObjectFunctionType,
 	pub(super) create_unit: CreateUnitObjectFunctionType,
 
+	pub(super) map_get_length: MapGetLengthFunctionType,
+	pub(super) map_contains: MapContainsFunctionType,
+	pub(super) map_clear: MapClearFunctionType,
+	pub(super) map_remove: MapRemoveFunctionType,
+	pub(super) map_get_keys: MapGetKeysFunctionType,
+	pub(super) map_get_value: MapGetValueFunctionType,
+	pub(super) map_set_value: MapSetValueFunctionType,
+	
+	pub(super) array_clear: ArrayClearFunctionType,
+	pub(super) array_add: ArrayAddFunctionType,
+	pub(super) array_add_range: ArrayAddRangeFunctionType,
+	pub(super) array_insert: ArrayInsertFunctionType,
+	pub(super) array_remove: ArrayRemoveFunctionType,
+	pub(super) array_get_length: ArrayGetLengthFunctionType,
+	pub(super) array_get_value: ArrayGetValueFunctionType,
+	pub(super) array_set_value: ArraySetValueFunctionType,
+
+	space0: [extern "C" fn()->(); 204],
+
 	pub(super) value_type_null: u32,
 	pub(super) value_type_number: u32,
 	pub(super) value_type_bool: u32,
@@ -144,5 +181,8 @@ pub struct AosoraRawAccessor {
 	pub(super) type_id_array: u32,
 	pub(super) type_id_map: u32,
 	pub(super) type_id_memory_buffer: u32,
-	pub(super) type_id_class: u32
+	pub(super) type_id_class: u32,
+	pub(super) type_id_error: u32,
+
+	space1: [u32; 246],
 }
