@@ -1,29 +1,17 @@
-﻿// dllmain.cpp : DLL アプリケーションのエントリ ポイントを定義します。
-#include "pch.h"
+﻿#if defined(WIN32) || defined(_WIN32)
+#include <windows.h>
+#else
+#include <cstring>
+#include <memory>
+#include <unordered_map>
+#endif // WIN32 or _WIN32
+
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
 #include "Misc/Utility.h"
-
-#if defined(WIN32) || defined(_WIN32)
-#if 0
-BOOL APIENTRY DllMain( HMODULE hModule,
-					   DWORD  ul_reason_for_call,
-					   LPVOID lpReserved
-					 )
-{
-	switch (ul_reason_for_call)
-	{
-	case DLL_PROCESS_ATTACH:
-	case DLL_THREAD_ATTACH:
-	case DLL_THREAD_DETACH:
-	case DLL_PROCESS_DETACH:
-		break;
-	}
-	return TRUE;
-}
-#endif
-#endif // WIN32 or _WIN32
+#include "Shiori.h"
+#include "Misc/Utility.h"
 
 namespace {
 	const char* BAD_REQUEST = "SHIORI/3.0 400 Bad Request\r\n\r\n";
