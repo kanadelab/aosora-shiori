@@ -21,9 +21,9 @@ namespace sakura {
 
 	struct LoadedPluginModule {
 		HMODULE hModule;
-		aosora::GetVersionFunctionType fGetVersion;
-		aosora::LoadFunctionType fLoad;
-		aosora::UnloadFunctionType fUnload;
+		aosora::raw::GetVersionFunctionType fGetVersion;
+		aosora::raw::LoadFunctionType fLoad;
+		aosora::raw::UnloadFunctionType fUnload;
 	};
 
 	struct PluginModuleLoadResult {

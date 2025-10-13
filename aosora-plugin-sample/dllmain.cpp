@@ -18,20 +18,20 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
-void TestFunction(const aosora::AosoraAccessor* accessor) {
+void TestFunction(const aosora::raw::AosoraRawAccessor* accessor) {
     std::string keyString("Test Return Value");
 
-    aosora::ValueHandle returnValueHandle = accessor->CreateString({ keyString.c_str(), keyString.length() });
+    aosora::raw::ValueHandle returnValueHandle = accessor->CreateString({ keyString.c_str(), keyString.length() });
     accessor->SetReturnValue(returnValueHandle);
     accessor->ReleaseHandle(returnValueHandle);
 }
 
-extern "C" __declspec(dllexport) void __cdecl load(const aosora::AosoraAccessor* accessor) {
+extern "C" __declspec(dllexport) void __cdecl load(const aosora::raw::AosoraRawAccessor* accessor) {
     std::string keyString("TestFunction");
 
-    aosora::ValueHandle mapHandle = accessor->CreateMap();
-    aosora::ValueHandle keyHandle = accessor->CreateString({ keyString.c_str(), keyString.length() });
-    aosora::ValueHandle funcHandle = accessor->CreateFunction(aosora::INVALID_VALUE_HANDLE, TestFunction);
+    aosora::raw::ValueHandle mapHandle = accessor->CreateMap();
+    aosora::raw::ValueHandle keyHandle = accessor->CreateString({ keyString.c_str(), keyString.length() });
+    aosora::raw::ValueHandle funcHandle = accessor->CreateFunction(aosora::raw::INVALID_VALUE_HANDLE, TestFunction);
 
     accessor->SetValue(mapHandle, keyHandle, funcHandle);
     accessor->SetReturnValue(mapHandle);

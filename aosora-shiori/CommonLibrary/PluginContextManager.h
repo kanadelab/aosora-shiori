@@ -12,6 +12,7 @@
 	TODO: 複数インタプリタサポートが微妙なので注意
 
 */
+
 namespace sakura {
 
 	struct LoadedPluginModule;
@@ -96,22 +97,22 @@ namespace sakura {
 	//ハンドルとScriptValueを交換する
 	class PluginHandleManager {
 	public:
-		static const aosora::ValueHandle INVALID_HANDLE = 0;
-		static const aosora::ValueHandle FIRST_HANDLE = 1;
+		static const aosora::raw::ValueHandle INVALID_HANDLE = 0;
+		static const aosora::raw::ValueHandle FIRST_HANDLE = 1;
 
 		struct ValueData {
 			ScriptValueRef valueRef;
 			uint32_t refCount;
 		};
 
-		using ValueMapType = std::map<aosora::ValueHandle, ValueData>;
+		using ValueMapType = std::map<aosora::raw::ValueHandle, ValueData>;
 
 	private:
-		aosora::ValueHandle nextHandle;
+		aosora::raw::ValueHandle nextHandle;
 		ValueMapType valueMap;
 
-		aosora::ValueHandle GenerateHandle() {
-			aosora::ValueHandle handle;
+		aosora::raw::ValueHandle GenerateHandle() {
+			aosora::raw::ValueHandle handle;
 
 			//重複しないハンドルを出力
 			do {
@@ -133,17 +134,17 @@ namespace sakura {
 		}
 
 		//ハンドルと値のセットを登録
-		aosora::ValueHandle CreateHandle(const ScriptValueRef& value) {
+		aosora::raw::ValueHandle CreateHandle(const ScriptValueRef& value) {
 			ValueData valueData;
 			valueData.refCount = 1;
 			valueData.valueRef = value;
 			
-			aosora::ValueHandle handle = GenerateHandle();
+			aosora::raw::ValueHandle handle = GenerateHandle();
 			valueMap.insert(ValueMapType::value_type(handle, valueData));
 			return handle;
 		}
 
-		ScriptValueRef GetValue(aosora::ValueHandle handle) {
+		ScriptValueRef GetValue(aosora::raw::ValueHandle handle) {
 			auto it = valueMap.find(handle);
 			if (it != valueMap.end()) {
 				return it->second.valueRef;
@@ -153,14 +154,14 @@ namespace sakura {
 			}
 		}
 
-		void AddRef(aosora::ValueHandle handle) {
+		void AddRef(aosora::raw::ValueHandle handle) {
 			auto it = valueMap.find(handle);
 			if (it != valueMap.end()) {
 				it->second.refCount++;
 			}
 		}
 
-		void Release(aosora::ValueHandle handle) {
+		void Release(aosora::raw::ValueHandle handle) {
 			auto it = valueMap.find(handle);
 			if (it != valueMap.end()) {
 				it->second.refCount--;
@@ -178,16 +179,16 @@ namespace sakura {
 	private:
 		static std::vector<PluginContext*> contextStack;
 		static std::map<LoadedPluginModule*, PluginHandleManager*> plugins;
-		static const aosora::AosoraAccessor accessor;
+		static const aosora::raw::AosoraRawAccessor accessor;
 
-		inline static std::string FromStringContainer(const aosora::StringContainer& str) {
+		inline static std::string FromStringContainer(const aosora::raw::StringContainer& str) {
 			if (str.len == 0 || str.body == nullptr) {
 				return std::string();
 			}
 			return std::string(str.body, str.len);
 		}
 
-		inline static aosora::StringContainer ToStringContainer(const std::string& str) {
+		inline static aosora::raw::StringContainer ToStringContainer(const std::string& str) {
 			const std::string& cache = PeekContext().CacheString(str);
 			return { cache.c_str(), cache.size() };
 		}
@@ -239,72 +240,72 @@ namespace sakura {
 
 		//プラグイン関数のコール
 		static ScriptValueRef ExecuteModuleLoadFunction(LoadedPluginModule& module, ScriptExecuteContext& executeContext);
-		static void ExecutePluginFunction(LoadedPluginModule& module, aosora::PluginFunctionType pluginFunction, const ScriptValueRef& thisValue, const FunctionRequest& request, FunctionResponse& response);
+		static void ExecutePluginFunction(LoadedPluginModule& module, aosora::raw::PluginFunctionType pluginFunction, const ScriptValueRef& thisValue, const FunctionRequest& request, FunctionResponse& response);
 		
 		//アクセサ関数
-		static void ReleaseHandle(aosora::ValueHandle handle);
-		static void AddRefHandle(aosora::ValueHandle handle);
-		static aosora::ValueHandle CreateNumber(double value);
-		static aosora::ValueHandle CreateBool(bool value);
-		static aosora::ValueHandle CreateString(aosora::StringContainer value);
-		static aosora::ValueHandle CreateNull();
-		static aosora::ValueHandle CreateFunction(aosora::ValueHandle thisValue, aosora::PluginFunctionType functionBody);
-		static aosora::ValueHandle CreateMap();
-		static aosora::ValueHandle CreateArray();
-		static aosora::ValueHandle CreateMemoryBuffer(size_t size, void** buffer, aosora::BufferDestructFunctionType destructFunc);
+		static void ReleaseHandle(aosora::raw::ValueHandle handle);
+		static void AddRefHandle(aosora::raw::ValueHandle handle);
+		static aosora::raw::ValueHandle CreateNumber(double value);
+		static aosora::raw::ValueHandle CreateBool(bool value);
+		static aosora::raw::ValueHandle CreateString(aosora::raw::StringContainer value);
+		static aosora::raw::ValueHandle CreateNull();
+		static aosora::raw::ValueHandle CreateFunction(aosora::raw::ValueHandle thisValue, aosora::raw::PluginFunctionType functionBody);
+		static aosora::raw::ValueHandle CreateMap();
+		static aosora::raw::ValueHandle CreateArray();
+		static aosora::raw::ValueHandle CreateMemoryBuffer(size_t size, void** buffer, aosora::raw::BufferDestructFunctionType destructFunc);
 
-		static double ToNumber(aosora::ValueHandle handle);
-		static bool ToBool(aosora::ValueHandle handle);
-		static aosora::StringContainer ToString(aosora::ValueHandle handle);
-		static void* ToMemoryBuffer(aosora::ValueHandle handle, size_t* size);
+		static double ToNumber(aosora::raw::ValueHandle handle);
+		static bool ToBool(aosora::raw::ValueHandle handle);
+		static aosora::raw::StringContainer ToString(aosora::raw::ValueHandle handle);
+		static void* ToMemoryBuffer(aosora::raw::ValueHandle handle, size_t* size);
 
-		static uint32_t GetValueType(aosora::ValueHandle handle);
-		static uint32_t GetObjectTypeId(aosora::ValueHandle handle);
-		static uint32_t GetClassObjectTypeId(aosora::ValueHandle handle);
-		static bool ObjectInstanceOf(aosora::ValueHandle handle, uint32_t objectTypeId);
-		static bool IsCallable(aosora::ValueHandle handle);
+		static uint32_t GetValueType(aosora::raw::ValueHandle handle);
+		static uint32_t GetObjectTypeId(aosora::raw::ValueHandle handle);
+		static uint32_t GetClassObjectTypeId(aosora::raw::ValueHandle handle);
+		static bool ObjectInstanceOf(aosora::raw::ValueHandle handle, uint32_t objectTypeId);
+		static bool IsCallable(aosora::raw::ValueHandle handle);
 
-		static void SetValue(aosora::ValueHandle target, aosora::ValueHandle key, aosora::ValueHandle value);
-		static aosora::ValueHandle GetValue(aosora::ValueHandle target, aosora::ValueHandle key);
+		static void SetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key, aosora::raw::ValueHandle value);
+		static aosora::raw::ValueHandle GetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key);
 
 		static size_t GetArgumentCount();
-		static aosora::ValueHandle GetArgument(size_t index);
+		static aosora::raw::ValueHandle GetArgument(size_t index);
 
-		static void SetReturnValue(aosora::ValueHandle value);
-		static bool SetError(aosora::ValueHandle value);
-		static void SetPluginError(aosora::StringContainer errorMessage, int32_t errorCode);
+		static void SetReturnValue(aosora::raw::ValueHandle value);
+		static bool SetError(aosora::raw::ValueHandle value);
+		static void SetPluginError(aosora::raw::StringContainer errorMessage, int32_t errorCode);
 
-		static void FunctionCall(aosora::ValueHandle function, const aosora::ValueHandle* argv, size_t argc);
-		static aosora::ValueHandle NewClassInstance(aosora::ValueHandle classObject, const aosora::ValueHandle* argv, size_t argc);
+		static void FunctionCall(aosora::raw::ValueHandle function, const aosora::raw::ValueHandle* argv, size_t argc);
+		static aosora::raw::ValueHandle NewClassInstance(aosora::raw::ValueHandle classObject, const aosora::raw::ValueHandle* argv, size_t argc);
 
-		static aosora::ValueHandle GetLastReturnValue();
+		static aosora::raw::ValueHandle GetLastReturnValue();
 		static bool HasLastError();
-		static aosora::ValueHandle GetLastError();
-		static aosora::StringContainer GetLastErrorMessage();
+		static aosora::raw::ValueHandle GetLastError();
+		static aosora::raw::StringContainer GetLastErrorMessage();
 		static int32_t GetLastErrorCode();
 
-		static aosora::StringContainer GetErrorMessage(aosora::ValueHandle handle);
-		static int32_t GetErrorCode(aosora::ValueHandle handle);
+		static aosora::raw::StringContainer GetErrorMessage(aosora::raw::ValueHandle handle);
+		static int32_t GetErrorCode(aosora::raw::ValueHandle handle);
 
-		static aosora::ValueHandle FindUnit(aosora::StringContainer unitName);
-		static aosora::ValueHandle CreateUnit(aosora::StringContainer unitName);
+		static aosora::raw::ValueHandle FindUnit(aosora::raw::StringContainer unitName);
+		static aosora::raw::ValueHandle CreateUnit(aosora::raw::StringContainer unitName);
 
-		static uint32_t MapGetLength(aosora::ValueHandle handle);
-		static bool MapContains(aosora::ValueHandle handle, aosora::StringContainer key);
-		static void MapClear(aosora::ValueHandle handle);
-		static void MapRemove(aosora::ValueHandle handle, aosora::StringContainer key);
-		static aosora::ValueHandle MapGetKeys(aosora::ValueHandle handle);
-		static aosora::ValueHandle MapGetValue(aosora::ValueHandle handle, aosora::StringContainer key);
-		static void MapSetValue(aosora::ValueHandle handle, aosora::StringContainer key, aosora::ValueHandle value);
+		static uint32_t MapGetLength(aosora::raw::ValueHandle handle);
+		static bool MapContains(aosora::raw::ValueHandle handle, aosora::raw::StringContainer key);
+		static void MapClear(aosora::raw::ValueHandle handle);
+		static void MapRemove(aosora::raw::ValueHandle handle, aosora::raw::StringContainer key);
+		static aosora::raw::ValueHandle MapGetKeys(aosora::raw::ValueHandle handle);
+		static aosora::raw::ValueHandle MapGetValue(aosora::raw::ValueHandle handle, aosora::raw::StringContainer key);
+		static void MapSetValue(aosora::raw::ValueHandle handle, aosora::raw::StringContainer key, aosora::raw::ValueHandle value);
 
-		static void ArrayClear(aosora::ValueHandle handle);
-		static void ArrayAdd(aosora::ValueHandle handle, aosora::ValueHandle item);
-		static void ArrayAddRange(aosora::ValueHandle handle, aosora::ValueHandle items);
-		static void ArrayInsert(aosora::ValueHandle handle, aosora::ValueHandle item, uint32_t index);
-		static void ArrayRemove(aosora::ValueHandle handle, uint32_t index);
-		static uint32_t ArrayGetLength(aosora::ValueHandle handle);
-		static aosora::ValueHandle ArrayGetValue(aosora::ValueHandle handle, uint32_t index);
-		static void ArraySetValue(aosora::ValueHandle handle, uint32_t index, aosora::ValueHandle value);
+		static void ArrayClear(aosora::raw::ValueHandle handle);
+		static void ArrayAdd(aosora::raw::ValueHandle handle, aosora::raw::ValueHandle item);
+		static void ArrayAddRange(aosora::raw::ValueHandle handle, aosora::raw::ValueHandle items);
+		static void ArrayInsert(aosora::raw::ValueHandle handle, aosora::raw::ValueHandle item, uint32_t index);
+		static void ArrayRemove(aosora::raw::ValueHandle handle, uint32_t index);
+		static uint32_t ArrayGetLength(aosora::raw::ValueHandle handle);
+		static aosora::raw::ValueHandle ArrayGetValue(aosora::raw::ValueHandle handle, uint32_t index);
+		static void ArraySetValue(aosora::raw::ValueHandle handle, uint32_t index, aosora::raw::ValueHandle value);
 
 	};
 }

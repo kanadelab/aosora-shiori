@@ -424,13 +424,13 @@ namespace sakura {
 		LoadedPluginModule* pluginModule;
 
 		//呼び出しターゲット
-		aosora::PluginFunctionType functionPtr;
+		aosora::raw::PluginFunctionType functionPtr;
 
 		//thisオブジェクト
 		ScriptValueRef thisValue;
 
 	public:
-		PluginDelegate(LoadedPluginModule* pluginModule, aosora::PluginFunctionType functionPtr, const ScriptValueRef& thisValue):
+		PluginDelegate(LoadedPluginModule* pluginModule, aosora::raw::PluginFunctionType functionPtr, const ScriptValueRef& thisValue):
 			pluginModule(pluginModule),
 			functionPtr(functionPtr),
 			thisValue(thisValue)
@@ -450,7 +450,7 @@ namespace sakura {
 
 		struct PluginData {
 			LoadedPluginModule* pluginModule;
-			aosora::BufferDestructFunctionType destructFunc;
+			aosora::raw::BufferDestructFunctionType destructFunc;
 		};
 
 	private:

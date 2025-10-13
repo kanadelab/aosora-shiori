@@ -3,4 +3,8 @@
 
 namespace aosora {
 
+	class AosoraAccessor {
+		
+	};
+
 }

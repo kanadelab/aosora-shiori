@@ -20,7 +20,7 @@ namespace sakura {
 			return loadResult;
 		}
 
-		loadedModule.fGetVersion = reinterpret_cast<aosora::GetVersionFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_get_version"));
+		loadedModule.fGetVersion = reinterpret_cast<aosora::raw::GetVersionFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_get_version"));
 		if (loadedModule.fGetVersion == nullptr) {
 			//aosora_plugin_get_version が見つからない
 			FreeLibrary(loadedModule.hModule);
@@ -28,7 +28,7 @@ namespace sakura {
 			return loadResult;
 		}
 
-		loadedModule.fLoad = reinterpret_cast<aosora::LoadFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_load"));
+		loadedModule.fLoad = reinterpret_cast<aosora::raw::LoadFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_load"));
 		if (loadedModule.fLoad == nullptr) {
 			//aosora_plugin_loadがみつからない
 			FreeLibrary(loadedModule.hModule);
@@ -36,10 +36,10 @@ namespace sakura {
 			return loadResult;
 		}
 
-		loadedModule.fUnload = reinterpret_cast<aosora::UnloadFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_unload"));
+		loadedModule.fUnload = reinterpret_cast<aosora::raw::UnloadFunctionType>(GetProcAddress(loadedModule.hModule, "aosora_plugin_unload"));
 
 		//get_versionの呼び出しによる使用可不可のチェック
-		aosora::PluginVersionInfo loadVersionInfo;
+		aosora::raw::PluginVersionInfo loadVersionInfo;
 		VersionInfo shioriVersionInfo = GetVersion();
 		loadVersionInfo.major = shioriVersionInfo.major;
 		loadVersionInfo.minor = shioriVersionInfo.minor;
