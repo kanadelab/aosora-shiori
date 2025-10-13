@@ -660,6 +660,7 @@ namespace sakura {
 
 	PluginModule::~PluginModule() {
 #if defined(AOSORA_ENABLE_SAORI_LOADER)
+		PluginContextManager::UnregisterPlugin(loadedModule);
 		UnloadPlugin(loadedModule);
 #endif
 	}

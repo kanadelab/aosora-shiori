@@ -126,6 +126,11 @@ namespace sakura {
 			nextHandle(FIRST_HANDLE) {
 		}
 
+		~PluginHandleManager() {
+			//ハンドルリークチェック
+			assert(valueMap.empty());
+		}
+
 		//ハンドルと値のセットを登録
 		aosora::ValueHandle CreateHandle(const ScriptValueRef& value) {
 			ValueData valueData;
