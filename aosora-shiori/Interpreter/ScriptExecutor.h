@@ -616,6 +616,11 @@ namespace sakura {
 			return threwError;
 		}
 
+		//例外をクリア
+		void ClearError() {
+			threwError = nullptr;
+		}
+
 		//throwされているか
 		bool IsThrew() const {
 			return leaveMode == LeaveMode::Throw;

@@ -7,15 +7,20 @@ namespace aosora {
 
 		struct AosoraRawAccessor;
 
+		constexpr const int32_t COMPATILBILITY_VERSION = 1;
+
 		//プラグインバージョンチェック用構造体
 		struct PluginVersionInfo {
-			int32_t major;					//aosoraのメジャーバージョン
-			int32_t minor;					//aosoraのリリースバージョン
-			int32_t release;				//aosoraのマイナーバージョン
-			int32_t versionCheckResult;		//バージョンチェックの結果通知（0で成功、それ以外で失敗）
-			uint32_t flags;				//予約（何かのフラグを格納するかも）
+			int32_t compatibilityVersion;		//互換性バージョン これが異なると互換性がない
+			int32_t pluginCompatibilityVersion;	//プラグイン側の互換性バージョン
 
-			int32_t minMajor;				//プラグイン要求のバージョン
+			int32_t major;						//aosoraのメジャーバージョン
+			int32_t minor;						//aosoraのリリースバージョン
+			int32_t release;					//aosoraのマイナーバージョン
+			int32_t versionCheckResult;			//バージョンチェックの結果通知（0で成功、それ以外で失敗）
+			uint32_t flags;						//予約（何かのフラグを格納するかも）
+
+			int32_t minMajor;					//プラグイン要求のバージョン
 			int32_t minMinor;
 			int32_t minRelease;
 
@@ -23,7 +28,7 @@ namespace aosora {
 			int32_t maxMinor;
 			int32_t maxRelease;
 
-			int32_t pluginMajor;	//プラグイン側のバージョン
+			int32_t pluginMajor;				//プラグイン側のバージョン
 			int32_t pluginMinor;
 			int32_t pluginRelease;
 		};

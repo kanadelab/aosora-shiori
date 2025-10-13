@@ -132,6 +132,9 @@ namespace sakura {
 			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FUNCTION_NOT_FOUND", "aosora_plugin_get_version 関数が見つかりませんでした。蒼空 プラグインdllではないかもしれません。")
 			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FAILED", "このプラグインはこのバージョンの蒼空には対応していません。")
 			.Register("AOSORA_PLUGIN_RESULT_LOAD_FUNCTION_NOT_FOUND", "aosora_plugin_load 関数が見つかりませんでした。蒼空 プラグインdllではないかもしれません。")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_INVALID", "プラグインのバージョンチェックが正しくありません。")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_NEW_PLUGIN", "碧空に対してプラグインの構成が新しく、互換性がありません。")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_OLD_PLUGIN", "碧空に対してプラグインの構成が古く、互換性がありません。")
 			;
 
 

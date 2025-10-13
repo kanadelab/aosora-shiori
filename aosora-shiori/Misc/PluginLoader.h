@@ -13,10 +13,13 @@ namespace sakura {
 
 	enum class PluginResultType {
 		SUCCESS,
-		LOAD_DLL_FAILED,					//load: dllのロード失敗
-		GET_VERSION_FUNCTION_NOT_FOUND,		//load: aosora_plugin_get_version() 関数がみつからない
-		GET_VERSION_FAILED,					//load: aosora_plugin_get_version() の失敗
-		LOAD_FUNCTION_NOT_FOUND				//load: aosora_plugin_load() が みつからない
+		LOAD_DLL_FAILED,						//load: dllのロード失敗
+		GET_VERSION_FUNCTION_NOT_FOUND,			//load: aosora_plugin_get_version() 関数がみつからない
+		GET_VERSION_FAILED,						//load: aosora_plugin_get_version() の失敗
+		GET_VERSION_COMPATIBILITY_INVALID,		//load: プラグイン側のバージョンが正しく設定されてない
+		GET_VERSION_COMPATIBILITY_OLD_PLUGIN,	//load: プラグインが古い
+		GET_VERSION_COMPATIBILITY_NEW_PLUGIN,	//load: プラグインが新しい
+		LOAD_FUNCTION_NOT_FOUND					//load: aosora_plugin_load() が みつからない
 	};
 
 	struct LoadedPluginModule {

@@ -311,20 +311,44 @@ namespace sakura {
 	}
 
 	void PluginContextManager::SetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key, aosora::raw::ValueHandle value) {
+
+		//戻り値と例外を発生させる関数では既存の情報をクリア
+		PeekContext().GetCallContext();
+
 		auto targetValue = GetCurrentHandleManager().GetValue(target);
 		auto keyValue = GetCurrentHandleManager().GetValue(key);
 		if (targetValue->IsObject()) {
 			targetValue->GetObjectRef()->Set(keyValue->ToString(), GetCurrentHandleManager().GetValue(value), GetCurrentExecuteContext());
+
+			if (GetCurrentExecuteContext().GetStack().IsThrew()) {
+				//例外をプラグイン側で預かり、スタックフレームからは消す
+				PeekContext().SetLastError(ScriptValue::Make(GetCurrentExecuteContext().GetStack().GetThrewError()));
+				GetCurrentExecuteContext().GetStack().ClearError();
+			}
 		}
 	}
 
 	aosora::raw::ValueHandle PluginContextManager::GetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key) {
+
+		//戻り値と例外を発生させる関数では既存の情報をクリア
+		PeekContext().GetCallContext();
+
 		auto targetValue = GetCurrentHandleManager().GetValue(target);
 		auto keyValue = GetCurrentHandleManager().GetValue(key);
 		if (targetValue->IsObject()) {
-			return GetCurrentHandleManager().CreateHandle(
+			auto result = GetCurrentHandleManager().CreateHandle(
 				targetValue->GetObjectRef()->Get(keyValue->ToString(), GetCurrentExecuteContext())
 			);
+
+			if (GetCurrentExecuteContext().GetStack().IsThrew()) {
+				//例外をプラグイン側で預かり、スタックフレームからは消す
+				PeekContext().SetLastError(ScriptValue::Make(GetCurrentExecuteContext().GetStack().GetThrewError()));
+				GetCurrentExecuteContext().GetStack().ClearError();
+				return aosora::raw::INVALID_VALUE_HANDLE;
+			}
+			else {
+				return result;
+			}
 		}
 		else {
 			return aosora::raw::INVALID_VALUE_HANDLE;
@@ -372,6 +396,9 @@ namespace sakura {
 
 	void PluginContextManager::FunctionCall(aosora::raw::ValueHandle function, const aosora::raw::ValueHandle* argv, size_t argc) {
 
+		//戻り値と例外を発生させる関数では既存の情報をクリア
+		PeekContext().GetCallContext();
+
 		ScriptValueRef functionValue = GetCurrentHandleManager().GetValue(function);
 
 		//呼び出せなければ無視
@@ -398,6 +425,10 @@ namespace sakura {
 	}
 
 	aosora::raw::ValueHandle PluginContextManager::NewClassInstance(aosora::raw::ValueHandle classObject, const aosora::raw::ValueHandle* argv, size_t argc) {
+
+		//戻り値と例外を発生させる関数では既存の情報をクリア
+		PeekContext().GetCallContext();
+
 		ScriptValueRef classValue = GetCurrentHandleManager().GetValue(classObject);
 
 		if (GetCurrentInterpreter().InstanceIs<ClassData>(classValue)) {

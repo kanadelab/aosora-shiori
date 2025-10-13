@@ -41,6 +41,8 @@ namespace sakura {
 		//get_versionの呼び出しによる使用可不可のチェック
 		aosora::raw::PluginVersionInfo loadVersionInfo;
 		VersionInfo shioriVersionInfo = GetVersion();
+		loadVersionInfo.compatibilityVersion = aosora::raw::COMPATILBILITY_VERSION;
+		loadVersionInfo.pluginCompatibilityVersion = -1;
 		loadVersionInfo.major = shioriVersionInfo.major;
 		loadVersionInfo.minor = shioriVersionInfo.minor;
 		loadVersionInfo.release = shioriVersionInfo.release;
@@ -56,6 +58,26 @@ namespace sakura {
 		loadVersionInfo.pluginRelease = -1;
 
 		loadedModule.fGetVersion(&loadVersionInfo);
+
+		//バイナリ互換性がない
+		if (loadVersionInfo.compatibilityVersion != loadVersionInfo.pluginCompatibilityVersion) {
+			FreeLibrary(loadedModule.hModule);
+			if (loadVersionInfo.pluginCompatibilityVersion < 0) {
+				loadResult.type = PluginResultType::GET_VERSION_COMPATIBILITY_INVALID;
+			}
+			else if (loadVersionInfo.pluginCompatibilityVersion > loadVersionInfo.compatibilityVersion) {
+				//プラグインのほうが新しく、互換性がない
+				loadResult.type = PluginResultType::GET_VERSION_COMPATIBILITY_NEW_PLUGIN;
+			}
+			else {
+				//プラグインのほうが古く、互換性がない
+				loadResult.type = PluginResultType::GET_VERSION_COMPATIBILITY_OLD_PLUGIN;
+			}
+
+			return loadResult;
+		}
+
+		//バージョンチェック失敗
 		if (loadVersionInfo.versionCheckResult != 0) {
 			FreeLibrary(loadedModule.hModule);
 			loadResult.type = PluginResultType::GET_VERSION_FAILED;
@@ -91,6 +113,12 @@ namespace sakura {
 				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_FAILED");
 			case PluginResultType::LOAD_FUNCTION_NOT_FOUND:
 				return TextSystem::Find("AOSORA_PLUGIN_RESULT_LOAD_FUNCTION_NOT_FOUND");
+			case PluginResultType::GET_VERSION_COMPATIBILITY_INVALID:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_INVALID");
+			case PluginResultType::GET_VERSION_COMPATIBILITY_NEW_PLUGIN:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_NEW_PLUGIN");
+			case PluginResultType::GET_VERSION_COMPATIBILITY_OLD_PLUGIN:
+				return TextSystem::Find("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_OLD_PLUGIN");
 			default:
 				assert(false);
 				return "不明なエラー";

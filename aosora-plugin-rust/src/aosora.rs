@@ -839,6 +839,22 @@ pub struct PluginVersionInfo {
 }
 
 impl PluginVersionInfo {
+
+	// バイナリ互換性チェック
+	pub fn check_binary_compatibility(&mut self) -> bool {
+		unsafe {
+			//プラグインの互換性情報を設定
+			(*self.accessor).plugin_compatibility_version = raw::COMPATILBILITY_VERSION;
+
+			//互換性チェック
+			if (*self.accessor).compatibility_version == raw::COMPATILBILITY_VERSION {
+				true
+			}
+			else {
+				false
+			}
+		}
+	}
 	
 	// aosoraのメジャーバージョン X.0.0 を取得
 	pub fn get_aosora_major_version(&self) -> i32{

@@ -4,6 +4,9 @@
 */
 use std::ffi::{c_char, c_double, c_void};
 
+//互換性バージョン
+pub const COMPATILBILITY_VERSION:i32 = 1;
+
 pub type ValueHandle = u64;
 pub type RawPluginFunctionType = extern "C" fn(raw: *const AosoraRawAccessor);
 
@@ -77,6 +80,9 @@ pub const INVALID_VALUE_HANDLE:ValueHandle = 0;
 
 #[repr(C)]
 pub struct PluginRawVersionInfo {
+	pub(super) compatibility_version: i32,
+	pub(super) plugin_compatibility_version: i32,
+
 	pub(super) major: i32,
 	pub(super) minor: i32,
 	pub(super) release: i32,
