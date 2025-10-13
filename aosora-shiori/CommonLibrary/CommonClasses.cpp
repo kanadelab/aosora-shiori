@@ -659,7 +659,7 @@ namespace sakura {
 	}
 
 	PluginModule::~PluginModule() {
-#if defined(AOSORA_ENABLE_SAORI_LOADER)
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 		PluginContextManager::UnregisterPlugin(loadedModule);
 		UnloadPlugin(loadedModule);
 #endif
@@ -670,8 +670,10 @@ namespace sakura {
 			result.push_back(pluginBody->GetObjectRef().Get());
 		}
 
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 		//プラグイン管理側が持っている参照も取り込む
 		PluginContextManager::FetchReferencedItems(loadedModule, result);
+#endif
 	}
 
 	void PluginDelegate::FetchReferencedItems(std::list<CollectableBase*>& result) {
@@ -679,8 +681,11 @@ namespace sakura {
 	}
 
 	void PluginDelegate::Call(const FunctionRequest& request, FunctionResponse& response) {
+		//プラグインに対応してない場合はインスタンスを作る方法が実質無いので無視してよいはず
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 		//プラグイン関数を呼び出す
 		PluginContextManager::ExecutePluginFunction(*pluginModule, functionPtr, thisValue, request, response);
+#endif
 	}
 
 	void ScriptDebug::WriteLine(const FunctionRequest& request, FunctionResponse& response) {

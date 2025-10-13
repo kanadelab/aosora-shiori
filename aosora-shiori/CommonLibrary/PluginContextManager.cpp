@@ -4,6 +4,7 @@
 #include "CommonLibrary/CommonClasses.h"
 #include "Misc/PluginLoader.h"
 
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 namespace sakura {
 
 	std::vector<PluginContext*> PluginContextManager::contextStack;
@@ -632,3 +633,4 @@ namespace sakura {
 	}
 
 }
+#endif // defined(AOSORA_ENABLE_PLUGIN_LOADER)

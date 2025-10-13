@@ -6,6 +6,7 @@
 #include <Windows.h>
 #endif
 
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 #include "AosoraPlugin.h"
 
 namespace sakura {
@@ -35,3 +36,5 @@ namespace sakura {
 	void UnloadPlugin(LoadedPluginModule* plugin);
 	const char* PluginResultTypeToString(PluginResultType type);
 }
+
+#endif // defined(AOSORA_ENABLE_PLUGIN_LOADER)

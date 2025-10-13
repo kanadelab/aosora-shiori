@@ -3,6 +3,7 @@
 #include "Misc/Utility.h"
 #include "Misc/Message.h"
 
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 namespace sakura {
 
 	//プラグインモジュールのロード
@@ -96,3 +97,4 @@ namespace sakura {
 		}
 	}
 }
+#endif

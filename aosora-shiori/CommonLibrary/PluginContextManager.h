@@ -4,6 +4,7 @@
 #include "Base.h"
 #include "Interpreter/Interpreter.h"
 
+#if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 /*
 
 	プラグインコンテキストマネージャ
@@ -307,3 +308,4 @@ namespace sakura {
 
 	};
 }
+#endif // defined(AOSORA_ENABLE_PLUGIN_LOADER)
