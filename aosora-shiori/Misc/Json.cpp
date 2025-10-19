@@ -7,9 +7,16 @@
 #include "Misc/Utility.h"
 #include "Misc/Json.h"
 
-//簡単なjsonシリアライズ・デシリアライズ
+//お手製ではなくjsoncppのjsonシリアライザを使用する
+#define AOSORA_USE_JSON_CPP
+
+#if defined(AOSORA_USE_JSON_CPP)
+#include "json/json.h"
+#endif
 
 namespace sakura {
+
+#if !defined(AOSORA_USE_JSON_CPP)
 
 	//解析用正規表現
 	const std::regex JSON_NUMBER_PATTERN(R"(^\s*(\-?[0-9.]+))");
@@ -63,8 +70,6 @@ namespace sakura {
 	std::shared_ptr<JsonArray> DeserializeArray(JsonParseContext& parseContext);
 	std::shared_ptr<JsonObject> DeserializeObject(JsonParseContext& parseContext);
 	std::shared_ptr<JsonTokenBase> DeserializeToken(JsonParseContext& parseContext);
-	void SerializeArray(const std::shared_ptr<JsonArray>& token, std::string& result);
-	void SerializeObject(const std::shared_ptr<JsonObject>& token, std::string& result);
 
 	//エスケープの追加
 	inline void AddEscape(std::string& str) {
@@ -143,7 +148,6 @@ namespace sakura {
 			return nullptr;
 		}
 	}
-
 
 	std::shared_ptr<JsonArray> DeserializeArray(JsonParseContext& parseContext) {
 
@@ -323,10 +327,110 @@ namespace sakura {
 		}
 	}
 
+#else
+
+	void SerializeArray(const std::shared_ptr<JsonArray>& token, std::string& result);
+	void SerializeObject(const std::shared_ptr<JsonObject>& token, std::string& result);
+
+	void SerializeArray(const std::shared_ptr<JsonArray>& token, Json::Value& result);
+	void SerializeObject(const std::shared_ptr<JsonObject>& token, Json::Value& result);
+
+	//jsonデシリアライズ
+	std::shared_ptr<JsonTokenBase> DeserializeToken(const Json::Value& v) {
+
+		switch (v.type()) {
+		case Json::ValueType::intValue:
+		case Json::ValueType::uintValue:
+		case Json::ValueType::realValue:
+			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(v.asDouble()));
+
+		case Json::ValueType::stringValue:
+			return std::shared_ptr<JsonString>(new JsonString(v.asString()));
+
+		case Json::ValueType::booleanValue:
+			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive(v.asBool()));
+
+		case Json::ValueType::nullValue:
+			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive());
+
+		case Json::ValueType::arrayValue:
+		{
+			std::shared_ptr<JsonArray> result(new JsonArray());
+			for (Json::Value::ArrayIndex i = 0; i < v.size(); i++) {
+				result->Add(DeserializeToken(v[i]));
+			}
+			return result;
+		}
+
+		case Json::ValueType::objectValue:
+		{
+			std::shared_ptr<JsonObject> result(new JsonObject());
+			for (Json::Value::const_iterator it = v.begin(); it != v.end(); ++it) {
+				result->Add(it.key().asString(), DeserializeToken(*it));
+			}
+			return result;
+		}
+
+		default:
+			//不正
+			assert(false);
+			return std::shared_ptr<JsonPrimitive>(new JsonPrimitive());
+		}
+	}
+
+	//jsonシリアライズ
+	void SerializeJson(const std::shared_ptr<JsonTokenBase>& token, Json::Value& result) {
+		switch (token->GetType()) {
+		case JsonTokenType::Number:
+			result = Json::Value(std::static_pointer_cast<JsonPrimitive>(token)->GetNumber());
+			break;
+		case JsonTokenType::Boolean:
+			result = Json::Value(std::static_pointer_cast<JsonPrimitive>(token)->GetBoolean());
+			break;
+		case JsonTokenType::Null:
+			result = Json::Value();
+			break;
+		case JsonTokenType::String:
+			result = Json::Value(std::static_pointer_cast<JsonString>(token)->GetString());
+			break;
+		case JsonTokenType::Object:
+			SerializeObject(std::static_pointer_cast<JsonObject>(token), result);
+			break;
+		case JsonTokenType::Array:
+			SerializeArray(std::static_pointer_cast<JsonArray>(token), result);
+			break;
+		}
+	}
+
+	void SerializeArray(const std::shared_ptr<JsonArray>& token, Json::Value& result) {
+		 result = Json::Value(Json::ValueType::arrayValue);
+
+		 for (const auto& item : token->GetCollection()) {
+			 Json::Value v;
+			 SerializeJson(item, v);
+			 result.append(std::move(v));
+		 }
+	}
+
+	void SerializeObject(const std::shared_ptr<JsonObject>& token, Json::Value& result) {
+		result = Json::Value(Json::ValueType::objectValue);
+
+		for (const auto& item : token->GetCollection()) {
+			Json::Value v;
+			SerializeJson(item.second, v);
+			result[item.first] = std::move(v);
+		}
+	}
+
+	
+
+#endif
+
 	//jsonデシリアライズ
 	JsonDeserializeResult JsonSerializer::Deserialize(const std::string& json) {
-		JsonParseContext context(json);
 		JsonDeserializeResult result;
+#if !defined(AOSORA_USE_JSON_CPP)
+		JsonParseContext context(json);
 		auto token = DeserializeToken(context);
 
 		if (!context.HasError()) {
@@ -337,13 +441,36 @@ namespace sakura {
 			result.success = false;
 			result.token = nullptr;
 		}
+#else
+		std::istringstream ist(json);
+		Json::CharReaderBuilder builder;
+		std::string errors;
+		Json::Value v;
+		if (Json::parseFromStream(builder, ist, &v, &errors)) {
+			result.success = true;
+			result.token = DeserializeToken(v);
+		}
+		else {
+			result.success = false;
+			result.token = nullptr;
+		}
+#endif
 		return result;
 	}
 
 	std::string JsonSerializer::Serialize(const std::shared_ptr<JsonTokenBase>& token) {
+#if !defined(AOSORA_USE_JSON_CPP)
 		std::string result;
 		SerializeJson(token, result);
 		return result;
+#else
+		Json::Value v;
+		SerializeJson(token, v);
+		Json::StreamWriterBuilder builder;
+		builder["emitUTF8"] = true;
+		std::string result = Json::writeString(builder, v);
+		return result;
+#endif
 	}
 
 	bool JsonSerializer::As(const std::shared_ptr<JsonTokenBase>& token, std::string& value) {
@@ -400,8 +527,7 @@ namespace sakura {
 		const std::string json = R"({"test": "test"})";
 
 		auto deserialized = JsonSerializer::Deserialize(json);
-		std::string serialized;
-		SerializeJson(deserialized.token, serialized);
+		std::string serialized = JsonSerializer::Serialize(deserialized.token);
 		printf("%s", serialized.c_str());
 	}
 

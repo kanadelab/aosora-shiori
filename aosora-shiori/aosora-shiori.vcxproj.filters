@@ -59,6 +59,15 @@
     <ClCompile Include="CommonLibrary\PluginContextManager.cpp">
       <Filter>CommonLibrary</Filter>
     </ClCompile>
+    <ClCompile Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_reader.cpp">
+      <Filter>ThirdParty\jsoncpp\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_value.cpp">
+      <Filter>ThirdParty\jsoncpp\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_writer.cpp">
+      <Filter>ThirdParty\jsoncpp\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -136,6 +145,39 @@
     <ClInclude Include="CommonLibrary\PluginContextManager.h">
       <Filter>CommonLibrary</Filter>
     </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_tool.h">
+      <Filter>ThirdParty\jsoncpp\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\json.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\json_features.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\reader.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\value.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\version.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\writer.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\allocator.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\assertions.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\config.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\forwards.h">
+      <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">
@@ -159,5 +201,22 @@
     <Filter Include="Debugger">
       <UniqueIdentifier>{2404e0a0-2f30-41df-a688-37a3481406d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ThirdParty">
+      <UniqueIdentifier>{87fea32e-4c67-4430-a9c2-970ab30169f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\jsoncpp">
+      <UniqueIdentifier>{b1081ae6-1a2f-4b75-a137-11b3de00d621}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\jsoncpp\src">
+      <UniqueIdentifier>{b79ae192-8ac8-4d99-a579-6f426b04c1fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\jsoncpp\include">
+      <UniqueIdentifier>{8856f1fd-5db2-457a-92a9-5bc2a9e6ebab}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_valueiterator.inl">
+      <Filter>ThirdParty\jsoncpp\src</Filter>
+    </None>
   </ItemGroup>
 </Project>

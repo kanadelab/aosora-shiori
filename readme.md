@@ -37,3 +37,5 @@ VSCode向けのちょっとした拡張機能もあります。
 
 ## そのほか
 * 月波 清火 (@tukinami_seika@fedibird.com) 様がアイコンを作ってくださいました。
+
+* jsoncpp (https://github.com/open-source-parsers/jsoncpp) をお借りしました。パブリックドメインのjsonシリアライザです。
