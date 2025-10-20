@@ -68,6 +68,10 @@ namespace sakura {
 				manager = ref->manager;
 				IncrementReference();
 			}
+			else {
+				reference = nullptr;
+				manager = nullptr;
+			}
 		}
 
 		CollectableBase* GetReference() const {
