@@ -142,6 +142,7 @@ namespace sakura {
 		friend class ReferenceBase;
 	private:
 		bool isSweeping_;
+		bool isDestructorExecuting_;
 		CollectableBase* itemFirst;
 		CollectableBase* itemLast;
 		std::size_t itemCount;
@@ -214,6 +215,12 @@ namespace sakura {
 
 		//リファレンスカウンタ加算
 		void IncrementReference(CollectableBase* item) {
+
+			if (isDestructorExecuting_) {
+				//最終的な開放中はリファレンスカウンタは一切触らない
+				return;
+			}
+
 			if (item != nullptr) {
 				item->referenceCount++;
 			}
@@ -221,6 +228,12 @@ namespace sakura {
 
 		//リファレンスカウンタ減算
 		void DecrementReference(CollectableBase* item) {
+
+			if (isDestructorExecuting_) {
+				//最終的な開放中はリファレンスカウンタは一切触らない
+				return;
+			}
+
 			if (item != nullptr) {
 				assert(item->referenceCount > 0);
 				if (!isSweeping_ && item->referenceCount == 1) {
@@ -236,6 +249,7 @@ namespace sakura {
 	public:
 		ObjectSystem() :
 			isSweeping_(false),
+			isDestructorExecuting_(false),
 			itemFirst(nullptr),
 			itemLast(nullptr),
 			itemCount(0)
@@ -243,6 +257,7 @@ namespace sakura {
 
 		~ObjectSystem() {
 			isSweeping_ = true;
+			isDestructorExecuting_ = true;
 			CollectableBase* item = itemFirst;
 			while (item != nullptr) {
 				CollectableBase* next = item->listNext;
