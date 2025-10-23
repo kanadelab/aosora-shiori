@@ -16,7 +16,9 @@ pub extern "C" fn test_function(accessor: aosora::AosoraAccessor) -> () {
 // aosora plugin バージョンチェック
 #[no_mangle]
 pub extern "C" fn aosora_plugin_get_version(version_info: aosora::PluginVersionInfo) {
-	version_info.version_check_ok();
+	if version_info.check_binary_compatibility() {
+		version_info.version_check_ok();
+	}
 }
 
 // aosora plugin エントリポイント

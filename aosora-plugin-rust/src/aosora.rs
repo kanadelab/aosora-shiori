@@ -841,7 +841,7 @@ pub struct PluginVersionInfo {
 impl PluginVersionInfo {
 
 	// バイナリ互換性チェック
-	pub fn check_binary_compatibility(&mut self) -> bool {
+	pub fn check_binary_compatibility(&self) -> bool {
 		unsafe {
 			//プラグインの互換性情報を設定
 			(*self.accessor).plugin_compatibility_version = raw::COMPATILBILITY_VERSION;
