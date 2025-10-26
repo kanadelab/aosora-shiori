@@ -13,11 +13,11 @@ AR  = llvm-ar
 #CXX = i686-w64-mingw32-g++
 #AR	= i686-w64-mingw32-ar
 
-CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori -fPIC
+CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori -fPIC $(shell pkg-config --cflags openssl jsoncpp)
 #CXXFLAGS	= -std=c++20 -O2 -I aosora-shiori
-SO_LDFLAGS	= -shared $(shell pkg-config -libs openssl)
+LDFLAGS	= $(shell pkg-config --libs openssl jsoncpp)
+SO_LDFLAGS	= -shared $(LDFLAGS)
 #SO_LDFLAGS	= -shared -static-libgcc -static-libstdc++
-LDFLAGS	= $(shell pkg-config -libs openssl)
 
 .PHONY: all clean
 
