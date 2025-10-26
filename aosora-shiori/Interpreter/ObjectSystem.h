@@ -2,6 +2,7 @@
 #include <vector>
 #include <list>
 #include <cassert>
+#include <cstdint>
 
 namespace sakura {
 
