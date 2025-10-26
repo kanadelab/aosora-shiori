@@ -7,7 +7,7 @@ void TestFunction(const aosora::AosoraAccessor accessor) {
 
 }
 
-extern "C" __declspec(dllexport) void __cdecl aosora_plugin_get_version(aosora::PluginVersionInfo versionInfo) {
+extern "C" __declspec(dllexport) void __cdecl aosora_plugin_get_version(const aosora::PluginVersionInfo versionInfo) {
     if (!versionInfo.CheckBinaryCompatibility()) {
         return;
     }
