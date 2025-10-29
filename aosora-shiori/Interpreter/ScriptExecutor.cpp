@@ -1028,8 +1028,16 @@ namespace sakura {
 
 		for (const std::string& funcName : node.GetNames()) {
 
-			//グローバルから探す(ローカル指定も可能にできると良い?)
-			ScriptValueRef item = executeContext.GetInterpreter().GetUnitVariable(funcName, node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
+			ScriptValueRef item = nullptr;
+			if (executeContext.GetStack().IsRootCall()) {
+				//ルート空間を実行している間はユニット変数を対象にする
+				item = executeContext.GetInterpreter().GetUnitVariable(funcName, node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
+			}
+			else {
+				//そうでない場合は現在ブロックのローカル変数を対象にする
+				item = executeContext.GetBlockScope()->GetLocalVariable(funcName);
+			}
+			
 			OverloadedFunctionList* functionList = nullptr;
 			
 			if (item != nullptr) {
@@ -1045,7 +1053,13 @@ namespace sakura {
 				Reference<OverloadedFunctionList> funcList = executeContext.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
 				funcList->SetName(funcName);
 				funcList->Add(node.GetFunction(), node.GetConditionNode(), executeContext.GetBlockScope());
-				executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
+
+				if (executeContext.GetStack().IsRootCall()) {
+					executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
+				}
+				else {
+					executeContext.GetBlockScope()->SetLocalVariable(funcName, ScriptValue::Make(funcList));
+				}
 			}
 		}
 
@@ -1554,12 +1568,12 @@ namespace sakura {
 	}
 
 	//ルートステートメント実行
-	ToStringFunctionCallResult ScriptInterpreter::Execute(const ConstASTNodeRef& node, bool toStringResult) {
+	ToStringFunctionCallResult ScriptInterpreter::Execute(const ConstASTNodeRef& node, bool toStringResult, bool isRootCall) {
 
 		//ユニットを登録
 		RegisterUnit(node->GetScriptUnit()->GetUnit());
 
-		ScriptInterpreterStack rootStack;
+		ScriptInterpreterStack rootStack(isRootCall);
 		Reference<BlockScope> rootBlock = CreateNativeObject<BlockScope>(nullptr);
 		ScriptExecuteContext executeContext(*this, rootStack, rootBlock);
 		ScriptExecutor::ExecuteASTNode(*node, executeContext);
