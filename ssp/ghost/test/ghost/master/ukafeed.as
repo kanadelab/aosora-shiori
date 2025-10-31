@@ -36,7 +36,7 @@ function OnUkafeedList {
 	local result = "";
 	for(local i = 0; i < ukafeedData.items.length; i++){
 		local item = ukafeedData.items[i];
-		result += "\![*]\__q[OnUkafeedItemDetail,{i}]\f[bold,1][{item.tags[0]}]\f[bold,default]{item.title}\__q\n";
+		result += "\![*]\__q[OnUkafeedItemDetail,{i}]\f[bold,1][{item.tags[0].EscapeSakuraScript()}]\f[bold,default]{item.title.EscapeSakuraScript()}\__q\n";
 	}
 
 	return "\0\s[0]\b[2]\![quicksession,true]うかフィード\n\n{result}\n\n\![*]\q[とじる,OnMenuClose]";
@@ -46,11 +46,11 @@ talk OnUkafeedItemDetail {
 	%{
 		local item = ukafeedData.items[0];
 	}
-	\s[0]\b[2]\![quicksession,true]\f[bold,1][{item.tags[0]}]\f[bold,default]{item.title}
+	\s[0]\b[2]\![quicksession,true]\f[bold,1][{item.tags[0].EscapeSakuraScript()}]\f[bold,default]{item.title.EscapeSakuraScript()}
 
-	{item.content_text}
+	{item.content_text.EscapeSakuraScript()}
 
-	\![*]\__q[{item.url}]{item.url}\__q
+	\![*]\__q[{item.url.EscapeSakuraScript()}]{item.url.EscapeSakuraScript()}\__q
 
 	\![*]\q[もどる,OnUkafeedList]
 	\![*]\q[とじる,OnMenuClose]

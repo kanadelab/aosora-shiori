@@ -1121,6 +1121,8 @@ namespace sakura {
 	//メンバ取得
 	ScriptValueRef ScriptExecutor::ExecuteResolveMember(const ASTNodeResolveMember& node, ScriptExecuteContext& executeContext) {
 
+		//TODO: ASTで基本型メソッドを検索してしまうとリフレクション経由でこのあたりの情報にたどりつけないので基本形型にGet相当を呼び出した時をサポートしたほうがよい
+
 		//thisオブジェクトの取り出し
 		ScriptValueRef r = ExecuteInternal(*node.GetThisNode(), executeContext);
 		if (executeContext.RequireLeave()) {
@@ -1160,10 +1162,13 @@ namespace sakura {
 			}
 		}
 
-		//汎用メソッド類
-		auto generalResult = PrimitiveMethod::GetGeneralMember(r, key, executeContext);
-		if (generalResult != nullptr) {
-			return generalResult;
+		//TODO: ScriptObjectは内部でこれを検索しているので省略している。もっといい方法をとりたい。
+		if (!executeContext.GetInterpreter().InstanceIs<ScriptObject>(r)) {
+			//汎用メソッド類
+			auto generalResult = PrimitiveMethod::GetGeneralMember(r, key, executeContext);
+			if (generalResult != nullptr) {
+				return generalResult;
+			}
 		}
 
 		return ScriptValue::Null;

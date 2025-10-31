@@ -1,4 +1,5 @@
-﻿#include "CoreLibrary/PrimitiveMethod.h"
+﻿#include <regex>
+#include "CoreLibrary/PrimitiveMethod.h"
 #include "CoreLibrary/CoreClasses.h"
 
 //Unicode文字数を文字インデックスとして使う
@@ -229,6 +230,13 @@ namespace sakura {
 		}
 	}
 
+	void PrimitiveMethod::String_EscapeSakuraScript(const FunctionRequest& request, FunctionResponse& response)
+	{
+		const std::string target = request.GetThisValue()->ToString();
+		const std::regex re(R"([\\%])");
+		response.SetReturnValue(ScriptValue::Make(std::regex_replace(target, re, R"(\$&)")));
+	}
+
 	ScriptValueRef PrimitiveMethod::GetNumberMember(const ScriptValueRef& value, const std::string& member, ScriptExecuteContext& context) {
 		if (member == "Round") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::Number_Round, value));
@@ -282,6 +290,9 @@ namespace sakura {
 		}
 		else if (member == "Contains") {
 			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_Contains, value));
+		}
+		else if (member == "EscapeSakuraScript") {
+			return ScriptValue::Make(context.GetInterpreter().CreateNativeObject<Delegate>(&PrimitiveMethod::String_EscapeSakuraScript, value));
 		}
 		else if (member == "length") {
 #if defined(AOSORA_USE_UNICODE_CHAR_INDEX)

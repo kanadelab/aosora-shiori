@@ -576,6 +576,7 @@ namespace sakura {
 		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptKeys(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptRemove(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptGet(const FunctionRequest& request, FunctionResponse& response);
 
 		//内部オブジェクトの調節操作
 		void RawSet(const std::string& key, const ScriptValueRef& value);

@@ -169,7 +169,7 @@ namespace sakura {
 
 		//ルートスクリプト実行
 		for (auto item : parsedFileList) {
-			auto rootResult = interpreter.Execute(item->root, false);
+			auto rootResult = interpreter.Execute(item->root, false, true);
 			if (!rootResult.success) {
 
 				//起動手順中のエラーとして記録
