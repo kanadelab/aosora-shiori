@@ -483,6 +483,10 @@ namespace sakura {
 		auto saoriValues = interpreter.CreateNativeObject<ScriptArray>();
 		shioriMap->RawSet("SaoriValues", ScriptValue::Make(saoriValues));
 
+		//任意のレスポンス情報を格納するための連想配列
+		auto shioriResponse = interpreter.CreateObject();
+		shioriMap->RawSet("Response", ScriptValue::Make(shioriResponse));
+
 		//stautsの該当するレコードにtrueを書き込み(該当なければnullになるため判別に使用できる)
 		for (const std::string& st : request.GetStatusCollection()) {
 			shioriMap->RawSet(st, ScriptValue::True);
@@ -554,6 +558,12 @@ namespace sakura {
 		}
 		else {
 			response.SetValue(result);
+		}
+
+		//任意のレスポンスヘッダを渡す
+		auto responseHeaders = shioriMap->RawGet("Response");
+		if (responseHeaders != nullptr) {
+			//response.set
 		}
 
 		//SAORIの値を返す
