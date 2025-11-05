@@ -485,7 +485,7 @@ namespace sakura {
 
 		//コミュニケート用のResponseのReferenceを提供する
 		auto shioriResponse = interpreter.CreateArray();
-		shioriMap->RawSet("CommunicateReferences", ScriptValue::Make(shioriResponse));
+		shioriMap->RawSet("ResponseReference", ScriptValue::Make(shioriResponse));
 
 		//stautsの該当するレコードにtrueを書き込み(該当なければnullになるため判別に使用できる)
 		for (const std::string& st : request.GetStatusCollection()) {
@@ -578,7 +578,7 @@ namespace sakura {
 		else {
 			//SHIORIのResponseに入れるReferenceを格納
 			//ゴースト間コミュニケートに使われるもの
-			auto responseCommunicateReferences = shioriMap->RawGet("CommunicateReferences");
+			auto responseCommunicateReferences = shioriMap->RawGet("ResponseReference");
 			if (responseCommunicateReferences != nullptr) {
 				ScriptArray* scriptItems = interpreter.InstanceAs<ScriptArray>(responseCommunicateReferences);
 				if (scriptItems != nullptr) {
