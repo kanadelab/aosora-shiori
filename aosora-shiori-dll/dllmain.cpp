@@ -116,13 +116,22 @@ namespace {
 			response.append("\r\n");
 		}
 
-		//SAORIのValue
 		if (isSaori) {
+			//SAORIのValue
 			for (size_t i = 0; i < shioriResponse.GetSaoriValues().size(); i++) {
 				std::string value = shioriResponse.GetSaoriValues().at(i);
 				sakura::Replace(value, "\r", "");
 				sakura::Replace(value, "\n", "");
 				response.append("Value" + std::to_string(i) + ": " + value + "\r\n");
+			}
+		}
+		else {
+			//SHIORIのReference
+			for (size_t i = 0; i < shioriResponse.GetShioriReferences().size(); i++) {
+				std::string value = shioriResponse.GetShioriReferences().at(i);
+				sakura::Replace(value, "\r", "");
+				sakura::Replace(value, "\n", "");
+				response.append("Reference" + std::to_string(i) + ": " + value + "\r\n");
 			}
 		}
 

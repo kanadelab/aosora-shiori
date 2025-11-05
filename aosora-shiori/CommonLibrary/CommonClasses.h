@@ -250,6 +250,7 @@ namespace sakura {
 		std::string value;
 		std::vector<ShioriError> errors;
 		std::vector<std::string> saoriValues;
+		std::vector<std::string> shioriReferences;
 
 	public:
 		void SetBadRequest() {
@@ -327,6 +328,15 @@ namespace sakura {
 
 		const std::vector<std::string>& GetSaoriValues() const {
 			return saoriValues;
+		}
+
+		//SHIORIのReference*返却オブジェクトを渡す
+		void SetShioriReferences(const std::vector<std::string>& references) {
+			shioriReferences = references;
+		}
+
+		const std::vector<std::string>& GetShioriReferences() const {
+			return shioriReferences;
 		}
 	};
 
