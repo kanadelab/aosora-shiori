@@ -1147,8 +1147,6 @@ namespace sakura {
 
 		void ClearState()
 		{
-			isSetupCompleted = false;
-			breakPoints.ClearBreakPoint();
 			lastBreakFullPath = "";
 			lastBreakLineIndex = 0;
 			lastBreakStackLevel = 0;
@@ -1156,6 +1154,13 @@ namespace sakura {
 			lastPassLineIndex = 0;
 			lastPassStackLevel = 0;
 			executingState = ExecutingState::Execute;
+		}
+
+		void ClearDebuggerData()
+		{
+			isSetupCompleted = false;
+			breakPoints.ClearBreakPoint();
+			ClearState();
 		}
 
 	public:
@@ -1298,7 +1303,7 @@ namespace sakura {
 
 	void DebugSystem::NotifyScriptReturned() {
 		//ステップイン等を解除する
-		executingState = ExecutingState::Execute;
+		ClearState();
 	}
 
 	void DebugSystem::Break(const std::string& fullPath, uint32_t line, size_t stackLevel, const ASTNodeBase& node, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo) {
