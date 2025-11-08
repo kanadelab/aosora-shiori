@@ -270,6 +270,14 @@ namespace sakura {
 		//ユニットを登録
 		void RegisterUnit(const std::string& unitName);
 
+		//ユニット情報を取得
+		const UnitData* FindUnitData(const std::string& unitName);
+
+		//ユニットの内部コレクション取得
+		const std::map<std::string, UnitData>& GetUnitCollection() const {
+			return units;
+		}
+
 		//ルート空間からユニットを取得
 		Reference<UnitObject> GetUnit(const std::string& unitName);
 		Reference<UnitObject> FindUnit(const std::string& unitNmae);
@@ -278,7 +286,6 @@ namespace sakura {
 		ScriptValueRef GetFromAlias(const ScriptUnitAlias& alias, const std::string& name);
 
 		//クラス取得
-		//ScriptValueRef GetClass(const std::string& name);
 		ScriptValueRef GetClass(const uint32_t typeId);
 
 		//クラス取得
@@ -292,10 +299,6 @@ namespace sakura {
 				return nullptr;
 			}
 		}
-
-
-		//クラスID取得
-		//uint32_t GetClassId(const std::string& name);
 
 		//クラス名取得
 		std::string GetClassTypeName(uint32_t typeId);

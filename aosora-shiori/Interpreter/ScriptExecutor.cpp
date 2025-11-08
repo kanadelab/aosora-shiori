@@ -1461,6 +1461,15 @@ namespace sakura {
 		units.insert(decltype(units)::value_type(unitName, UnitData()));
 	}
 
+	//ユニット情報を取得
+	const UnitData* ScriptInterpreter::FindUnitData(const std::string& unitName) {
+		auto it = units.find(unitName);
+		if (it != units.end()) {
+			return &it->second;
+		}
+		return nullptr;
+	}
+
 	//ユニット取得
 	Reference<UnitObject> ScriptInterpreter::GetUnit(const std::string& unitName) {
 
