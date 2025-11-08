@@ -132,7 +132,7 @@ namespace sakura {
 		}
 
 		//デバッグが有効ならデバッグシステムを起動する
-		if (projectSettings.enableDebug) {
+		if (projectSettings.enableDebug || Debugger::IsDebugBootstrapEnabled()) {
 			Debugger::Create(projectSettings.debuggerPort);
 		}
 

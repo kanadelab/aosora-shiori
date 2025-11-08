@@ -2,12 +2,12 @@ import * as fs from "fs/promises";
 
 export class ProjectParser {
 
-	public runtimePath:string|null;	//ランタイム(SSP)パス
-	public enableDebug:boolean;
+	public runtimePath:string;	//ランタイム(SSP)パス
+	//public enableDebug:boolean;
 
 	public constructor(){
-		this.runtimePath = null;
-		this.enableDebug = false;
+		this.runtimePath = "../../../../ssp.exe";	//デフォルトのSSPの相対パスを推測する
+		//this.enableDebug = false;
 	}
 
 	public async Parse(filename:string){
@@ -33,7 +33,8 @@ export class ProjectParser {
 					this.runtimePath = items[1];
 				}
 				else if(items[0] === 'debug'){
-					this.enableDebug = this.SettingsToBool(items[1]);
+					//今は見てないので一旦無視
+					//this.enableDebug = this.SettingsToBool(items[1]);
 				}
 			}
 		}

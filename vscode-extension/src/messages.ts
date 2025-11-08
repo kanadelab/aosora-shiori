@@ -13,7 +13,7 @@ const MessageJaJp = {
 	debugger003: "aosora プロジェクトフォルダを検出できませんでした。",
 	debugger004: "すべてのエラー",
 	debugger005: "実行時にエラーが発生したとき、キャッチされるかどうかにかかわらず実行中断します。",
-	debugger006: "asprojファイルで debug 設定が有効化されていません。",
+	//debugger006: "asprojファイルで debug 設定が有効化されていません。",
 	debugger007: "SSPを起動して接続しています...",
 	debugger008: "デバッガはゴーストへの接続に失敗しました。",
 	debugger009: "asprojファイルに debug.debugger.runtime 設定が見つかりません。",

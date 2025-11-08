@@ -48,6 +48,16 @@ namespace sakura {
 
 	//デバッグインターフェース
 	class Debugger {
+	private:
+		//デバッグブートストラップが有効かどうか
+		enum class BootstrapStatus {
+			Unknown,
+			Enable,
+			Disable
+		};
+
+		static BootstrapStatus debugBootStrapStatus;
+
 	public:
 		//ASTノードの実行時に通知（いまのところ行単位の実行の想定）
 		static void NotifyASTExecute(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext);
@@ -66,6 +76,7 @@ namespace sakura {
 		//イベントから処理が戻った。stepin等の次回ブレーク処理を無効化する。
 		static void NotifyEventReturned();
 
+		static bool IsDebugBootstrapEnabled();
 		static void Create(uint32_t connectionPort);
 		static void Destroy();
 		static bool IsCreated();

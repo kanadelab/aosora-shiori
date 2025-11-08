@@ -14,6 +14,9 @@
 #if defined(AOSORA_ENABLE_DEBUGGER)
 namespace sakura
 {
+	const char* ENVNAME_AOSORA_DEBUG_BOOTSTRAP = "AOSORA_DEBUG_BOOTSTRAP";
+	Debugger::BootstrapStatus Debugger::debugBootStrapStatus = Debugger::BootstrapStatus::Unknown;
+
 #if defined(AOSORA_REQUIRED_WIN32)
 	//デバッグブートストラップウインドウ
 	//SSPを起動してからAosoraデバッガが接続してくるまで待機するたための、接続待ちを案内するウインドウ
@@ -142,22 +145,32 @@ namespace sakura
 	}
 #endif // AOSORA_REQUIRED_WIN32
 
+	bool Debugger::IsDebugBootstrapEnabled() {
+		if (debugBootStrapStatus == BootstrapStatus::Unknown) {
+			//未設定の場合環境変数をチェックして環境変数をクリーンアップするx
+			const char* bootstrapEnv = getenv(ENVNAME_AOSORA_DEBUG_BOOTSTRAP);
+			bool enableDebugBootstrap = false;
+			if (bootstrapEnv != nullptr) {
+				if (strcmp(bootstrapEnv, "0") != 0) {
+	#if defined(AOSORA_REQUIRED_WIN32)
+					_putenv_s(ENVNAME_AOSORA_DEBUG_BOOTSTRAP, "0");
+	#else
+					setenv(ENVNAME_AOSORA_DEBUG_BOOTSTRAP, "0", 1);
+	#endif // AOSORA_REQUIRED_WIN32
+					enableDebugBootstrap = true;
+				}
+			}
+
+			//取得した状態を設定
+			debugBootStrapStatus = enableDebugBootstrap ? BootstrapStatus::Enable : BootstrapStatus::Disable;
+		}
+
+		return debugBootStrapStatus == BootstrapStatus::Enable;
+	}
+
 	void Debugger::Bootstrap() {	
 		//指定の環境変数が設定されていれば機動隊気に入る
-		const char* bootstrapEnv = getenv("AOSORA_DEBUG_BOOTSTRAP");
-		bool enableDebugBootstrap = false;
-		if (bootstrapEnv != nullptr) {
-			if (strcmp(bootstrapEnv, "0") != 0) {
-#if defined(AOSORA_REQUIRED_WIN32)
-				_putenv_s("AOSORA_DEBUG_BOOTSTRAP", "0");
-#else
-				setenv("AOSORA_DEBUG_BOOTSTRAP", "0", 1);
-#endif // AOSORA_REQUIRED_WIN32
-				enableDebugBootstrap = true;
-			}
-		}
-		
-		if (enableDebugBootstrap) {
+		if (IsDebugBootstrapEnabled()) {
 			Debugger::SetDebugBootstrapped(true);
 			sakura::DebugBootstrapWindow::Run();
 		}
