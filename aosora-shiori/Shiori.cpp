@@ -117,7 +117,7 @@ namespace sakura {
 		LoadProjectDirectory(ghostMasterPath, projectSettings, isForceDisableDebugSystem);
 
 		//言語情報を設定
-		if (projectSettings.primaryLanguage.empty()) {
+		if (!projectSettings.primaryLanguage.empty()) {
 			TextSystem::GetInstance()->SetPrimaryLanguage(projectSettings.primaryLanguage);
 		}
 
