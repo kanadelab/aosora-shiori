@@ -170,6 +170,7 @@
     <ClInclude Include="Misc\Json.h" />
     <ClInclude Include="Misc\Message.h" />
     <ClInclude Include="Misc\PluginLoader.h" />
+    <ClInclude Include="Misc\ProjectParser.h" />
     <ClInclude Include="Misc\SaoriLoader.h" />
     <ClInclude Include="Misc\Utility.h" />
     <ClInclude Include="Shiori.h" />
@@ -197,6 +198,7 @@
     <ClCompile Include="Misc\Json.cpp" />
     <ClCompile Include="Misc\Message.cpp" />
     <ClCompile Include="Misc\PluginLoader.cpp" />
+    <ClCompile Include="Misc\ProjectParser.cpp" />
     <ClCompile Include="Misc\SaoriLoader.cpp" />
     <ClCompile Include="Misc\Utility.cpp" />
     <ClCompile Include="Shiori.cpp" />

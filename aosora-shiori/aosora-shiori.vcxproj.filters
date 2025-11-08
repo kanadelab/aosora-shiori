@@ -68,6 +68,9 @@
     <ClCompile Include="..\thirdparty\jsoncpp-1.9.6\src\lib_json\json_writer.cpp">
       <Filter>ThirdParty\jsoncpp\src</Filter>
     </ClCompile>
+    <ClCompile Include="Misc\ProjectParser.cpp">
+      <Filter>Misc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shiori.h" />
@@ -177,6 +180,9 @@
     </ClInclude>
     <ClInclude Include="..\thirdparty\jsoncpp-1.9.6\include\json\forwards.h">
       <Filter>ThirdParty\jsoncpp\include</Filter>
+    </ClInclude>
+    <ClInclude Include="Misc\ProjectParser.h">
+      <Filter>Misc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
