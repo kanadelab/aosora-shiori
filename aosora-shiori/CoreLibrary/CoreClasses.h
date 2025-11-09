@@ -330,7 +330,7 @@ namespace sakura {
 	};
 
 
-	//オーバーロードを許容する関数の集合
+	//オーバーロードを許容する関数の集合、ただしスクリプトから単語群想定で使用できるように非関数も一応サポート
 	//重複回避つきのランダム選択機能
 	class OverloadedFunctionList : public Object<OverloadedFunctionList> {
 	private:
@@ -341,20 +341,34 @@ namespace sakura {
 			ConstASTNodeRef condition;
 
 			//後付けでスクリプト上で追加した場合のもの
-			Reference<Delegate> conditionDelegate;
+			ScriptValueRef scriptCondition;
 			ScriptValueRef scriptItem;
 		};
 
+		enum class SelectorMode {
+			NoOverwrappedRandom,	//重複回避ランダム
+			OverwrappedRandom		//純粋なランダム
+		};
+
 	private:
+		SelectorMode selectorMode;
 		std::vector<FunctionItem> functions;
 		std::vector<size_t> callOrder;
 		std::string funcName;
 
 	private:
 		const FunctionItem* SelectItemInternal(const FunctionRequest& request, FunctionResponse& response);
+		const FunctionItem* SelectItemInternalNoOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response);
+		const FunctionItem* SelectItemInternalOverwrapedRandom(const FunctionRequest& request, FunctionResponse& response);
+		bool ValidateItemCondition(const FunctionRequest& request, FunctionResponse& response, const FunctionItem& item);
+
 		void MakeCallorder();
 
 	public:
+		OverloadedFunctionList() :
+			selectorMode(SelectorMode::NoOverwrappedRandom) {
+		}
+
 		void Add(const ConstScriptFunctionRef& func, const ConstASTNodeRef& condition, const Reference<BlockScope>& scope = nullptr) {
 			FunctionItem item;
 			item.scriptFunc = func;
@@ -373,6 +387,13 @@ namespace sakura {
 			functions.push_back(item);
 		}
 
+		void Add(const ScriptValueRef& value, const ScriptValueRef& condition = ScriptValue::Null) {
+			FunctionItem item;
+			item.scriptItem = value;
+			item.scriptCondition = condition;
+			functions.push_back(item);
+		}
+
 		//定義時の関数名。別変数に代入できてしまうので、デバッグ用に登録時の名前をとっておく。
 		void SetName(const std::string& name) {
 			funcName = name;
@@ -382,7 +403,28 @@ namespace sakura {
 			return funcName;
 		}
 
-		static void ReturnThisFunc(const FunctionRequest& request, FunctionResponse& response);
+		//セレクタモード
+		void SetSelectorMode(SelectorMode mode) {
+			if (selectorMode != mode) {
+				//変更時は呼び出し情報をクリアしてリセットをかける
+				callOrder.clear();
+				selectorMode = mode;
+			}
+		}
+
+		SelectorMode GetSelectorMode() const {
+			return selectorMode;
+		}
+
+		static void ScriptReturnThisFunc(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptUseNoOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptUseOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptIsNoOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptIsOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response);
+		static void ShuffleOverwrap(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptClear(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptAdd(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptAddRange(const FunctionRequest& request, FunctionResponse& response);
 
 		ScriptValueRef SelectItem(ScriptExecuteContext& executeContext, const ScriptValueRef& thisValue);
 		void ThisCall(const FunctionRequest& request, FunctionResponse& response, const ScriptValueRef& thisValue);

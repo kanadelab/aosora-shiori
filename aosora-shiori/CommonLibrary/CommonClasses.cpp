@@ -461,6 +461,9 @@ namespace sakura {
 		else if (key == "GetIndex") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Random::GetIndex));
 		}
+		else if (key == "CreateSelector") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Random::CreateSelector));
+		}
 
 		return nullptr;
 	}
@@ -517,6 +520,28 @@ namespace sakura {
 
 	void Random::GetNumber(const FunctionRequest& request, FunctionResponse& response) {
 		response.SetReturnValue(ScriptValue::Make(RandNum()));
+	}
+
+	void Random::CreateSelector(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() > 0) {
+			auto* items = request.GetInterpreter().InstanceAs<ScriptArray>(request.GetArgument(0));
+			if (items != nullptr) {
+				auto selector = request.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
+				selector->SetName("(RandomSelector)");
+				
+				for (size_t i = 0; i < items->Count(); i++) {
+					selector->Add(items->At(i));
+				}
+
+				response.SetReturnValue(ScriptValue::Make(selector));
+			}
+		}
+		else {
+			//引数がない場合は空のセレクタを返す
+			auto selector = request.GetInterpreter().CreateNativeObject<OverloadedFunctionList>();
+			selector->SetName("(RandomSelector)");
+			response.SetReturnValue(ScriptValue::Make(selector));
+		}
 	}
 
 

@@ -88,6 +88,9 @@ namespace sakura {
 
 		//0.0-1.0範囲の実数を取得
 		static void GetNumber(const FunctionRequest& request, FunctionResponse& response);
+
+		//配列から選択オブジェクトの作成
+		static void CreateSelector(const FunctionRequest& request, FunctionResponse& response);
 	};
 
 	//セーブデータオブジェクト
