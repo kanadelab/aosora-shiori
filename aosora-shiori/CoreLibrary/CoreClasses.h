@@ -339,6 +339,10 @@ namespace sakura {
 			ScriptNativeFunction nativeFunc;
 			Reference<BlockScope> blockScope;		//関数定義時のブロックスコープ。ローカル変数キャプチャ領域。
 			ConstASTNodeRef condition;
+
+			//後付けでスクリプト上で追加した場合のもの
+			Reference<Delegate> conditionDelegate;
+			ScriptValueRef scriptItem;
 		};
 
 	private:
@@ -377,6 +381,8 @@ namespace sakura {
 		const std::string& GetName() const {
 			return funcName;
 		}
+
+		static void ReturnThisFunc(const FunctionRequest& request, FunctionResponse& response);
 
 		ScriptValueRef SelectItem(ScriptExecuteContext& executeContext, const ScriptValueRef& thisValue);
 		void ThisCall(const FunctionRequest& request, FunctionResponse& response, const ScriptValueRef& thisValue);

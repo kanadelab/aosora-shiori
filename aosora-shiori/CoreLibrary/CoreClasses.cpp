@@ -160,6 +160,11 @@ namespace sakura {
 
 	//呼出順のリストを作成
 	//あらかじめシャッフルしておいて上から順に見ることで重複回避ということにする
+
+	void OverloadedFunctionList::ReturnThisFunc(const FunctionRequest& request, FunctionResponse& response) {
+		response.SetReturnValue(request.GetThisValue());
+	}
+
 	void OverloadedFunctionList::MakeCallorder() {
 		
 		callOrder.resize(functions.size());
@@ -200,11 +205,7 @@ namespace sakura {
 			callOrder.pop_back();
 			auto& item = functions[index];
 
-			//選択したものに条件がついてなければ決定
-			if (item.condition == nullptr) {
-				return &item;
-			}
-			else {
+			if(item.condition != nullptr) {
 				//条件評価
 				//TODO: 評価する場合新しいスタックフレームを使う必要があるかもしれない？
 				auto conditionResult = ScriptExecutor::ExecuteASTNode(*item.condition, request.GetContext());
@@ -213,6 +214,23 @@ namespace sakura {
 				if (conditionResult->ToBoolean()) {
 					return &item;
 				}
+			}
+			else if (item.conditionDelegate != nullptr) {
+				//条件デリゲートを使用する場合は関数よびだしを実行
+				std::vector<ScriptValueRef> args;
+				FunctionResponse res;
+				request.GetInterpreter().CallFunction(*ScriptValue::Make(item.conditionDelegate), res, args, request.GetContext(), request.GetContext().GetStack().GetCallingASTNode());
+
+				if (res.IsThrew()) {
+					response.SetThrewError(res.GetThrewError());
+				}
+				else if (res.GetReturnValue() != nullptr && res.GetReturnValue()->ToBoolean()) {
+					return &item;
+				}
+			}
+			else {
+				//選択したものに条件がついてなければ決定
+				return &item;
 			}
 		}
 
@@ -278,8 +296,17 @@ namespace sakura {
 		if (item->nativeFunc == nullptr) {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->scriptFunc, thisValue, item->blockScope));
 		}
-		else {
+		else if(item->scriptFunc != nullptr) {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(item->nativeFunc, thisValue, item->blockScope));
+		}
+		else if (item->scriptItem != nullptr) {
+			if (item->scriptItem->IsObject() && item->scriptItem->GetObjectRef()->CanCall()) {
+				return item->scriptItem;
+			}
+			else {
+				//呼び出し可能オブジェクトでない場合は、それ自体を戻り値として返す特殊なデリゲートを作る
+				return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&OverloadedFunctionList::ReturnThisFunc, item->scriptItem));
+			}
 		}
 	}
 
