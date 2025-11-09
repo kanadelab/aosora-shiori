@@ -1210,6 +1210,7 @@ namespace sakura {
 		void NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError);
 		void NotifyLog(const std::string& log, const SourceCodeRange& sourceCodeRange, bool isError);
 		void NotifyScriptReturned();
+		void NotifyRequestBreak(const ASTNodeBase& node, ScriptExecuteContext& executeContext);
 
 		void Break(const std::string& filepath, uint32_t line, size_t stackLevel, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo);
 		void SendBreakInformation(const ASTNodeBase& node, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo);
@@ -1297,9 +1298,26 @@ namespace sakura {
 
 	//例外発生時
 	void DebugSystem::NotifyThrowExceotion(const ScriptError& runtimeError, const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
-		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
 
-		if (breakPoints.IsBreakOnAllRuntimeError()) {
+		if (executeContext.GetInterpreter().IsDebuggerScope()) {
+			//すでにデバッガスコープにある場合は、再入禁止
+			//ウォッチなどからブレークにはまるのを避けるため
+			return;
+		}
+
+		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
+		bool isBreak = false;
+		
+		if (executeContext.GetStack().IsTryBlock() && runtimeError.CanCatch()) {
+			//キャッチ可能
+			isBreak = breakPoints.IsBreakOnAllRuntimeError();
+		}
+		else {
+			//キャッチされない
+			isBreak = breakPoints.IsBreakOnAllRuntimeError() || breakPoints.IsBreakUncaughtError();
+		}
+
+		if (isBreak) {
 			//エディタスタックレベルの確認
 			auto stackLevel = executeContext.MakeStackTrace(executingNode, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName()).size();
 			const std::string fullPath = executingNode.GetSourceRange().GetSourceFileFullPath();
@@ -1340,6 +1358,29 @@ namespace sakura {
 	void DebugSystem::NotifyScriptReturned() {
 		//ステップイン等を解除する
 		ClearState();
+	}
+
+	void DebugSystem::NotifyRequestBreak(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {
+		//スクリプト側からのブレークリクエスト
+		if (executeContext.GetInterpreter().IsDebuggerScope()) {
+			//すでにデバッガスコープにある場合は、再入禁止
+			//ウォッチなどからブレークにはまるのを避けるため
+			return;
+		}
+
+		//接続中のみ
+		if (!IsConnected()) {
+			return;
+		}
+
+		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
+
+		auto stackTrace = executeContext.MakeStackTrace(node, executeContext.GetBlockScope(), executeContext.GetStack().GetFunctionName());
+		auto stackLevel = stackTrace.size();
+		const std::string fullPath = node.GetSourceRange().GetSourceFileFullPath();
+		const uint32_t line = node.GetSourceRange().GetBeginLineIndex();
+
+		Break(fullPath, line, stackLevel, node, executeContext, nullptr);
 	}
 
 	void DebugSystem::Break(const std::string& fullPath, uint32_t line, size_t stackLevel, const ASTNodeBase& node, ScriptExecuteContext& executeContext, const ErrorInfo* errorInfo) {
@@ -2090,6 +2131,12 @@ namespace sakura {
 		}
 	}
 
+	void Debugger::NotifyRequestBreak(const ASTNodeBase& executingNode, ScriptExecuteContext& executeContext) {
+		if (DebugSystem::GetInstance() != nullptr) {
+			DebugSystem::GetInstance()->NotifyRequestBreak(executingNode, executeContext);
+		}
+	}
+
 	void Debugger::SetDebugBootstrapped(bool isBootstrapped) {
 		if (DebugSystem::GetInstance() != nullptr) {
 			DebugSystem::GetInstance()->SetDebugBootstrapped(isBootstrapped);
@@ -2145,6 +2192,7 @@ namespace sakura {
 	void Debugger::NotifyLog(const std::string& log, const ASTNodeBase& node, bool isError){}
 	void Debugger::NotifyLog(const std::string& log, const SourceCodeRange& range, bool isError){}
 	void Debugger::NotifyEventReturned(){}
+	void Debugger::NotifyRequestBreak(const ASTNodeBase& node, ScriptExecuteContext& executeContext) {}
 	void Debugger::Create(uint32_t connectionPort){}
 	void Debugger::Destroy(){}
 	bool Debugger::IsCreated() { return false; }

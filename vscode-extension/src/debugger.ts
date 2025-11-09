@@ -111,16 +111,13 @@ class AosoraDebugSession extends DebugSession {
 					description: GetMessage().debugger005,
 					filter: "all",
 					default: false
-				}
-				/*
-				,
+				},
 				{
 					label: "キャッチされなかったエラー",
 					description: "実行時にエラーが発生したとき、キャッチされなかった場合に実行中断します。",
 					filter: "uncaught",
 					default: true
 				}
-				*/
 			]
 		};
 

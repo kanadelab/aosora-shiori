@@ -151,6 +151,9 @@ namespace sakura {
 		ScriptSourceMetadataRef sourceMetaData;
 		ScriptClassRef scriptClass;	//現在解析中のクラス
 
+		//アサート無効(vscode watchなどむけ）
+		bool disableParseAsseert;
+
 		//エラーが出ているかどうか、エラーがあればその場で解析を打ち切るので１つだけしか持たない
 		bool hasError;
 		ScriptParseErrorData errorData;
@@ -160,6 +163,7 @@ namespace sakura {
 		ASTParseContext(const std::list<ScriptToken>& tokenList, ASTParseResult& parseResult) :
 			result(parseResult),
 			tokens(tokenList),
+			disableParseAsseert(false),
 			hasError(false)
 		{
 			//最初のアイテムをとる
@@ -167,6 +171,10 @@ namespace sakura {
 
 			//ユニット情報
 			sourceMetaData.reset(new ScriptSourceMetadata());
+		}
+
+		void DisableASTAssert() {
+			disableParseAsseert = true;
 		}
 
 		const ScriptToken& GetCurrent() {
@@ -201,8 +209,10 @@ namespace sakura {
 
 #if defined(AOSORA_DEBUG)
 			if (DEBUG_ENABLE_ASSERT_PARSE_ERROR) {
-				//デバッグのためエラーだったら即止め
-				assert(false);
+				if(!disableParseAsseert){
+					//デバッグのためエラーだったら即止め
+					assert(false);
+				}
 			}
 #endif
 
@@ -332,9 +342,12 @@ namespace sakura {
 	}
 
 	//式としてパース
-	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens, const ScriptSourceMetadataRef* importSourceMeta) {
+	std::shared_ptr<const ASTParseResult> ASTParser::ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens, const ScriptSourceMetadataRef* importSourceMeta, bool disableParseAssert) {
 		std::shared_ptr<ASTParseResult> parseResult(new ASTParseResult());
 		ASTParseContext parseContext(tokens->tokens, *parseResult);
+		if (disableParseAssert) {
+			parseContext.DisableASTAssert();
+		}
 
 		if (importSourceMeta != nullptr) {
 			parseContext.ImportScriptSourceMetadata(*importSourceMeta);

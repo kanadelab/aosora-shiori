@@ -1620,7 +1620,7 @@ namespace sakura {
 		}
 
 		//ASTにユニットエイリアスをインポートしないといけない
-		auto ast = ASTParser::ParseExpression(tokens, &importSourceMeta);
+		auto ast = ASTParser::ParseExpression(tokens, &importSourceMeta, true);
 
 		if (ast->error != nullptr) {
 			result.error = ast->error;
@@ -1654,6 +1654,7 @@ namespace sakura {
 		ImportClass(NativeClass::Make<ScriptError>("Error", &ScriptError::CreateObject));
 		ImportClass(NativeClass::Make<RuntimeError>("RuntimeError", ClassPath("Error")));
 		ImportClass(NativeClass::Make<PluginError>("PluginError", ClassPath("Error")));
+		ImportClass(NativeClass::Make<AssertError>("AssertError", ClassPath("Error")));
 		ImportClass(NativeClass::Make<Time>("Time"));
 		ImportClass(NativeClass::Make<SaveData>("Save"));
 		ImportClass(NativeClass::Make<OverloadedFunctionList>("OverloadedFunctionList"));
@@ -2170,7 +2171,7 @@ namespace sakura {
 		}
 	}
 
-	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string & currentFuncName) {
+	std::vector<CallStackInfo> ScriptExecuteContext::MakeStackTrace(const ASTNodeBase& currentAstNode, const Reference<BlockScope>& callingBlockScope, const std::string& currentFuncName) {
 		//現在実行中のスタックフレームは引数から位置を取得
 		std::vector<CallStackInfo> stackInfo;
 		{

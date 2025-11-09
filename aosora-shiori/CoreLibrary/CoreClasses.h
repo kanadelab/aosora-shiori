@@ -317,6 +317,23 @@ namespace sakura {
 		}
 	};
 
+	//アサートエラー
+	class AssertError : public ScriptError {
+	public:
+		AssertError(const std::string& errorMessage) :ScriptError(errorMessage)
+		{
+			SetNativeOverrideInstanceId(TypeId());
+
+			//catch不可エラーとして実現する
+			SetCanCatch(false);
+		}
+
+		//Object<>の継承からさらに継承なので別途TypeIdを定義しないといけない
+		static uint32_t TypeId() {
+			return ObjectTypeIdGenerator::Id<AssertError>();
+		}
+	};
+
 	//プラグインエラー、aosoraプラグインが標準で発生させるエラー
 	class PluginError : public ScriptError {
 	public:

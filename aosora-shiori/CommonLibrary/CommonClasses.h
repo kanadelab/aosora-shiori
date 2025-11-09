@@ -521,6 +521,7 @@ namespace sakura {
 	class ScriptDebug : public Object<ScriptDebug> {
 	private:
 		static void WriteLine(const FunctionRequest& request, FunctionResponse& response);
+		static void Assert(const FunctionRequest& request, FunctionResponse& response);
 
 	public:
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);

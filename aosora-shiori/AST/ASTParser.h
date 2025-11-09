@@ -94,7 +94,7 @@ namespace sakura {
 		static std::shared_ptr<const ASTParseResult> Parse(const std::shared_ptr<const TokensParseResult>& tokens);
 
 		//式としてパース
-		static std::shared_ptr<const ASTParseResult> ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens, const ScriptSourceMetadataRef* importSourceMeta);
+		static std::shared_ptr<const ASTParseResult> ParseExpression(const std::shared_ptr<const TokensParseResult>& tokens, const ScriptSourceMetadataRef* importSourceMeta, bool disableParseAssert = false);
 	};
 
 }
