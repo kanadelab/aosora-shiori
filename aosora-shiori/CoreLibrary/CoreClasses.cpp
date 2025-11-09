@@ -236,6 +236,31 @@ namespace sakura {
 		if (key == "length") {
 			return ScriptValue::Make(static_cast<number>(functions.size()));
 		}
+
+		//TODO: 制御できるようにしたい
+		/*
+		else if (key == "UseNoOverwrappedRandom") {
+
+		}
+		else if (key == "UseOverwrappedRandom") {
+			
+		}
+		else if (key == "IsNoOverwrappedRandom") {
+
+		}
+		else if (key == "IsOverwrappedRandom") {
+
+		}
+		else if (key == "ShuffleOverwrap") {
+
+		}
+		else if (key == "Add") {
+
+		}
+		else if (key == "AddRange") {
+
+		}
+		*/
 		return nullptr;
 	}
 
