@@ -1020,7 +1020,7 @@ namespace sakura {
 
 	//関数生成
 	ScriptValueRef ScriptExecutor::ExecuteFunctionInitializer(const ASTNodeFunctionInitializer& node, ScriptExecuteContext& executeContext) {
-		return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(node.GetFunction(), ScriptValue::Null));
+		return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(node.GetFunction(), ScriptValue::Null, executeContext.GetBlockScope()));
 	}
 
 	//関数ステートメント。関数をランダムオーバーロード用オブジェクトにつっこんで渡す
