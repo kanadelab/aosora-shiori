@@ -659,7 +659,9 @@ namespace sakura {
 
 		virtual ASTNodeType GetType() const override { return ASTNodeType::Return; }
 		virtual void GetChildren(std::vector<ConstASTNodeRef>& nodes) const override {
-			nodes.push_back(returnValueNode);
+			if (returnValueNode != nullptr) {
+				nodes.push_back(returnValueNode);
+			}
 		}
 
 		virtual const char* DebugName() const override { return "Return"; }
