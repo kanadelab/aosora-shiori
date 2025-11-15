@@ -497,6 +497,10 @@ namespace sakura {
 		int32_t iteratorCheckoutCounter;
 
 	public:
+		ScriptIterable():
+			iteratorCheckoutCounter(0)
+		{ }
+	
 		virtual Reference<ScriptIterator> CreateIterator(ScriptExecuteContext& executeContext) = 0;
 		bool ValidateCollectionLock(const FunctionRequest& request, FunctionResponse& response);
 		bool ValidateCollectionLock(ScriptExecuteContext& executeContext);
