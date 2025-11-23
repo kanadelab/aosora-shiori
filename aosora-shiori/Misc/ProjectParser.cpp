@@ -155,8 +155,10 @@ namespace sakura {
 		//列挙されたユニットファイルを
 		{
 			for (size_t i = 0; i < projectSettings.unitFiles.size(); i++) {
+				std::filesystem::path unitFilePath = gmp;
 				std::string target = projectSettings.unitFiles[i];
-				std::ifstream settingsStream(target);
+				unitFilePath.append(target);
+				std::ifstream settingsStream(unitFilePath);
 
 				if (settingsStream.fail()) {
 					//読み込みエラー
