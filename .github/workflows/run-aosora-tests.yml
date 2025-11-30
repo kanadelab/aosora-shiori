@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Build and run tests (${ { matrix.configuration } })
+    name: Build and run tests (${{ matrix.configuration }})
     runs-on: windows-2025
     strategy:
       matrix:
@@ -32,6 +32,6 @@ jobs:
         shell: powershell
         run: |
           Write-Host "Invoking vstest.console.exe from PATH"
-          $dll = Join-Path $env:GITHUB_WORKSPACE "aosora-shiori-test\${{ matrix.configuration }}\aosora-shiori-test.dll"
+          $dll = Join-Path $env:GITHUB_WORKSPACE "${{ matrix.configuration }}\aosora-shiori-test.dll"
           if (-not (Test-Path $dll)) { Write-Error "Test dll not found: $dll"; exit 1 }
           vstest.console.exe $dll
