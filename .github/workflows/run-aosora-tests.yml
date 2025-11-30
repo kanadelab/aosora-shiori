@@ -1,0 +1,37 @@
+name: Run aosora-shiori tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and run tests (${ { matrix.configuration } })
+    runs-on: windows-2025
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Build aosora-shiori
+        shell: powershell
+        run: |
+          msbuild "$env:GITHUB_WORKSPACE\aosora-shiori\aosora-shiori.vcxproj" /t:Build /p:Configuration=${{ matrix.configuration }} /p:Platform=Win32 /p:SolutionDir="${env:GITHUB_WORKSPACE}\\"
+
+      - name: Build aosora-shiori-test
+        shell: powershell
+        run: |
+          msbuild "$env:GITHUB_WORKSPACE\aosora-shiori-test\aosora-shiori-test.vcxproj" /t:Build /p:Configuration=${{ matrix.configuration }} /p:Platform=Win32 /p:SolutionDir="${env:GITHUB_WORKSPACE}\\"
+
+      - name: Run unit tests
+        shell: powershell
+        run: |
+          Write-Host "Invoking vstest.console.exe from PATH"
+          $dll = Join-Path $env:GITHUB_WORKSPACE "aosora-shiori-test\${{ matrix.configuration }}\aosora-shiori-test.dll"
+          if (-not (Test-Path $dll)) { Write-Error "Test dll not found: $dll"; exit 1 }
+          vstest.console.exe $dll

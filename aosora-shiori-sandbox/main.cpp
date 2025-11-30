@@ -17,7 +17,7 @@
 namespace sakura {
 
 	//ソースコードをパースする
-	void Execute(const std::string& document)
+	std::string Execute(const std::string& document)
 	{
 		TextSystem::CreateInstance();
 
@@ -28,9 +28,11 @@ namespace sakura {
 		sakura::ScriptInterpreter interpreter;
 		interpreter.ImportClasses(ast->classMap);
 		interpreter.CommitClasses();
-		interpreter.Execute(ast->root, false);
+		auto result = interpreter.Execute(ast->root, true);
 
 		TextSystem::DestroyInstance();
+
+		return result.result;
 	}
 }
 
@@ -80,18 +82,10 @@ void MD5Hash()
 
 int main() {
 
-	/*
-	std::string sourceCode = readFile(R"(D:\extract\GhostMasquerade7\nise_shako\ghost\master\dict-aiev.as)");
+	std::string sourceCode = R"(
+		return "！".length;
+	)";
 
-	std::string sourceCode2 = R"(
-
-		print("！".length);
-
-)";
-
-	sakura::Execute(sourceCode);
-	*/
-
-	//sakura::Debugger::Bootstrap();
-	MD5Hash();
+	auto result = sakura::Execute(sourceCode);
+	printf("%s", result.c_str());
 }
