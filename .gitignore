@@ -3,6 +3,8 @@
 /aosora-shiori-dll/Win32
 /aosora-shiori-dll/*.aps
 /aosora-shiori-sandbox/Win32
+/aosora-shiori-test/Debug
+/aosora-shiori-test/Release
 /aosora-sstp/Win32
 /aosora-analyzer/Win32
 /aosora-plugin-core/Win32
