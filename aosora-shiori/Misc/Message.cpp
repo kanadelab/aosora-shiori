@@ -141,6 +141,8 @@ namespace sakura {
 		//en-us
 		RegisterLanguage("en-us")
 
+			ERROR_MESSAGES("A999", "Internal error", "An error has occurred that may be a bug in Aosora. Please report it to the author.")
+			ERROR_MESSAGES("A000", "Syntax error", "This statement cannot be interpreted as a script.")
 			ERROR_MESSAGES("A001", "Closing brace } at the end of code block not found.", "A code block is a sequence of operations enclosed in {}, but there is no ending brace to go with the beginning brace. Check to make sure you did not misplace a code block or the closing brace for a nearby {")
 			ERROR_MESSAGES("A002", "Operator is used incorrectly.", "This formula involves adding or multiplying two elements, but it seems that one of the two sides is missing.")
 			ERROR_MESSAGES("A003", "The parenthesis don't seem to match up correctly.", "The parenthesis () used in the formula seem to have an invalid match. Please check the calculation formula.")
@@ -181,6 +183,18 @@ namespace sakura {
 			ERROR_MESSAGES("A038", "Opening brace { is required.", "An opening brace { is required at the beginning of the 'finally' block.")
 			ERROR_MESSAGES("A039", "A semicolon ; is required.", "Variable declarations must end with a semicolon ;")
 			ERROR_MESSAGES("A040", "A formula is required.", "You need to write an expression or value, you seem to be trying to proceed without writing one.")
+			ERROR_MESSAGES("A041", "A semicolon ; is required.", "A semicolon ; is required at the end of the statement.")
+			ERROR_MESSAGES("A042", "A unit name is required.", "A unit statement must be followed by a unit name.")
+			ERROR_MESSAGES("A043", "You cannot specify a unit multiple times.", "A unit can only be specified once in a file.")
+			ERROR_MESSAGES("A044", "'this' and 'base' cannot be used outside a class.", "'this' and 'base' are keywords exclusive to classes.")
+			ERROR_MESSAGES("A045", "An error variable name is required.", "To capture an error in a variable, enter the variable in parenthesis after 'catch', like this: catch(variable name).")
+			ERROR_MESSAGES("A046", "Closing parenthesis required.", "The error variable name must be followed by a closing parenthesis.")
+			ERROR_MESSAGES("A047", "The constructor is not written correctly.", "After the 'init' keyword, you can either write the constructor body starting with an opening brace {, or you can use the 'base' keyword followed by a colon : to call the base class constructor.")
+			ERROR_MESSAGES("A048", "Parent class not found.", "The parent class specified in the class inheritance was not found.")
+			ERROR_MESSAGES("A049", "The 'use' statement is not written correctly.", "After 'use', write the name of the unit or the unit you want to reference, and end with a semicolon.")
+			ERROR_MESSAGES("A050", "Opening parenthesis ( is required.", "An opening parenthesis is required in a 'foreach' statement.")
+			ERROR_MESSAGES("A051", "A loop variable name is required.", "In a 'foreach' statement, a loop variable must be specified after the opening parenthesis.")
+			ERROR_MESSAGES("A052", "The 'in' keyword and a loop target are required.", "In a 'foreach' statement, the keyword 'in' and an object to loop over must be specified after the variable.")
 
 			ERROR_MESSAGES("T001", "The braces {} do not match.", "Loading failed because there are closing braces without opening braces.")
 			ERROR_MESSAGES("T002", "This string cannot be used as a talk name.", "You are trying to use characters that cannot be used as variable names in a talk name.")
@@ -188,8 +202,9 @@ namespace sakura {
 			ERROR_MESSAGES("T004", "Opening brace { is required.", "A brace { is required before the start of the talk block body.")
 			ERROR_MESSAGES("T005", "These characters are not recognized syntax.", "This character does not fit any of the script syntax. Please check to see if you have written it correctly.")
 
-			ERROR_MESSAGES("S001", "ghost.asproj was not found.", "")
-			ERROR_MESSAGES("S002", "Could not open script file.", "")
+			ERROR_MESSAGES("S001", "ghost.asproj was not found.", "A ghost.asproj file is required to run Aosora.")
+			ERROR_MESSAGES("S002", "Could not open script file.", "The specified file could not be found.")
+			ERROR_MESSAGES("S003", "The unit file could not be opened.", "The specified file could not be found.")
 
 			.Register("AOSORA_ERROR_RELOADED_0", "Aosora reload completed")
 			.Register("AOSORA_ERROR_RELOADED_1", "Reloaded, no startup errors.")
@@ -211,9 +226,43 @@ namespace sakura {
 
 			.Register("AOSORA_BALLOON_CLOSE", "Close")
 			.Register("AOSORA_BALLOON_RELOAD", "Reload ghost")
+			.Register("AOSORA_RELOAD_DEBUGGER_HINT", "(You can restart the ghost from the debug tool)")
 
 			.Register("AOSORA_BUILTIN_ERROR_001", "The number of processes performed in one request has exceeded the limit. Is there an infinite loop?")
 			.Register("AOSORA_BUILTIN_ERROR_002", "Function call cannot be made because it is not a function or talk.")
+
+			.Register("AOSORA_DEBUGGER_001", "Connected to ghost.")
+			.Register("AOSORA_DEBUGGER_002", "Local variable")
+
+			.Register("AOSORA_COMMON_ERROR_001", "The number of arguments is incorrect.")
+
+			.Register("AOSORA_JSON_SERIALIZER_ERROR_001", "Deserialize only accepts strings as input.")
+
+			.Register("AOSORA_FILE_ACCESS_ERROR_001", "The file path specificaton must be a string.")
+			.Register("AOSORA_FILE_ACCESS_ERROR_002", "The character encoding specification is incorrect.")
+
+			.Register("AOSORA_ITERATOR_ERROR_001", "It is not possible to perform operations that change the size of an object during a foreach loop.")
+			.Register("AOSORA_ITERATOR_ERROR_002", "An object that cannot be looped over has been passed to the foreach loop.")
+
+			.Register("AOSORA_SAORI_RESULT_SUCCESS", "OK")
+			.Register("AOSORA_SAORI_RESULT_LOAD_DLL_FAILED", "The dll could not be loaded.")
+			.Register("AOSORA_SAORI_RESULT_LOAD_REQUEST_NOT_FOUND", "A 'request' function was not found. The DLL may not be SAORI-universal.")
+			.Register("AOSORA_SAORI_RESULT_LOAD_RESULT_FALSE", "An error occurred while loading the SAORI.")
+			.Register("AOSORA_SAORI_RESULT_PROTOCOL_ERROR", "There is an abnormality in communication with the SAORI. There may be a problem with the SAORI.")
+			.Register("AOSORA_SAORI_RESULT_BAD_REQUEST", "The SAORI has generated an error indicating an incorrect call method.")
+			.Register("AOSORA_SAORI_RESULT_INTERNAL_SERVER_ERROR", "The SAORI has encountered an error.")
+			.Register("AOSORA_SAORI_RESULT_UNKNOWN_CHARSET", "It could not be loaded because the SAORI uses a character encoding not supported by Aosora.")
+			.Register("AOSORA_SAORI_RESULT_UNKNOWN_STATUS", "A status code that Aosora does not support has occur1red.")
+			
+			.Register("AOSORA_PLUGIN_RESULT_SUCCESS", "OK")
+			.Register("AOSORA_PLUGIN_RESULT_LOAD_DLL_FAILED", "The dll could not be loaded.")
+
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FUNCTION_NOT_FOUND", "The function 'aosora_plugin_get_version' was not found. It may not be an Aosora plugin dll.")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_FAILED", "This plugin is not compatible with this version of Aosora.")
+			.Register("AOSORA_PLUGIN_RESULT_LOAD_FUNCTION_NOT_FOUND", "The function 'aosora_plugin_load' was not found. It may not be an Aosora plugin dll.")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_INVALID", "The plugin version check is incorrect.")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_NEW_PLUGIN", "The plugin configuration is new and not compatible with Aosora.")
+			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_OLD_PLUGIN", "The plugin configuration is outdated and not compatible with Aosora.")
 			;
 
 	}
