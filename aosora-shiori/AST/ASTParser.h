@@ -44,7 +44,7 @@ namespace sakura {
 		static ASTNodeRef ParseASTExpression(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
 
 		static void ParseASTExpressionList(ASTParseContext& parseContext, std::vector<ConstASTNodeRef>& result, uint32_t sequenceEndFlags);
-		static void ParseASTArgumentList(ASTParseContext& parseContext, std::vector<std::string>& result, uint32_t sequenceEndFlags);
+		static void ParseASTArgumentList(ASTParseContext& parseContext, std::vector<ScriptFunctionArgument>& result, uint32_t sequenceEndFlags);
 		static bool IsSequenceEnd(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
 
 		static ASTNodeRef ParseASTSourceRoot(ASTParseContext& parseContext);

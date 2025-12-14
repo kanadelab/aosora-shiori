@@ -24,7 +24,10 @@ namespace sakura {
 		TextSystem::CreateInstance();
 
 		auto tokens = sakura::TokensParser::Parse(document, SourceFilePath("test", "test"));
+		Assert::IsTrue(tokens->success, L"token parse error");
+
 		auto ast = sakura::ASTParser::Parse(tokens);
+		Assert::IsTrue(ast->success, L"ast parse error");
 
 		printf("---Execute---\n");
 		sakura::ScriptInterpreter interpreter;
@@ -45,13 +48,28 @@ namespace aosorashioritest
 	TEST_CLASS(aosorashioritest)
 	{
 	public:
-		TEST_METHOD(MainReturnsOne)
+		TEST_METHOD(StringLengthTest)
 		{
 			std::string sourceCode = R"(
 				return "！".length;
 			)";
 			auto result = sakura::Execute(sourceCode);
-			Assert::IsTrue(result == "1", L"Execute() should return \"1\"");
+			Assert::IsTrue(result == "1");
+		}
+
+		TEST_METHOD(DefaultArgTest)
+		{
+			std::string sourceCode = R"(
+				function Num(){ return 10; }
+
+				function TestFunc(a, b = 5, c = "qwert".length, d = Num()){
+					return a + b + c + d;
+				}
+				
+				return TestFunc(7);
+			)";
+			auto result = sakura::Execute(sourceCode);
+			Assert::IsTrue(result == "27");
 		}
 	};
 }

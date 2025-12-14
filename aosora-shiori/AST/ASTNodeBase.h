@@ -340,6 +340,27 @@ namespace sakura {
 		}
 	};
 
+	//スクリプト関数の引数
+	class ScriptFunctionArgument {
+	private:
+		std::string name;
+		ASTNodeRef expression;
+
+	public:
+		ScriptFunctionArgument(const std::string& name, const ASTNodeRef& expr):
+			name(name),
+			expression(expr)
+		{ }
+
+		const std::string& GetName() const {
+			return name;
+		}
+
+		const ASTNodeRef& GetExpression() const {
+			return expression;
+		}
+	};
+
 	//スクリプト関数
 	class ScriptFunction {
 	private:
@@ -347,16 +368,16 @@ namespace sakura {
 		ASTNodeRef functionBody;
 
 		//引数リスト
-		std::vector<std::string> argumentList;
+		std::vector<ScriptFunctionArgument> argumentList;
 
 	public:
-		ScriptFunction(const ASTNodeRef& body, const std::vector<std::string>& args) :
+		ScriptFunction(const ASTNodeRef& body, const std::vector<ScriptFunctionArgument>& args) :
 			functionBody(body),
 			argumentList(args)
 		{}
 
 		const ASTNodeRef& GetFunctionBody() const { return functionBody; }
-		const std::vector<std::string>& GetArguments() const { return argumentList; }
+		const std::vector<ScriptFunctionArgument>& GetArguments() const { return argumentList; }
 
 		void DebugDump(int32_t indent) const{
 			functionBody->DebugDump(indent);

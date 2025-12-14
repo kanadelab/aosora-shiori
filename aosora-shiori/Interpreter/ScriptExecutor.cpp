@@ -1039,8 +1039,10 @@ namespace sakura {
 			}
 			
 			OverloadedFunctionList* functionList = nullptr;
+			bool isVariableRegistered = false;
 			
 			if (item != nullptr) {
+				isVariableRegistered = true;
 				functionList = executeContext.GetInterpreter().InstanceAs<OverloadedFunctionList>(item->GetObjectRef());
 			}
 
@@ -1058,7 +1060,12 @@ namespace sakura {
 					executeContext.GetInterpreter().SetUnitVariable(funcName, ScriptValue::Make(funcList), node.GetSourceMetadata()->GetScriptUnit()->GetUnit());
 				}
 				else {
-					executeContext.GetBlockScope()->SetLocalVariable(funcName, ScriptValue::Make(funcList));
+					if (!isVariableRegistered) {
+						executeContext.GetBlockScope()->RegisterLocalVariable(funcName, ScriptValue::Make(funcList));
+					}
+					else {
+						executeContext.GetBlockScope()->SetLocalVariable(funcName, ScriptValue::Make(funcList));
+					}
 				}
 			}
 		}
@@ -1867,7 +1874,11 @@ namespace sakura {
 							//引数を設定
 							a = args[i];
 						}
-						callScope->RegisterLocalVariable(scriptFunc->GetArguments()[i], a);
+						else if(scriptFunc->GetArguments()[i].GetExpression() != nullptr) {
+							//不足分はデフォルト引数があれば使う
+							a = ScriptExecutor::ExecuteASTNode(*scriptFunc->GetArguments()[i].GetExpression(), *funcContext);
+						}
+						callScope->RegisterLocalVariable(scriptFunc->GetArguments()[i].GetName(), a);
 					}
 
 					//呼出
@@ -1955,8 +1966,6 @@ namespace sakura {
 			ScriptExecuteContext funcContext(*this, initStack, initScope);
 
 			//初期化関数があれば引数を作成
-			//TODO: なくても評価が必要かも
-			//引数評価の仕組みを統一する必要ありそう
 			if (initFunc != nullptr) {
 				for (size_t i = 0; i < initFunc->GetArguments().size(); i++) {
 
@@ -1965,7 +1974,10 @@ namespace sakura {
 						//引数を設定
 						a = args[i];
 					}
-					initScope->RegisterLocalVariable(initFunc->GetArguments()[i], a);
+					else if (initFunc->GetArguments()[i].GetExpression() != nullptr) {
+						a = ScriptExecutor::ExecuteASTNode(*initFunc->GetArguments()[i].GetExpression(), funcContext);
+					}
+					initScope->RegisterLocalVariable(initFunc->GetArguments()[i].GetName(), a);
 				}
 			}
 

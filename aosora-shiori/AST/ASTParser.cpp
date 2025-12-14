@@ -64,6 +64,7 @@ namespace sakura {
 	const std::string ERROR_AST_050 = "A050";
 	const std::string ERROR_AST_051 = "A051";
 	const std::string ERROR_AST_052 = "A052";
+	const std::string ERROR_AST_053 = "A053";
 
 	//２値演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -1239,7 +1240,7 @@ namespace sakura {
 
 	//仮引数リストを解析
 	//TODO: 最後のトークンを捨てて終えるのかどうか定まってないので決める
-	void ASTParser::ParseASTArgumentList(ASTParseContext& parseContext, std::vector<std::string>& result, uint32_t sequenceEndFlags) {
+	void ASTParser::ParseASTArgumentList(ASTParseContext& parseContext, std::vector<ScriptFunctionArgument>& result, uint32_t sequenceEndFlags) {
 
 		//カンマ終了はおかしいはず
 		assert(!CheckFlags(sequenceEndFlags, SEQUENCE_END_FLAG_COMMA));
@@ -1255,6 +1256,8 @@ namespace sakura {
 			return;
 		}
 
+		std::set<std::string> duplicateChecker;
+
 		//要素数ぶんだけループ
 		while (!parseContext.IsEnd()) {
 
@@ -1264,8 +1267,22 @@ namespace sakura {
 				return;
 			}
 
-			result.push_back(parseContext.GetCurrent().body);
+			const std::string name = parseContext.GetCurrent().body;
+			if (!duplicateChecker.insert(name).second) {
+				parseContext.Error(ERROR_AST_053, parseContext.GetCurrent());
+			}
 			parseContext.FetchNext();
+
+			//イコールが来ていればデフォルト引数式
+			ASTNodeRef defaultArgumentExpression = nullptr;
+			if (parseContext.GetCurrent().type == ScriptTokenType::Equal) {
+				parseContext.FetchNext();
+				defaultArgumentExpression = ParseASTExpression(parseContext, sequenceEndFlags | SEQUENCE_END_FLAG_COMMA);
+				parseContext.FetchPrev();
+			}
+
+			//引数登録
+			result.emplace_back(name, defaultArgumentExpression);
 
 			//終端かカンマ
 			if (IsSequenceEnd(parseContext, sequenceEndFlags)) {
@@ -1536,7 +1553,7 @@ namespace sakura {
 			parseContext.FetchNext();
 		}
 
-		std::vector<std::string> argList;
+		std::vector<ScriptFunctionArgument> argList;
 		bool isSyntaxSugar = false;
 
 		//開カッコがあれば引数リスト
@@ -1633,7 +1650,7 @@ namespace sakura {
 
 		parseContext.FetchNext();;
 
-		std::vector<std::string> argList;
+		std::vector<ScriptFunctionArgument> argList;
 
 		//開カッコがれば引数リスト
 		if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
@@ -1716,7 +1733,7 @@ namespace sakura {
 		}
 
 		//開カッコがあれば引数リスト
-		std::vector<std::string> argList;
+		std::vector<ScriptFunctionArgument> argList;
 		if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
 			parseContext.FetchNext();
 			ParseASTArgumentList(parseContext, argList, SEQUENCE_END_FLAG_BLACKET);
@@ -1862,7 +1879,7 @@ namespace sakura {
 				parseContext.FetchNext();
 
 				//引数リスト
-				std::vector<std::string> argList;
+				std::vector<ScriptFunctionArgument> argList;
 
 				if (parseContext.GetCurrent().type == ScriptTokenType::BracketBegin) {
 					//引数解析
