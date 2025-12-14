@@ -1,7 +1,5 @@
 ﻿#include <stdio.h>
-#if defined(WIN32) || defined(_WIN32)
-#include <windows.h>
-#endif // WIN32 or _WIN32
+#include "Misc/Platform.h"
 #include <fstream>
 #include "Misc/Utility.h"
 

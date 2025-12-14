@@ -184,6 +184,9 @@
     <ClInclude Include="Misc\ProjectParser.h">
       <Filter>Misc</Filter>
     </ClInclude>
+    <ClInclude Include="Misc\Platform.h">
+      <Filter>Misc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Tokens">

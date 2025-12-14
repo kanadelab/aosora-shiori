@@ -443,4 +443,103 @@ namespace sakura {
 		response.SetReturnValue(ScriptValue::False);
 	}
 
+	void ScriptSSTP::GetProperty(const FunctionRequest& request, FunctionResponse& response){
+
+		callbackResult = "";
+
+		//自分で書いた里々のコードを移植
+#if defined(AOSORA_REQUIRED_WIN32)
+		auto staticStore = request.GetInterpreter().StaticStore<ScriptSSTP>();
+		if (!staticStore->hwndList.empty() && request.GetArgumentCount() > 0) {
+			const std::string propertyName = request.GetArgument(0)->ToString();
+
+			//蒼空からベースウェアにDirectSSTPを飛ばしてプロパティシステムにアクセスする。元のSHIORI呼出を返さずにプロパティを取れる。
+
+			//結果受信用ウインドウ作成: リソースの仕様を局所化してみたけどオーバーヘッドがでかい場合はSHIORIの初期化周辺に絡めるといいのかも
+			const char* windowname = "aosora_get_property";
+
+			WNDCLASSEX windowClass;
+			ZeroMemory(&windowClass, sizeof(windowClass));
+
+			windowClass.cbSize = sizeof(windowClass);
+			windowClass.hInstance = GetModuleHandle(NULL);
+			windowClass.lpszClassName = windowname;
+			windowClass.lpfnWndProc = &ScriptSSTP::GetPropertyHandler;
+
+			::RegisterClassEx(&windowClass);
+
+			HWND propertyWindow = ::CreateWindow(windowname, windowname, 0, 0, 0, 100, 100, NULL, NULL, windowClass.hInstance, NULL);
+
+			//リクエスト作成
+			const HWND targetHWnd = staticStore->hwndList[0];
+			std::ostringstream ost;
+			ost << "EXECUTE SSTP/1.1\r\nCommand: GetProperty[" << propertyName << "]\r\nSender: Satori\r\nCharset: Shift_JIS\r\n\r\n";
+			std::string sendData = ost.str();
+
+			//メッセージ転送
+			COPYDATASTRUCT cds;
+			cds.dwData = 9801;
+			cds.cbData = sendData.size();
+			cds.lpData = malloc(cds.cbData);
+			memcpy(cds.lpData, sendData.c_str(), cds.cbData);
+
+			/*LRESULT res =*/ ::SendMessage(targetHWnd, WM_COPYDATA, (WPARAM)propertyWindow, (LPARAM)&cds);
+
+			//リソースの開放
+			free(cds.lpData);
+
+			::DestroyWindow(propertyWindow);
+			::UnregisterClass(windowClass.lpszClassName, windowClass.hInstance);
+		}
+#endif
+		response.SetReturnValue(ScriptValue::Make(callbackResult));
+	}
+
+#if defined(AOSORA_REQUIRED_WIN32)
+	std::string ScriptSSTP::callbackResult;
+	LRESULT CALLBACK ScriptSSTP::GetPropertyHandler(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
+	{
+		if (message == WM_COPYDATA) {
+			const COPYDATASTRUCT* cds = (const COPYDATASTRUCT*)lparam;
+			const std::string recvStr((const char*)cds->lpData, cds->cbData);
+
+			std::vector<std::string> lines;
+			std::vector<std::string> header;
+			SplitString(recvStr, lines, "\r\n", 0);
+			if (lines.size() > 2) {
+				SplitString(lines[0], header, " ", 2);
+
+				if (header.size() > 1) {
+					if (header[1] == "200 OK") {
+						//1行取得
+						callbackResult = lines[2];
+					}
+				}
+			}
+		}
+		return CallWindowProc(DefWindowProc, hwnd, message, wparam, lparam);
+	}
+#endif
+
+	void ScriptSSTP::HandleEvent(ScriptInterpreter& interpreter, const ShioriRequest& shioriRequest) {
+#if defined(AOSORA_REQUIRED_WIN32)
+		if (!shioriRequest.IsGet() && shioriRequest.GetEventId() == "hwnd") {
+			auto staticStore = interpreter.StaticStore<ScriptSSTP>();
+			std::vector<std::string> items;
+			SplitString(shioriRequest.GetReference(0), items, static_cast<char>(1));
+
+			staticStore->hwndList.clear();
+			for (const auto& item : items) {
+				staticStore->hwndList.push_back(reinterpret_cast<HWND>(std::stoull(item)));
+			}
+		}
+#endif
+	}
+
+	ScriptValueRef ScriptSSTP::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "GetProperty") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&ScriptSSTP::GetProperty));
+		}
+		return nullptr;
+	}
 }

@@ -225,7 +225,7 @@ namespace sakura {
 		{}
 
 		ErrorLevel GetLevel() const { return level; }
-		const std::string& GetMessage() const { return message; }
+		const std::string& GetErrorMessage() const { return message; }
 
 		const std::string GetLevelString() const {
 			switch (level) {
@@ -306,7 +306,7 @@ namespace sakura {
 				if (i > 0) {
 					result += (char)1;
 				}
-				result += errors[i].GetMessage();
+				result += errors[i].GetErrorMessage();
 			}
 			return result;
 		}

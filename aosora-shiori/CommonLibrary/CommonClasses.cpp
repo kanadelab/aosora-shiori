@@ -720,6 +720,8 @@ namespace sakura {
 
 		DebugOutputContext debugOutputContext;
 		std::string data = request.GetArgument(0)->DebugToString(request.GetContext(), debugOutputContext);
+		DebugOut(data.c_str());
+
 		const ASTNodeBase* node = request.GetContext().GetLatestASTNode();
 
 		std::ofstream* const stream = request.GetContext().GetInterpreter().GetDebugOutputStream();

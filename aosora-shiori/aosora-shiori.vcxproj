@@ -169,6 +169,7 @@
     <ClInclude Include="Interpreter\ScriptVariable.h" />
     <ClInclude Include="Misc\Json.h" />
     <ClInclude Include="Misc\Message.h" />
+    <ClInclude Include="Misc\Platform.h" />
     <ClInclude Include="Misc\PluginLoader.h" />
     <ClInclude Include="Misc\ProjectParser.h" />
     <ClInclude Include="Misc\SaoriLoader.h" />

@@ -1681,6 +1681,10 @@ namespace sakura {
 
 		ImportClass(NativeClass::Make<ScriptJsonSerializer>("JsonSerializer", nullptr, "std"));
 		ImportClass(NativeClass::Make<ScriptFileAccess>("File", nullptr, "std"));
+		ImportClass(NativeClass::Make<ScriptSSTP>("SSTP", nullptr, "std"));
+
+		//無名にしたいところ
+		ImportClass(NativeClass::Make<ScriptSSTPStore>("___SSTPStore", nullptr, "std"));
 	}
 
 	ScriptInterpreter::~ScriptInterpreter() {

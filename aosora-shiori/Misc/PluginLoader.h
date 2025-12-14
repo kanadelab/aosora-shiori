@@ -1,10 +1,7 @@
 ﻿#pragma once
 #include <string>
 #include "Base.h"
-
-#if defined(AOSORA_REQUIRED_WIN32)
-#include <Windows.h>
-#endif
+#include "Misc/Platform.h"	
 
 #if defined(AOSORA_ENABLE_PLUGIN_LOADER)
 #include "Misc/AosoraPluginRaw.h"

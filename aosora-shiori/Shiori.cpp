@@ -6,6 +6,7 @@
 #include "Misc/Message.h"
 #include "Misc/ProjectParser.h"
 #include "Debugger/Debugger.h"
+#include "CommonLibrary/StandardLibrary.h"
 
 namespace sakura {
 
@@ -201,7 +202,7 @@ namespace sakura {
 			if (response.HasError()) {
 				//エラーを報告していたらエラーを引き上げる
 				bootingExecuteErrorGuide = response.GetValue();
-				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetErrorMessage();
 				return;
 			}
 		}
@@ -217,7 +218,7 @@ namespace sakura {
 			if (response.HasError()) {
 				//エラーを報告していたらエラーを引き上げる
 				bootingExecuteErrorGuide = response.GetValue();
-				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetMessage();
+				bootingExecuteErrorLog = response.GetErrorCollection()[0].GetErrorMessage();
 				return;
 			}
 		}
@@ -460,6 +461,11 @@ namespace sakura {
 
 		//その他拡張のイベント処理
 		FunctionResponse eventRes;
+
+		//SSTPシステムはウインドウハンドルを捕捉する
+		ScriptSSTP::HandleEvent(interpreter, request);
+
+		//トークタイマーによるイベント発生
 		if (TalkTimer::HandleEvent(interpreter, eventRes, request, !result.empty())) {
 			if (eventRes.IsThrew()) {
 				HandleRuntimeError(eventRes.GetThrewError(), response, request.IsSaori());

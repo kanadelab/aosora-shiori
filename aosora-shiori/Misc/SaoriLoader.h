@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#if defined(WIN32) || defined(_WIN32)
-#include <windows.h>
+#if defined(AOSORA_REQUIRED_WIN32)
+#include "Misc/Platform.h"	
 #else
 using HMODULE = void *;
-#endif // WIN32 or _WIN32
+#endif
 #include <string>
 #include <vector>
 #include "Base.h"
