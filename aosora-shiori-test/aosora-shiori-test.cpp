@@ -71,5 +71,15 @@ namespace aosorashioritest
 			auto result = sakura::Execute(sourceCode);
 			Assert::IsTrue(result == "27");
 		}
+
+		TEST_METHOD(TypeCheckTest)
+		{
+			std::string sourceCode = R"(
+				return 
+					([]).InstanceOf(Array) && ({}).InstanceOf(Map);
+			)";
+			auto result = sakura::Execute(sourceCode);
+			Assert::IsTrue(result == "true");
+		}
 	};
 }

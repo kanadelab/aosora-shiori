@@ -1652,7 +1652,7 @@ namespace sakura {
 		ImportClass(NativeClass::Make<ScriptIterable>("Iterable"));
 		ImportClass(NativeClass::Make<ScriptIterator>("Iterator"));
 		ImportClass(NativeClass::Make<ScriptArray>("Array", ClassPath("Iterable")));
-		ImportClass(NativeClass::Make<ScriptArrayIterator>("Array", ClassPath("Iterator")));
+		ImportClass(NativeClass::Make<ScriptArrayIterator>("ArrayIterator", ClassPath("Iterator")));
 		ImportClass(NativeClass::Make<ScriptObject>("Map", ClassPath("Iterable")));
 		ImportClass(NativeClass::Make<ScriptObjectIterator>("MapIterator", ClassPath("Iterator")));
 		ImportClass(NativeClass::Make<ClassData>("ClassData"));
