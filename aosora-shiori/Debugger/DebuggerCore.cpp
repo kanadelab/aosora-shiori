@@ -1241,6 +1241,11 @@ namespace sakura {
 			return;
 		}
 
+		if (!node.IsExecutable()) {
+			//非実行ステートメントは無視
+			return;
+		}
+
 		ScriptInterpreter::DebuggerScope debuggerScope(executeContext.GetInterpreter());
 
 		bool isBreak = false;

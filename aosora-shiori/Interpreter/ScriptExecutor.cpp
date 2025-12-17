@@ -167,10 +167,8 @@ namespace sakura {
 
 		for (const ConstASTNodeRef& stmt : node.GetStatements()) {
 
-			if (stmt->IsExecutable()) {
-				//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
-				Debugger::NotifyASTExecute(*stmt.get(), executeContext);
-			}
+			//ここがステートメントになるはずなので、ブレークポイントヒットとしては適切なはず⋯
+			Debugger::NotifyASTExecute(*stmt.get(), executeContext);
 
 			//実行
 			ExecuteInternal(*stmt, executeContext);

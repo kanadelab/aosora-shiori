@@ -40,7 +40,7 @@ namespace sakura {
 
 	public:
 		static const OperatorInformation* TokenToOperator(const ScriptToken& token, bool isRequireOperand);
-		static ASTNodeRef ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock);
+		static ASTNodeRef ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock, bool isCodeBlock);
 		static ASTNodeRef ParseASTExpression(ASTParseContext& parseContext, uint32_t sequenceEndFlags);
 
 		static void ParseASTExpressionList(ASTParseContext& parseContext, std::vector<ConstASTNodeRef>& result, uint32_t sequenceEndFlags);

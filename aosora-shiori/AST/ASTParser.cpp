@@ -394,7 +394,7 @@ namespace sakura {
 			}
 
 			//所属しているステートメントをブロック終了までパースする
-			auto node = ParseASTStatement(parseContext, true);
+			auto node = ParseASTStatement(parseContext, true, false);
 			result->AddStatement(node);
 		}
 
@@ -418,7 +418,7 @@ namespace sakura {
 			}
 
 			//所属しているステートメントをブロック終了までパースする
-			auto node = ParseASTStatement(parseContext, false);
+			auto node = ParseASTStatement(parseContext, false, false);
 			result->AddStatement(node);
 		}
 
@@ -507,7 +507,7 @@ namespace sakura {
 			else
 			{
 				//それ以外の場合は通常の関数内ステートメントとして処理
-				ASTNodeRef r = ParseASTStatement(parseContext, false);
+				ASTNodeRef r = ParseASTStatement(parseContext, false, false);
 				result->AddStatement(r);
 			}
 		}
@@ -589,37 +589,63 @@ namespace sakura {
 	}
 
 	//ASTステートメントのパースへの振り分け
-	ASTNodeRef ASTParser::ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock) {
+	ASTNodeRef ASTParser::ParseASTStatement(ASTParseContext& parseContext, bool isRootBlock, bool isCodeBlock) {
+		ASTNodeRef result;
+
 		switch (parseContext.GetCurrent().type) {
 		case ScriptTokenType::Local:
-			return ParseASTLocalVariable(parseContext);
+			result = ParseASTLocalVariable(parseContext);
+			break;
 		case ScriptTokenType::Function:
-			return ParseASTFunctionStatement(parseContext, isRootBlock);
+			result = ParseASTFunctionStatement(parseContext, isRootBlock);
+			break;
 		case ScriptTokenType::Talk:
-			return ParseASTTalkStatement(parseContext, isRootBlock);
+			result = ParseASTTalkStatement(parseContext, isRootBlock);
+			break;
 		case ScriptTokenType::Foreach:
-			return ParseASTForeach(parseContext);
+			result = ParseASTForeach(parseContext);
+			break;
 		case ScriptTokenType::For:
-			return ParseASTFor(parseContext);
+			result = ParseASTFor(parseContext);
+			break;
 		case ScriptTokenType::While:
-			return ParseASTWhile(parseContext);
+			result = ParseASTWhile(parseContext);
+			break;
 		case ScriptTokenType::If:
-			return ParseASTIf(parseContext);
+			result = ParseASTIf(parseContext);
+			break;
 		case ScriptTokenType::Break:
-			return ParseASTBreak(parseContext);
+			result = ParseASTBreak(parseContext);
+			break;
 		case ScriptTokenType::Continue:
-			return ParseASTContinue(parseContext);
+			result = ParseASTContinue(parseContext);
+			break;
 		case ScriptTokenType::Return:
-			return ParseASTReturn(parseContext);
+			result = ParseASTReturn(parseContext);
+			break;
 		case ScriptTokenType::Try:
-			return ParseASTTry(parseContext);
+			result = ParseASTTry(parseContext);
+			break;
 		case ScriptTokenType::Throw:
-			return ParseASTThrow(parseContext);
+			result = ParseASTThrow(parseContext);
+			break;
+		default:
+			//ステートメントでなければその行は式として処理する
+			//たとえば代入式や関数呼び出しなど
+			result = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
 		}
 
-		//ステートメントでなければその行は式として処理する
-		//たとえば代入式や関数呼び出しなど
-		return ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
+		if (isCodeBlock) {
+			//コードブロックとして実行すべきケースはコードブロックでラップする
+			//else後のifなど
+			std::shared_ptr<ASTNodeCodeBlock> codeBlock(new ASTNodeCodeBlock(parseContext.GetSourceMetadata()));
+			codeBlock->SetSourceRange(result->GetSourceRange());
+			codeBlock->AddStatement(result);
+			return codeBlock;
+		}
+		else {
+			return result;
+		}
 	}
 
 	//式の解析用スタック
@@ -2243,7 +2269,7 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			loopStatement = ParseASTStatement(parseContext, true);
+			loopStatement = ParseASTStatement(parseContext, true, true);
 		}
 
 		ASTNodeForeach* const node = new ASTNodeForeach(valueName, keyName, isRegisterLoopVariable, target, loopStatement, parseContext.GetSourceMetadata());
@@ -2314,7 +2340,7 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			loopStatement = ParseASTStatement(parseContext, true);
+			loopStatement = ParseASTStatement(parseContext, true, true);
 		}
 
 		ASTNodeRef result(new ASTNodeFor(initExpression, ifExpression, incrementExpression, loopStatement, parseContext.GetSourceMetadata()));
@@ -2353,7 +2379,7 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			trueStatement = ParseASTStatement(parseContext, true);
+			trueStatement = ParseASTStatement(parseContext, true, true);
 		}
 
 		ASTNodeRef result(new ASTNodeWhile(ifExpression, trueStatement, parseContext.GetSourceMetadata()));
@@ -2392,7 +2418,7 @@ namespace sakura {
 		}
 		else {
 			//ブロック開始でなければ単体ステートメントになる
-			trueStatement = ParseASTStatement(parseContext, true);
+			trueStatement = ParseASTStatement(parseContext, true, true);
 		}
 
 		ASTNodeRef r;
@@ -2406,7 +2432,7 @@ namespace sakura {
 				falseStatement = ParseASTCodeBlock(parseContext, true);
 			}
 			else {
-				falseStatement = ParseASTStatement(parseContext, true);
+				falseStatement = ParseASTStatement(parseContext, true, true);
 			}
 			r = ASTNodeRef(new ASTNodeIf(ifExpression, trueStatement, falseStatement, parseContext.GetSourceMetadata()));
 		}
