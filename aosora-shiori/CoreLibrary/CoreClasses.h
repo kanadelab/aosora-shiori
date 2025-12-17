@@ -675,8 +675,8 @@ namespace sakura {
 				}
 
 				size_t index;
-				if (request.GetArgument(1)->ToIndex(index) && index <= obj->Count()) {
-					obj->Insert(request.GetArgument(0), index);
+				if (request.GetArgument(0)->ToIndex(index) && index <= obj->Count()) {
+					obj->Insert(request.GetArgument(1), index);
 				}
 			}
 		}
