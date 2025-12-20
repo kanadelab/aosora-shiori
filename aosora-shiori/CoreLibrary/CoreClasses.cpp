@@ -182,7 +182,7 @@ namespace sakura {
 	void OverloadedFunctionList::ScriptIsNoOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response) {
 		auto* self = request.GetInterpreter().InstanceAs<OverloadedFunctionList>(request.GetThisValue());
 		if (self != nullptr) {
-			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() != SelectorMode::NoOverwrappedRandom));
+			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() == SelectorMode::NoOverwrappedRandom));
 		}
 		else {
 			response.SetReturnValue(ScriptValue::False);
@@ -192,7 +192,7 @@ namespace sakura {
 	void OverloadedFunctionList::ScriptIsOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response) {
 		auto* self = request.GetInterpreter().InstanceAs<OverloadedFunctionList>(request.GetThisValue());
 		if (self != nullptr) {
-			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() != SelectorMode::OverwrappedRandom));
+			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() == SelectorMode::OverwrappedRandom));
 		}
 		else {
 			response.SetReturnValue(ScriptValue::False);
