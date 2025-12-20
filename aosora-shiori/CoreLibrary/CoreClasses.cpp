@@ -184,7 +184,9 @@ namespace sakura {
 		if (self != nullptr) {
 			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() != SelectorMode::NoOverwrappedRandom));
 		}
-		response.SetReturnValue(ScriptValue::False);
+		else {
+			response.SetReturnValue(ScriptValue::False);
+		}
 	}
 
 	void OverloadedFunctionList::ScriptIsOverwrappedRandom(const FunctionRequest& request, FunctionResponse& response) {
@@ -192,7 +194,9 @@ namespace sakura {
 		if (self != nullptr) {
 			response.SetReturnValue(ScriptValue::Make(self->GetSelectorMode() != SelectorMode::OverwrappedRandom));
 		}
-		response.SetReturnValue(ScriptValue::False);
+		else {
+			response.SetReturnValue(ScriptValue::False);
+		}
 	}
 
 	void OverloadedFunctionList::ShuffleOverwrap(const FunctionRequest& request, FunctionResponse& response) {
@@ -612,6 +616,9 @@ namespace sakura {
 		//デフォルト設定用オブジェクトを追加
 		auto staticStore = interpreter.StaticStore<TalkBuilder>();
 		staticStore->RawSet(NAME_DEFAULT_SETTINGS, ScriptValue::Make(interpreter.CreateNativeObject<TalkBuilderSettings>()));
+
+		//CURRENTがnullにならないよう一旦Prepare()
+		Prepare(interpreter);
 	}
 
 	void TalkBuilder::Prepare(ScriptInterpreter& interpreter) {
