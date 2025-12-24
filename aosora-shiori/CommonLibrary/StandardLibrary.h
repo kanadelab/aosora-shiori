@@ -81,6 +81,7 @@ namespace sakura {
 		static void ScriptMatch(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptMatchAll(const FunctionRequest& request, FunctionResponse& response);
 		static void ScriptReplace(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptIsValid(const FunctionRequest& request, FunctionResponse& response);
 
 	public:
 		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);

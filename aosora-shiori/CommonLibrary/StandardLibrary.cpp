@@ -677,6 +677,25 @@ namespace sakura {
 		}
 	}
 
+	void Regex::ScriptIsValid(const FunctionRequest& request, FunctionResponse& response)
+	{
+		if (request.GetArgumentCount() >= 3) {
+			std::string pattern = request.GetArgument(0)->ToString();
+			try {
+				std::regex pat(pattern);
+
+				//例外がでなければよい
+				response.SetReturnValue(ScriptValue::True);
+			}
+			catch (std::exception&) {
+				response.SetReturnValue(ScriptValue::False);
+			}
+		}
+		else {
+			response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_COMMON_ERROR_002")));
+		}
+	}
+
 	ScriptValueRef Regex::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
 		if (key == "Match") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptMatch));
@@ -689,6 +708,9 @@ namespace sakura {
 		}
 		else if (key == "Replace") {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptReplace));
+		}
+		else if (key == "IsValid") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptIsValid));
 		}
 		return nullptr;
 	}
