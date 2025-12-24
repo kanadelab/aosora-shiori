@@ -547,7 +547,7 @@ namespace sakura {
 		Reference<ScriptObject> result = scriptInterpreter.CreateObject();
 		result->RawSet("index", ScriptValue::Make(static_cast<double>(ByteIndexToUncodeCharIndex(inputString, index))));
 		result->RawSet("length", ScriptValue::Make(static_cast<double>(CountUnicodeCharacters(matchString))));
-		result->RawSet("string", ScriptValue::Make(matchString));
+		result->RawSet("body", ScriptValue::Make(matchString));
 		return ScriptValue::Make(result);
 	}
 
@@ -566,7 +566,7 @@ namespace sakura {
 				return;
 			}
 
-			if (std::regex_search(target, matchResult, pat)) {
+			if (std::regex_search(target, matchResult, pat, std::regex_constants::format_no_copy | std::regex_constants::format_first_only)) {
 				response.SetReturnValue(MakeMatchObject(request.GetInterpreter(), target, matchResult.str(), matchResult.position(), matchResult.length()));
 			}
 			else {
@@ -594,7 +594,7 @@ namespace sakura {
 			}
 
 			// 一致するかどうかの判定だけ
-			if (std::regex_search(target, matchResult, pat)) {
+			if (std::regex_search(target, matchResult, pat, std::regex_constants::format_no_copy | std::regex_constants::format_first_only)) {
 				response.SetReturnValue(ScriptValue::True);
 			}
 			else {
@@ -627,7 +627,7 @@ namespace sakura {
 
 			//マッチするだけ繰り返す
 			while (true) {
-				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat)) {
+				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat, std::regex_constants::format_no_copy | std::regex_constants::format_first_only)) {
 					resultString.append(target.cbegin() + index, target.cend());
 					break;
 				}
@@ -663,7 +663,7 @@ namespace sakura {
 
 			//マッチするだけ繰り返す
 			while (true) {
-				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat)) {
+				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat, std::regex_constants::format_no_copy | std::regex_constants::format_first_only)) {
 					break;
 				}
 				//一致箇所を記録
