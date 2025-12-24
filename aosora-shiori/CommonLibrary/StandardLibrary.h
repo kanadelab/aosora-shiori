@@ -73,4 +73,17 @@ namespace sakura {
 		static void HandleEvent(ScriptInterpreter& interpreter, const ShioriRequest& shioriRequest);
 	};
 
+	//正規表現
+	class Regex : public Object<Regex> {
+	private:
+		static ScriptValueRef MakeMatchObject(ScriptInterpreter& interpreter, const std::string& inputString, const std::string& matchString, size_t index, size_t length);
+		static void ScriptIsMatch(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptMatch(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptMatchAll(const FunctionRequest& request, FunctionResponse& response);
+		static void ScriptReplace(const FunctionRequest& request, FunctionResponse& response);
+
+	public:
+		static ScriptValueRef StaticGet(const std::string& key, ScriptExecuteContext& executeContext);
+	};
+
 }

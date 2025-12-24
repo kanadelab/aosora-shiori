@@ -109,6 +109,7 @@ namespace sakura {
 			.Register("AOSORA_DEBUGGER_002", "ローカル変数")
 
 			.Register("AOSORA_COMMON_ERROR_001", "引数の数が正しくありません。")
+			.Register("AOSORA_COMMON_ERROR_002", "引数の数が不足しています。")
 
 			.Register("AOSORA_JSON_SERIALIZER_ERROR_001", "Deserializeに入力できるのは文字列だけです。")
 
@@ -136,7 +137,9 @@ namespace sakura {
 			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_INVALID", "プラグインのバージョンチェックが正しくありません。")
 			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_NEW_PLUGIN", "碧空に対してプラグインの構成が新しく、互換性がありません。")
 			.Register("AOSORA_PLUGIN_RESULT_GET_VERSION_COMPATIBILITY_OLD_PLUGIN", "碧空に対してプラグインの構成が古く、互換性がありません。")
-			;
+			
+			.Register("AOSORA_REGEX_INVALID_PATTERN", "正規表現パターンが正しくありません。")
+				;
 
 
 		//en-us

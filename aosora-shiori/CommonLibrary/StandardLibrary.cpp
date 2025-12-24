@@ -542,4 +542,154 @@ namespace sakura {
 		}
 		return nullptr;
 	}
+
+	ScriptValueRef Regex::MakeMatchObject(ScriptInterpreter& scriptInterpreter, const std::string& inputString, const std::string& matchString, size_t index, size_t length) {
+		Reference<ScriptObject> result = scriptInterpreter.CreateObject();
+		result->RawSet("index", ScriptValue::Make(static_cast<double>(ByteIndexToUncodeCharIndex(inputString, index))));
+		result->RawSet("length", ScriptValue::Make(static_cast<double>(CountUnicodeCharacters(matchString))));
+		result->RawSet("string", ScriptValue::Make(matchString));
+		return ScriptValue::Make(result);
+	}
+
+	void Regex::ScriptMatch(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			std::string target = request.GetArgument(0)->ToString();
+			std::string pattern = request.GetArgument(1)->ToString();
+			std::smatch matchResult;
+			std::regex pat;
+			
+			try {
+				pat = std::regex(pattern);
+			}
+			catch(std::exception&){
+				response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_REGEX_INVALID_PATTERN")));
+				return;
+			}
+
+			if (std::regex_search(target, matchResult, pat)) {
+				response.SetReturnValue(MakeMatchObject(request.GetInterpreter(), target, matchResult.str(), matchResult.position(), matchResult.length()));
+			}
+			else {
+				response.SetReturnValue(ScriptValue::Null);
+			}
+		}
+		else {
+			response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_COMMON_ERROR_002")));
+		}
+	}
+
+	void Regex::ScriptIsMatch(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			std::string target = request.GetArgument(0)->ToString();
+			std::string pattern = request.GetArgument(1)->ToString();
+			std::smatch matchResult;
+			std::regex pat;
+
+			try {
+				pat = std::regex(pattern);
+			}
+			catch (std::exception&) {
+				response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_REGEX_INVALID_PATTERN")));
+				return;
+			}
+
+			// 一致するかどうかの判定だけ
+			if (std::regex_search(target, matchResult, pat)) {
+				response.SetReturnValue(ScriptValue::True);
+			}
+			else {
+				response.SetReturnValue(ScriptValue::False);
+			}
+		}
+		else {
+			response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_COMMON_ERROR_002")));
+		}
+	}
+
+	void Regex::ScriptReplace(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 3) {
+			std::string target = request.GetArgument(0)->ToString();
+			std::string pattern = request.GetArgument(1)->ToString();
+			std::string replaced = request.GetArgument(2)->ToString();
+			std::smatch matchResult;
+			std::regex pat;
+
+			try {
+				pat = std::regex(pattern);
+			}
+			catch (std::exception&) {
+				response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_REGEX_INVALID_PATTERN")));
+				return;
+			}
+
+			size_t index = 0;
+			std::string resultString;
+
+			//マッチするだけ繰り返す
+			while (true) {
+				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat)) {
+					resultString.append(target.cbegin() + index, target.cend());
+					break;
+				}
+				//一致箇所をリプレース
+				resultString.append(target.substr(0, matchResult.position()));
+				resultString.append(replaced);
+				index += matchResult.position() + matchResult.length();
+			}
+			response.SetReturnValue(ScriptValue::Make(resultString));
+		}
+		else {
+			response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_COMMON_ERROR_002")));
+		}
+	}
+
+	void Regex::ScriptMatchAll(const FunctionRequest& request, FunctionResponse& response) {
+		if (request.GetArgumentCount() >= 2) {
+			std::string target = request.GetArgument(0)->ToString();
+			std::string pattern = request.GetArgument(1)->ToString();
+			std::smatch matchResult;
+			std::regex pat;
+
+			try {
+				pat = std::regex(pattern);
+			}
+			catch (std::exception&) {
+				response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_REGEX_INVALID_PATTERN")));
+				return;
+			}
+
+			size_t index = 0;
+			Reference<ScriptArray> resultArray = request.GetInterpreter().CreateArray();
+
+			//マッチするだけ繰り返す
+			while (true) {
+				if (!std::regex_search(target.cbegin() + index, target.cend(), matchResult, pat)) {
+					break;
+				}
+				//一致箇所を記録
+				resultArray->Add(MakeMatchObject(request.GetInterpreter(), target, matchResult.str(), index + matchResult.position(), matchResult.length()));
+				index += matchResult.position() + matchResult.length();
+			}
+			response.SetReturnValue(ScriptValue::Make(resultArray));
+		}
+		else {
+			response.SetThrewError(request.GetInterpreter().CreateNativeObject<RuntimeError>(TextSystem::Find("AOSORA_COMMON_ERROR_002")));
+		}
+	}
+
+	ScriptValueRef Regex::StaticGet(const std::string& key, ScriptExecuteContext& executeContext) {
+		if (key == "Match") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptMatch));
+		}
+		else if (key == "IsMatch") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptIsMatch));
+		}
+		else if (key == "Matches") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptMatchAll));
+		}
+		else if (key == "Replace") {
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&Regex::ScriptReplace));
+		}
+		return nullptr;
+	}
 }
