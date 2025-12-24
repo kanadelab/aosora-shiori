@@ -473,7 +473,7 @@ namespace sakura {
 			//リクエスト作成
 			const HWND targetHWnd = staticStore->hwndList[0];
 			std::ostringstream ost;
-			ost << "EXECUTE SSTP/1.1\r\nCommand: GetProperty[" << propertyName << "]\r\nSender: Satori\r\nCharset: Shift_JIS\r\n\r\n";
+			ost << "EXECUTE SSTP/1.1\r\nCommand: GetProperty[" << propertyName << "]\r\nSender: Aosora\r\nCharset: UTF-8\r\n\r\n";
 			std::string sendData = ost.str();
 
 			//メッセージ転送
@@ -483,7 +483,7 @@ namespace sakura {
 			cds.lpData = malloc(cds.cbData);
 			memcpy(cds.lpData, sendData.c_str(), cds.cbData);
 
-			/*LRESULT res =*/ ::SendMessage(targetHWnd, WM_COPYDATA, (WPARAM)propertyWindow, (LPARAM)&cds);
+			::SendMessage(targetHWnd, WM_COPYDATA, (WPARAM)propertyWindow, (LPARAM)&cds);
 
 			//リソースの開放
 			free(cds.lpData);
