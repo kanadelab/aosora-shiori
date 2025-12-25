@@ -679,7 +679,7 @@ namespace sakura {
 
 	void Regex::ScriptIsValid(const FunctionRequest& request, FunctionResponse& response)
 	{
-		if (request.GetArgumentCount() >= 3) {
+		if (request.GetArgumentCount() >= 1) {
 			std::string pattern = request.GetArgument(0)->ToString();
 			try {
 				std::regex pat(pattern);
