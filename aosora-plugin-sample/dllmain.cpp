@@ -3,7 +3,7 @@
 
 void TestFunction(const aosora::AosoraAccessor accessor) {
 
-    accessor.SetReturnValue(accessor.CreateString("てすとーーーー"));
+    accessor.SetReturnValue(accessor.CreateString("Hello, Aosora&C++ World!"));
 
 }
 
@@ -19,5 +19,4 @@ extern "C" __declspec(dllexport) void __cdecl aosora_plugin_load(const aosora::A
     auto m = accessor.CreateMap();
     m.MapSetValue("TestFunction", accessor.CreateFunction(TestFunction));
     accessor.SetReturnValue(m);
-
 }

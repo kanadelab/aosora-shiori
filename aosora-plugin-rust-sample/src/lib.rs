@@ -5,10 +5,9 @@ pub extern "C" fn test_function(accessor: aosora::AosoraAccessor) -> () {
 	
 	accessor.proc(|| {
 
-		let main_unit = accessor.find_unit("main");
-		let user_name = main_unit.get_value_with_string_key("ユーザ名")?;
+		let result_string = accessor.create_string("Hello, Rust&Aosora World!");
 		
-		Ok(Some(user_name.call_function(None)?))
+		Ok(Some(result_string))
 	});
 
 }
