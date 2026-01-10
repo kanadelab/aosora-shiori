@@ -445,10 +445,9 @@ namespace sakura {
 
 	void ScriptSSTP::GetProperty(const FunctionRequest& request, FunctionResponse& response){
 
-		callbackResult = "";
-
 		//自分で書いた里々のコードを移植
 #if defined(AOSORA_REQUIRED_WIN32)
+		callbackResult = "";
 		auto staticStore = request.GetInterpreter().StaticStore<ScriptSSTP>();
 		if (!staticStore->hwndList.empty() && request.GetArgumentCount() > 0) {
 			const std::string propertyName = request.GetArgument(0)->ToString();
@@ -491,6 +490,8 @@ namespace sakura {
 			::DestroyWindow(propertyWindow);
 			::UnregisterClass(windowClass.lpszClassName, windowClass.hInstance);
 		}
+#else
+		std::string callbackResult = "";
 #endif
 		response.SetReturnValue(ScriptValue::Make(callbackResult));
 	}
