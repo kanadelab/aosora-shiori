@@ -54,6 +54,7 @@ namespace sakura {
 		Break,
 		Continue,
 		Return,
+		YieldReturn,
 		Operator2,
 		Operator1,
 		NewClassInstance,

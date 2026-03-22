@@ -61,6 +61,7 @@ namespace sakura {
 	const std::string TOKEN_KEYWORD_BREAK = "break";
 	const std::string TOKEN_KEYWORD_CONTINUE = "continue";
 	const std::string TOKEN_KEYWORD_RETURN = "return";
+	const std::string TOKEN_KEYWORD_YIELD = "yield";
 	const std::string TOKEN_KEYWORD_LOCAL = "local";
 	const std::string TOKEN_KEYWORD_CONST = "const";
 	const std::string TOKEN_KEYWORD_TRUE = "true";
@@ -164,6 +165,7 @@ namespace sakura {
 		{TOKEN_KEYWORD_BREAK, ScriptTokenType::Break},
 		{TOKEN_KEYWORD_CONTINUE, ScriptTokenType::Continue},
 		{TOKEN_KEYWORD_RETURN, ScriptTokenType::Return},
+		{TOKEN_KEYWORD_YIELD, ScriptTokenType::Yield},
 		{TOKEN_KEYWORD_LOCAL, ScriptTokenType::Local},
 		{TOKEN_KEYWORD_CONST, ScriptTokenType::Const},
 		{TOKEN_KEYWORD_TRUE, ScriptTokenType::True},

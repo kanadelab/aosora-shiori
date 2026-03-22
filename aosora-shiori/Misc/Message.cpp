@@ -69,6 +69,7 @@ namespace sakura {
 			ERROR_MESSAGES("A051", "ループ変数名が必要です。", "foreach文、開き括弧の後にループ変数を指定します。")
 			ERROR_MESSAGES("A052", "in キーワードとループ対象が必要です。", "foreach文では変数指定の後にinキーワードとループ対象のオブジェクトを指定します。")
 			ERROR_MESSAGES("A053", "引数名は重複できません。", "関数に同名の引数が設定されています。引数の名前は重複しないようにしてください。。")
+			ERROR_MESSAGES("A054", "yield の後に return が必要です。", "yield キーワードの後には return キーワードが必要です。")
 
 			ERROR_MESSAGES("T001", "括弧 { } の対応関係が正しくありません。", "対応する開き括弧のない中括弧があったため、読み込みに失敗しました。")
 			ERROR_MESSAGES("T002", "トーク名として使用できない文字列です。", "変数名として使用できない文字をトーク名として使おうとしています。")
@@ -199,6 +200,8 @@ namespace sakura {
 			ERROR_MESSAGES("A050", "Opening parenthesis ( is required.", "An opening parenthesis is required in a 'foreach' statement.")
 			ERROR_MESSAGES("A051", "A loop variable name is required.", "In a 'foreach' statement, a loop variable must be specified after the opening parenthesis.")
 			ERROR_MESSAGES("A052", "The 'in' keyword and a loop target are required.", "In a 'foreach' statement, the keyword 'in' and an object to loop over must be specified after the variable.")
+			ERROR_MESSAGES("A053", "Argument names must be unique.", "The function has arguments with the same name. Please make sure argument names do not overlap.")
+			ERROR_MESSAGES("A054", "'return' is required after 'yield'.", "The 'yield' keyword must be followed by the 'return' keyword.")
 
 			ERROR_MESSAGES("T001", "The braces {} do not match.", "Loading failed because there are closing braces without opening braces.")
 			ERROR_MESSAGES("T002", "This string cannot be used as a talk name.", "You are trying to use characters that cannot be used as variable names in a talk name.")

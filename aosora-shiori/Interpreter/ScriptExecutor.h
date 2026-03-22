@@ -42,6 +42,7 @@ namespace sakura {
 		static ScriptValueRef ExecuteBreak(const ASTNodeBreak& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteContinue(const ASTNodeContinue& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteReturn(const ASTNodeReturn& node, ScriptExecuteContext& executeContext);
+		static ScriptValueRef ExecuteYieldReturn(const ASTNodeYieldReturn& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteOperator2(const ASTNodeEvalOperator2& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteOperator1(const ASTNodeEvalOperator1& node, ScriptExecuteContext& executeContext);
 		static ScriptValueRef ExecuteNewClassInstance(const ASTNodeNewClassInstance& node, ScriptExecuteContext& executeContext);
@@ -556,6 +557,9 @@ namespace sakura {
 		//このスタック位置の関数名
 		std::string funcName;
 
+		//yield return用の値コレクション
+		std::vector<ScriptValueRef> yieldedValues;
+
 	private:
 		ScriptInterpreterStack(ScriptInterpreterStack* parent) :
 			returnValue(nullptr),
@@ -609,6 +613,21 @@ namespace sakura {
 		//returnを要求しているか
 		bool IsReturned() const {
 			return leaveMode == LeaveMode::Return;
+		}
+
+		//yield returnの値を追加
+		void YieldValue(const ScriptValueRef& value) {
+			yieldedValues.push_back(value);
+		}
+
+		//yield returnされた値があるかどうか
+		bool HasYieldedValues() const {
+			return !yieldedValues.empty();
+		}
+
+		//yield returnされた値のコレクションを取得
+		const std::vector<ScriptValueRef>& GetYieldedValues() const {
+			return yieldedValues;
 		}
 
 		//例外スロー(コールスタック設定済み)

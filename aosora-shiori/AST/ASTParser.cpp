@@ -65,6 +65,7 @@ namespace sakura {
 	const std::string ERROR_AST_051 = "A051";
 	const std::string ERROR_AST_052 = "A052";
 	const std::string ERROR_AST_053 = "A053";
+	const std::string ERROR_AST_054 = "A054";
 
 	//２値演算
 	const OperatorInformation OPERATOR_ADD = { OperatorType::Add, 6, 2, true, "+" };
@@ -622,6 +623,9 @@ namespace sakura {
 			break;
 		case ScriptTokenType::Return:
 			result = ParseASTReturn(parseContext);
+			break;
+		case ScriptTokenType::Yield:
+			result = ParseASTYieldReturn(parseContext);
 			break;
 		case ScriptTokenType::Try:
 			result = ParseASTTry(parseContext);
@@ -2520,6 +2524,30 @@ namespace sakura {
 			parseContext.FetchNext();
 			r = ASTNodeRef(new ASTNodeReturn(parseContext.GetSourceMetadata()));
 		}
+
+		r->SetSourceRange(beginToken, parseContext.GetPrev());
+		return r;
+	}
+
+	//yield return文のパース
+	ASTNodeRef ASTParser::ParseASTYieldReturn(ASTParseContext& parseContext) {
+		const ScriptToken& beginToken = parseContext.GetCurrent();
+
+		assert(parseContext.GetCurrent().type == ScriptTokenType::Yield);
+		if (parseContext.GetCurrent().type != ScriptTokenType::Yield) {
+			return parseContext.Error(ERROR_AST_999, parseContext.GetCurrent());
+		}
+		parseContext.FetchNext();
+
+		//yield の次は return が必要
+		if (parseContext.GetCurrent().type != ScriptTokenType::Return) {
+			return parseContext.Error(ERROR_AST_054, parseContext.GetCurrent());
+		}
+		parseContext.FetchNext();
+
+		//式があってセミコロンで終了
+		ASTNodeRef yieldValueNode = ParseASTExpression(parseContext, SEQUENCE_END_FLAG_SEMICOLON);
+		ASTNodeRef r = ASTNodeRef(new ASTNodeYieldReturn(yieldValueNode, parseContext.GetSourceMetadata()));
 
 		r->SetSourceRange(beginToken, parseContext.GetPrev());
 		return r;

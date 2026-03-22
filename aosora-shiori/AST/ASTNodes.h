@@ -673,6 +673,36 @@ namespace sakura {
 		}
 	};
 
+	//yield return文
+	class ASTNodeYieldReturn : public ASTNodeBase {
+	private:
+		ConstASTNodeRef yieldValueNode;
+
+	public:
+		ASTNodeYieldReturn(const ConstASTNodeRef& yieldValue, const ScriptSourceMetadataRef& metadata) :ASTNodeBase(metadata),
+			yieldValueNode(yieldValue)
+		{}
+
+		const ConstASTNodeRef& GetValueNode() const {
+			return yieldValueNode;
+		}
+
+		virtual ASTNodeType GetType() const override { return ASTNodeType::YieldReturn; }
+		virtual void GetChildren(std::vector<ConstASTNodeRef>& nodes) const override {
+			if (yieldValueNode != nullptr) {
+				nodes.push_back(yieldValueNode);
+			}
+		}
+
+		virtual const char* DebugName() const override { return "YieldReturn"; }
+		virtual void DebugDump(int32_t indent) const override {
+			ASTNodeBase::DebugDump(indent);
+			if (yieldValueNode != nullptr) {
+				yieldValueNode->DebugDump(indent + 1);
+			}
+		}
+	};
+
 	//２項演算子評価
 	class ASTNodeEvalOperator2 : public ASTNodeBase {
 	private:

@@ -110,6 +110,9 @@ namespace sakura {
 		case ASTNodeType::Return:
 			result = ExecuteReturn(static_cast<const ASTNodeReturn&>(node), executeContext);
 			break;
+		case ASTNodeType::YieldReturn:
+			result = ExecuteYieldReturn(static_cast<const ASTNodeYieldReturn&>(node), executeContext);
+			break;
 		case ASTNodeType::Operator2:
 			result = ExecuteOperator2(static_cast<const ASTNodeEvalOperator2&>(node), executeContext);
 			break;
@@ -545,6 +548,19 @@ namespace sakura {
 			//戻り値がなければnullを設定しておく
 			executeContext.GetStack().Return(ScriptValue::Null);
 		}
+		return ScriptValue::Null;
+	}
+
+	//yield return文
+	ScriptValueRef ScriptExecutor::ExecuteYieldReturn(const ASTNodeYieldReturn& node, ScriptExecuteContext& executeContext) {
+		ScriptValueRef v = ExecuteInternal(*node.GetValueNode(), executeContext);
+
+		if (executeContext.RequireLeave()) {
+			return ScriptValue::Null;
+		}
+
+		//スタックフレームにyield値を追加（実行は継続する）
+		executeContext.GetStack().YieldValue(v);
 		return ScriptValue::Null;
 	}
 
@@ -1891,6 +1907,14 @@ namespace sakura {
 					if (funcStack.IsThrew()) {
 						//関数から例外が返された
 						response.SetThrewError(funcStack.GetThrewError());
+					}
+					else if (funcStack.HasYieldedValues()) {
+						//yield returnされた値がある場合、配列に格納して返す
+						Reference<ScriptArray> arr = CreateArray();
+						for (const auto& val : funcStack.GetYieldedValues()) {
+							arr->Add(val);
+						}
+						response.SetReturnValue(ScriptValue::Make(arr));
 					}
 					else {
 						//戻り値を返して終わり

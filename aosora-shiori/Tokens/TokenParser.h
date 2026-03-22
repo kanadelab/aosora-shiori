@@ -61,6 +61,7 @@ namespace sakura {
 		Break,
 		Continue,
 		Return,
+		Yield,
 		Local,
 		Const,
 		True,
