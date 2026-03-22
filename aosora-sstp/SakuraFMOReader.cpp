@@ -82,6 +82,12 @@ namespace sakura {
 		if (connect(soc, reinterpret_cast<const sockaddr *>(&addr), sizeof(addr)) == -1) {
 			return false;
 		}
+		std::string req = "GetFMO\r\n";
+		if (send(soc, req.data(), req.size(), 0) != req.size()) {
+			close(soc);
+			return false;
+		}
+		shutdown(soc, SHUT_WR);
 		char buffer[BUFFER_SIZE] = {};
 		if (read(soc, buffer, sizeof(uint32_t)) != sizeof(uint32_t)) {
 			close(soc);
