@@ -30,3 +30,9 @@ aosora.pdb
 /ssp/STACKTRC.txt
 /ssp/headline
 /ssp/plugin
+
+# Build artifacts (Linux)
+*.o
+*.a
+*.so
+/ninix/
