@@ -800,7 +800,7 @@ namespace sakura {
 		//現在までに積まれた式を解決する
 		void Reduce(const OperatorInformation& nextOperator, ASTParseContext& parseContext) {
 
-			while (expressionStack.size() > 2) {
+			while (expressionStack.size() > 1) {
 				const OperatorInformation* operatorInfo = expressionStack[expressionStack.size() - 2].operatorInfo;
 
 				if (operatorInfo == nullptr) {
