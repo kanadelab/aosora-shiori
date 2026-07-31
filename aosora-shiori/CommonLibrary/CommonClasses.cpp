@@ -181,6 +181,7 @@ namespace sakura {
 	const char* TalkTimer::KeyRandomTalkIntervalSeconds = "RandomTalkIntervalSeconds";
 	const char* TalkTimer::KeyRandomTalkElapsedSeconds = "RandomTalkElapsedSeconds";
 	const char* TalkTimer::KeyRandomTalkQueue = "RandomTalkQueue";
+	const char* TalkTimer::KeyRandomTalkHandler = "RandomTalkHandler";
 
 	const char* TalkTimer::KeyNadenadeTalk = "NadenadeTalk";
 	const char* TalkTimer::KeyNadenadeMoveCount = "NadenadeMoveCount";
@@ -241,7 +242,7 @@ namespace sakura {
 		//必要秒数を超えていればトークを発生
 		if (canCallRandomTalk && interval > 0.0 && seconds >= interval) {
 			//呼び出しを実行したかどうかを返す
-			return CallRandomTalk(interpreter, response);
+			return CallRandomTalkHandler(interpreter, response);
 		}
 		else {
 			//経過秒を書き戻す
@@ -265,12 +266,12 @@ namespace sakura {
 			queue->Remove(0);
 		}
 
-		if (talkVal == nullptr) {
+		if (talkVal == nullptr || talkVal->IsNull()) {
 			//トークをリクエストする
 			talkVal = staticStore->RawGet(KeyRandomTalk);
 		}
 
-		if (talkVal != nullptr) {
+		if (talkVal != nullptr && !talkVal->IsNull()) {
 			//ランダムトーク呼出
 			std::vector<ScriptValueRef> args;
 			interpreter.CallFunction(*talkVal, response, args);
@@ -280,6 +281,21 @@ namespace sakura {
 			return true;
 		}
 		return false;
+	}
+
+	bool TalkTimer::CallRandomTalkHandler(ScriptInterpreter& interpreter, FunctionResponse& response) {
+		auto staticStore = interpreter.StaticStore<TalkTimer>();
+		ScriptValueRef talkVal = staticStore->RawGet(KeyRandomTalkHandler);
+		if (talkVal != nullptr && !talkVal->IsNull()) {
+			// 設定されているトークハンドラを呼び出す
+			std::vector<ScriptValueRef> args;
+			interpreter.CallFunction(*talkVal, response, args);
+			return true;
+		}
+		else {
+			// デフォルトのトークハンドラ
+			return CallRandomTalk(interpreter, response);
+		}
 	}
 
 	void TalkTimer::ClearRandomTalkInterval(ScriptInterpreter& interpreter) {
@@ -377,6 +393,7 @@ namespace sakura {
 		//存在してるキーにだけアクセスを許容する
 		if (
 			key == KeyRandomTalk ||
+			key == KeyRandomTalkHandler ||
 			key == KeyRandomTalkElapsedSeconds ||
 			key == KeyRandomTalkIntervalSeconds ||
 			key == KeyRandomTalkQueue ||
@@ -396,12 +413,13 @@ namespace sakura {
 			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&TalkTimer::ScriptCallRandomTalk));
 		}
 		else if (key == "ClearTalkInterval") {
-			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&TalkTimer::ScriptCallRandomTalk));
+			return ScriptValue::Make(executeContext.GetInterpreter().CreateNativeObject<Delegate>(&TalkTimer::ScriptClearTalkInterval));
 		}
 
 		//存在してるキーにだけアクセスを許容する
 		if (
 			key == KeyRandomTalk ||
+			key == KeyRandomTalkHandler ||
 			key == KeyRandomTalkElapsedSeconds ||
 			key == KeyRandomTalkIntervalSeconds ||
 			key == KeyRandomTalkQueue ||

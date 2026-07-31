@@ -348,6 +348,7 @@ namespace sakura {
 	class TalkTimer : public Object<TalkTimer> {
 	private:
 		static bool CallRandomTalk(ScriptInterpreter& interpreter, FunctionResponse& response);
+		static bool CallRandomTalkHandler(ScriptInterpreter& interpreter, FunctionResponse& response);
 		static void ClearRandomTalkInterval(ScriptInterpreter& interpreter);
 
 	public:
@@ -355,6 +356,7 @@ namespace sakura {
 		static const char* KeyRandomTalkIntervalSeconds;
 		static const char* KeyRandomTalkElapsedSeconds;
 		static const char* KeyRandomTalkQueue;
+		static const char* KeyRandomTalkHandler;
 
 		static const char* KeyNadenadeTalk;
 		static const char* KeyNadenadeMoveCount;
