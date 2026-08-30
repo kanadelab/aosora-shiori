@@ -303,7 +303,7 @@ namespace sakura {
 			//無参照リストを作成
 			std::list<CollectableBase*> removeItems;
 			current = itemFirst;
-			if (current != nullptr) {
+			while (current != nullptr) {
 				if (!current->isMarked) {
 					//マークのついてないオブジェクトは参照されてないので削除する
 					removeItems.push_back(current);
