@@ -7,7 +7,7 @@ namespace aosora {
 
 		struct AosoraRawAccessor;
 
-		constexpr const int32_t COMPATIBILITY_VERSION = 1;
+		constexpr const int32_t COMPATIBILITY_VERSION = 2;
 
 		//プラグインバージョンチェック用構造体
 		struct PluginVersionInfo {

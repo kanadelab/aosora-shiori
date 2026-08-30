@@ -5,7 +5,7 @@
 use std::ffi::{c_char, c_double, c_void};
 
 //互換性バージョン
-pub const COMPATIBILITY_VERSION:i32 = 1;
+pub const COMPATIBILITY_VERSION:i32 = 2;
 
 pub type ValueHandle = u64;
 pub type RawPluginFunctionType = extern "C" fn(raw: *const AosoraRawAccessor);
