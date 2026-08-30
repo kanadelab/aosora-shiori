@@ -94,12 +94,7 @@ int main(int argc, char* argv[])
 	//SHIORI同様にaosoraを起動
 	sakura::Shiori* aosoraShiori = new sakura::Shiori();
 	aosoraShiori->SetEnableConsoleIO(true);
-	//SHIORIとしてロードされる場合と同様に、末尾を区切り文字で終わるパスにする
-	std::string ghostPath = std::filesystem::current_path().string();
-	if (!ghostPath.empty() && ghostPath.back() != std::filesystem::path::preferred_separator && ghostPath.back() != '/') {
-		ghostPath.push_back(static_cast<char>(std::filesystem::path::preferred_separator));
-	}
-	aosoraShiori->Load(ghostPath);
+	aosoraShiori->Load(std::filesystem::current_path().string());
 
 	//エラーがあればコンソール出力
 	if (aosoraShiori->HasScriptLoadError()) {

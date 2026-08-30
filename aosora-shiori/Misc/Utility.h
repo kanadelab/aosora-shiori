@@ -469,6 +469,14 @@ namespace sakura{
 		{
 			body.make_preferred();
 		}
+
+		//ディレクトリを示すパスとして、末尾を区切り文字で終わるようにする
+		void MakeDirectoryTerminated()
+		{
+			if (!body.empty() && body.has_filename()) {
+				body /= "";
+			}
+		}
 	};
 
 	//aosoraバージョン取得(major, minor, release)

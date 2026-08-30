@@ -46,8 +46,11 @@ namespace sakura {
 	void Shiori::Load(const std::string& path) {
 
 		ProjectSettings projectSettings;
+
+		//相対パスの連結に使うので、末尾が区切り文字で終わっていない場合は付与しておく
 		ghostMasterPath = FileSystemPath::FromFileSystemStr(path, true);
-		interpreter.SetWorkingDirectory(path);
+		ghostMasterPath.MakeDirectoryTerminated();
+		interpreter.SetWorkingDirectory(ghostMasterPath.GetFileSystemStr());
 
 #if 0
 		//他の言語を用意するまで無効
