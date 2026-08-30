@@ -15,6 +15,7 @@
 /aosora-plugin-rust/target
 /aosora-plugin-rust-sample/target
 /Debug
+/Release
 /Win32
 /ssp/temp
 *.vcxproj.user
@@ -28,6 +29,7 @@ aosora.pdb
 /ssp/ghost/test/ghost/master/profile
 /ssp/ghost/test/ghost/master/aosora.*
 /ssp/ghost/test/ghost/master/savedata.asv
+/ssp/ghost/test/ghost/master/*.dll
 /ssp/balloon/emily4
 /ssp/STACKTRC.txt
 /ssp/headline
