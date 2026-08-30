@@ -7,7 +7,7 @@ namespace aosora {
 
 		struct AosoraRawAccessor;
 
-		constexpr const int32_t COMPATILBILITY_VERSION = 1;
+		constexpr const int32_t COMPATIBILITY_VERSION = 1;
 
 		//プラグインバージョンチェック用構造体
 		struct PluginVersionInfo {
@@ -18,7 +18,7 @@ namespace aosora {
 			int32_t minor;						//aosoraのリリースバージョン
 			int32_t release;					//aosoraのマイナーバージョン
 			int32_t versionCheckResult;			//バージョンチェックの結果通知（0で成功、それ以外で失敗）
-			uint32_t flags;						//予約（何かのフラグを格納するかも）
+			uint32_t pluginFlags;				//プラグインからaosoraへの通知フラグ（プラグイン側が設定する出力値、現在は予約）
 
 			int32_t minMajor;					//プラグイン要求のバージョン
 			int32_t minMinor;
@@ -41,7 +41,7 @@ namespace aosora {
 		using ValueHandle = uint64_t;
 		const ValueHandle INVALID_VALUE_HANDLE = 0;
 
-		using GetVersionFunctionType = bool(*)(PluginVersionInfo* info);
+		using GetVersionFunctionType = void(*)(PluginVersionInfo* info);
 		using LoadFunctionType = void(*)(const AosoraRawAccessor* accessor);
 		using UnloadFunctionType = void(*)();
 		using PluginFunctionType = void(*)(const AosoraRawAccessor* accessor);
@@ -73,15 +73,15 @@ namespace aosora {
 		using SetValueFunctionType = void(*)(ValueHandle target, ValueHandle key, ValueHandle value);
 		using GetValueFunctionType = ValueHandle(*)(ValueHandle target, ValueHandle key);
 
-		using GetArgumentCountFunctionType = size_t(*)();
-		using GetArgumentFunctionType = ValueHandle(*)(size_t index);
+		using GetArgumentCountFunctionType = uint32_t(*)();
+		using GetArgumentFunctionType = ValueHandle(*)(uint32_t index);
 
 		using SetReturnValueFunctionType = void(*)(ValueHandle returnValue);
 		using SetErrorFunctionType = bool(*)(ValueHandle errorObject);
 		using SetPluginErrorFunctionType = void(*)(StringContainer errorMessage, int32_t errorCode);
 
-		using CallFunctionFunctionType = void(*)(ValueHandle function, const ValueHandle* argv, size_t argc);
-		using CreateInstanceFunctionType = ValueHandle(*)(ValueHandle classType, const ValueHandle* argv, size_t argc);
+		using CallFunctionFunctionType = void(*)(ValueHandle function, const ValueHandle* argv, uint32_t argc);
+		using CreateInstanceFunctionType = ValueHandle(*)(ValueHandle classType, const ValueHandle* argv, uint32_t argc);
 
 		using GetLastReturnValueFunctionType = ValueHandle(*)();
 		using HasLastErrorFunctionType = bool(*)();

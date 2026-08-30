@@ -5,10 +5,11 @@
 use std::ffi::{c_char, c_double, c_void};
 
 //互換性バージョン
-pub const COMPATILBILITY_VERSION:i32 = 1;
+pub const COMPATIBILITY_VERSION:i32 = 1;
 
 pub type ValueHandle = u64;
 pub type RawPluginFunctionType = extern "C" fn(raw: *const AosoraRawAccessor);
+pub type BufferDestructFunctionType = extern "C" fn(body: *mut c_void, len: usize);
 
 type ReleaseHandleFunctionType = extern "C" fn(handle: ValueHandle);
 type AddRefHandleFunctionType = extern "C" fn(handle: ValueHandle);
@@ -19,8 +20,8 @@ type CreateStringFunctionType = extern "C" fn(value: StringContainer) -> ValueHa
 type CreateNullFunctionType = extern "C" fn() -> ValueHandle;
 type CreateMapFunctionType = extern "C" fn() -> ValueHandle;
 type CreateArrayFunctionype = extern "C" fn() -> ValueHandle;
-type CreateFunctionFunctionType = extern "C" fn(thisValue: ValueHandle, functionBody: RawPluginFunctionType) -> ValueHandle;
-type CreateMemoryBufferFunctionType = extern "C" fn(size: usize, ptr: *mut *mut c_void) -> ValueHandle;
+type CreateFunctionFunctionType = extern "C" fn(this_value: ValueHandle, function_body: RawPluginFunctionType) -> ValueHandle;
+type CreateMemoryBufferFunctionType = extern "C" fn(size: usize, ptr: *mut *mut c_void, destruct_func: Option<BufferDestructFunctionType>) -> ValueHandle;
 
 type ToNumberFunctionType = extern "C" fn(handle: ValueHandle) -> c_double;
 type ToBoolFunctionType = extern "C" fn(handle: ValueHandle) -> bool;
@@ -30,21 +31,21 @@ type ToMemoryBufferFunctionType = extern "C" fn(handle: ValueHandle, size: *mut 
 type GetValueTypeFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
 type GetObjectTypeIdFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
 type GetClassObjectTypeIdFunctionType = extern "C" fn(handle: ValueHandle) -> u32;
-type ObjectInstanceOfFunctionType = extern "C" fn(handle: ValueHandle, objectTypeId: u32) -> bool;
+type ObjectInstanceOfFunctionType = extern "C" fn(handle: ValueHandle, object_type_id: u32) -> bool;
 type IsCallableFunctionType = extern "C" fn(handle: ValueHandle) -> bool;
 
 type GetValueFunctionType = extern "C" fn(target: ValueHandle, key: ValueHandle) -> ValueHandle;
 type SetValueFunctionType = extern "C" fn(target: ValueHandle, key: ValueHandle, value: ValueHandle);
 
-type GetArgumentCountFunctionType = extern "C" fn() -> usize;
-type GetArgumentFunctionType = extern "C" fn(index: usize) -> ValueHandle;
+type GetArgumentCountFunctionType = extern "C" fn() -> u32;
+type GetArgumentFunctionType = extern "C" fn(index: u32) -> ValueHandle;
 
 type SetReturnValueFunctionType = extern "C" fn(value: ValueHandle);
-type SetErrorFunctionType = extern "C" fn(error_object: ValueHandle);
+type SetErrorFunctionType = extern "C" fn(error_object: ValueHandle) -> bool;
 type SetPluginErrorFunctionType = extern "C" fn(error_message: StringContainer, error_code: i32);
 
-type CallFunctionFunctionType = extern "C" fn(function: ValueHandle, argv: *const ValueHandle, argc: usize);
-type CreateInstanceFunctionType = extern "C" fn(class_type: ValueHandle, argv: *const ValueHandle, argc: usize) -> ValueHandle;
+type CallFunctionFunctionType = extern "C" fn(function: ValueHandle, argv: *const ValueHandle, argc: u32);
+type CreateInstanceFunctionType = extern "C" fn(class_type: ValueHandle, argv: *const ValueHandle, argc: u32) -> ValueHandle;
 
 type GetLastReturnValueFunctionType = extern "C" fn() -> ValueHandle;
 type HasLastErrorFunctionTyoe = extern "C" fn() -> bool;
@@ -88,7 +89,9 @@ pub struct PluginRawVersionInfo {
 	pub(super) release: i32,
 	
 	pub(super) version_check_result: i32,
-	pub(super) flags: u32,
+
+	//プラグインからaosoraへの通知フラグ（プラグイン側が設定する出力値、現在は予約）
+	pub(super) plugin_flags: u32,
 
 	pub(super) min_major: i32,
 	pub(super) min_minor: i32,

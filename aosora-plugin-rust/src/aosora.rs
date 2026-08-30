@@ -55,6 +55,9 @@ impl raw::StringContainer {
 //プラグイン関数
 pub type PluginFunctionType = extern "C" fn(accessor: AosoraAccessor);
 
+//メモリバッファの解放関数
+pub type MemoryBufferDestructor = raw::BufferDestructFunctionType;
+
 /*
 	Aosoraとの相互呼び出し用オブジェクト	
 */
@@ -158,11 +161,11 @@ impl AosoraAccessor {
 	}
 
 	// aosoraのメモリバッファを作成
-	pub fn create_memory_buffer(&self, size: usize, ptr: *mut *mut c_void) -> ValueWrapper {
+	pub fn create_memory_buffer(&self, size: usize, ptr: *mut *mut c_void, destructor: Option<MemoryBufferDestructor>) -> ValueWrapper {
 		ValueWrapper {
 			accessor: self.raw_accessor,
 			handle: unsafe {
-				((*self.raw_accessor).create_memory_buffer)(size, ptr)
+				((*self.raw_accessor).create_memory_buffer)(size, ptr, destructor)
 			}
 		}	
 	}
@@ -190,7 +193,20 @@ impl AosoraAccessor {
 		container.to_string()
 	}
 
-	// TODO: aosoraからメモリバッファを取得
+	// aosoraからメモリバッファを取得
+	fn to_memory_buffer(&self, target: &ValueWrapper) -> Option<(*mut c_void, usize)> {
+		let mut size: usize = 0;
+		let ptr = unsafe {
+			((*self.raw_accessor).to_memory_buffer)(target.handle, &mut size)
+		};
+
+		if ptr.is_null() {
+			None
+		}
+		else {
+			Some((ptr, size))
+		}
+	}
 
 	// データ型を取得
 	fn get_value_type(&self, target: &ValueWrapper) -> u32 {
@@ -256,14 +272,14 @@ impl AosoraAccessor {
 	}
 
 	// 引数の数を取得
-	pub fn get_argument_count(&self) -> usize {
+	pub fn get_argument_count(&self) -> u32 {
 		unsafe {
 			((*self.raw_accessor).get_argument_count)()
 		}
 	}
 
 	// 引数を取得
-	pub fn get_argument(&self, index: usize) -> ValueWrapper {
+	pub fn get_argument(&self, index: u32) -> ValueWrapper {
 		ValueWrapper {
 			accessor: self.raw_accessor,
 			handle: unsafe {
@@ -286,6 +302,14 @@ impl AosoraAccessor {
 	pub fn set_return_value(&self, value: &ValueWrapper){
 		unsafe {
 			((*self.raw_accessor).set_return_value)(value.handle);
+		}
+	}
+
+	//エラーオブジェクトの送出
+	//Errorオブジェクトでない場合は送出されずfalseが返る
+	pub fn set_error(&self, error: &ValueWrapper) -> bool {
+		unsafe {
+			((*self.raw_accessor).set_error)(error.handle)
 		}
 	}
 
@@ -315,7 +339,7 @@ impl AosoraAccessor {
 			};
 
 			//呼び出し
-			((*self.raw_accessor).call_function)(function.handle, argv, items.len());
+			((*self.raw_accessor).call_function)(function.handle, argv, items.len() as u32);
 
 			//エラーと戻り値のチェック
 			if !((*self.raw_accessor).has_last_error)() {
@@ -341,7 +365,7 @@ impl AosoraAccessor {
 			};
 
 			//呼び出し
-			let instance:ValueHandle = ((*self.raw_accessor).create_instance)(class_type.handle, argv, items.len());
+			let instance:ValueHandle = ((*self.raw_accessor).create_instance)(class_type.handle, argv, items.len() as u32);
 
 			//エラーと戻り値のチェック
 			if !((*self.raw_accessor).has_last_error)() {
@@ -572,8 +596,9 @@ impl AosoraAccessor {
 				}
 			}
 			Err(e) => {
-				if e.is_error() {
-					self.set_plugin_error(format!("plugin error: {}", e.get_error_message() ).as_str());
+				if e.instance_of(self.get_type_id_error()) {
+					//Errorオブジェクトはそのままaosora側に送出する
+					self.set_error(&e);
 				}
 				else if e.is_string() {
 					self.set_plugin_error(e.to_string().as_str());
@@ -645,6 +670,12 @@ impl ValueWrapper {
 	//文字列として値を取得する
 	pub fn to_string(&self) -> String {
 		self.accessor().to_string(self)
+	}
+
+	//メモリバッファのポインタとサイズを取得する
+	//自分のプラグインが作成したメモリバッファ以外は取得できず、Noneを返す
+	pub fn to_memory_buffer(&self) -> Option<(*mut c_void, usize)> {
+		self.accessor().to_memory_buffer(self)
 	}
 
 	//値の種類を取得する
@@ -844,10 +875,10 @@ impl PluginVersionInfo {
 	pub fn check_binary_compatibility(&self) -> bool {
 		unsafe {
 			//プラグインの互換性情報を設定
-			(*self.accessor).plugin_compatibility_version = raw::COMPATILBILITY_VERSION;
+			(*self.accessor).plugin_compatibility_version = raw::COMPATIBILITY_VERSION;
 
 			//互換性チェック
-			if (*self.accessor).compatibility_version == raw::COMPATILBILITY_VERSION {
+			if (*self.accessor).compatibility_version == raw::COMPATIBILITY_VERSION {
 				true
 			}
 			else {

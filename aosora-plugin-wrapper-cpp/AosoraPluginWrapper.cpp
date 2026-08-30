@@ -55,6 +55,10 @@ namespace aosora {
 		return Accessor().ToString(*this);
 	}
 
+	void* ValueWrapper::ToMemoryBuffer(size_t* size) const {
+		return Accessor().ToMemoryBuffer(*this, size);
+	}
+
 	uint32_t ValueWrapper::GetValueType() const {
 		return Accessor().GetValueType(*this);
 	}
@@ -135,11 +139,11 @@ namespace aosora {
 		Accessor().SetValue(*this, Accessor().CreateNumber(key), value, error);
 	}
 
-	ValueWrapper ValueWrapper::CallFunction(const ValueWrapper* argv, size_t argc, ValueWrapper* error) const {
+	ValueWrapper ValueWrapper::CallFunction(const ValueWrapper* argv, uint32_t argc, ValueWrapper* error) const {
 		return Accessor().CallFunction(*this, argv, argc, error);
 	}
 
-	ValueWrapper ValueWrapper::CreateInstance(const ValueWrapper* argv, size_t argc, ValueWrapper* error) const {
+	ValueWrapper ValueWrapper::CreateInstance(const ValueWrapper* argv, uint32_t argc, ValueWrapper* error) const {
 		return Accessor().CreateInstance(*this, argv, argc, error);
 	}
 

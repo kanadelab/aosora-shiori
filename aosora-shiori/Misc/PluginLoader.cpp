@@ -41,7 +41,7 @@ namespace sakura {
 		//get_versionの呼び出しによる使用可不可のチェック
 		aosora::raw::PluginVersionInfo loadVersionInfo;
 		VersionInfo shioriVersionInfo = GetVersion();
-		loadVersionInfo.compatibilityVersion = aosora::raw::COMPATILBILITY_VERSION;
+		loadVersionInfo.compatibilityVersion = aosora::raw::COMPATIBILITY_VERSION;
 		loadVersionInfo.pluginCompatibilityVersion = -1;
 		loadVersionInfo.major = shioriVersionInfo.major;
 		loadVersionInfo.minor = shioriVersionInfo.minor;
@@ -50,6 +50,7 @@ namespace sakura {
 		loadVersionInfo.minMinor = -1;
 		loadVersionInfo.minRelease = -1;
 		loadVersionInfo.versionCheckResult = -1;
+		loadVersionInfo.pluginFlags = 0;
 		loadVersionInfo.maxMajor = -1;
 		loadVersionInfo.maxMinor = -1;
 		loadVersionInfo.maxRelease = -1;

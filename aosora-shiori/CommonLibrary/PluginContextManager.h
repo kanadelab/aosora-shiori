@@ -268,15 +268,15 @@ namespace sakura {
 		static void SetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key, aosora::raw::ValueHandle value);
 		static aosora::raw::ValueHandle GetValue(aosora::raw::ValueHandle target, aosora::raw::ValueHandle key);
 
-		static size_t GetArgumentCount();
-		static aosora::raw::ValueHandle GetArgument(size_t index);
+		static uint32_t GetArgumentCount();
+		static aosora::raw::ValueHandle GetArgument(uint32_t index);
 
 		static void SetReturnValue(aosora::raw::ValueHandle value);
 		static bool SetError(aosora::raw::ValueHandle value);
 		static void SetPluginError(aosora::raw::StringContainer errorMessage, int32_t errorCode);
 
-		static void FunctionCall(aosora::raw::ValueHandle function, const aosora::raw::ValueHandle* argv, size_t argc);
-		static aosora::raw::ValueHandle NewClassInstance(aosora::raw::ValueHandle classObject, const aosora::raw::ValueHandle* argv, size_t argc);
+		static void FunctionCall(aosora::raw::ValueHandle function, const aosora::raw::ValueHandle* argv, uint32_t argc);
+		static aosora::raw::ValueHandle NewClassInstance(aosora::raw::ValueHandle classObject, const aosora::raw::ValueHandle* argv, uint32_t argc);
 
 		static aosora::raw::ValueHandle GetLastReturnValue();
 		static bool HasLastError();
