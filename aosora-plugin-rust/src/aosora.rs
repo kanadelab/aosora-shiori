@@ -385,7 +385,6 @@ impl AosoraAccessor {
 	}
 
 	// エラーオブジェクトからエラーコードを取得
-	#[allow(unused)]
 	fn get_error_code(&self, error: &ValueWrapper) -> i32 {
 		unsafe {
 			((*self.raw_accessor).get_error_code)(error.handle)
@@ -797,6 +796,11 @@ impl ValueWrapper {
 	//エラーオブジェクトからエラーメッセージを取得
 	pub fn get_error_message(&self) -> String{
 		self.accessor().get_error_message(self)
+	}
+
+	//エラーオブジェクトからエラーコードを取得
+	pub fn get_error_code(&self) -> i32 {
+		self.accessor().get_error_code(self)
 	}
 
 	pub fn map_get_value(&self, key:&str) -> ValueWrapper {

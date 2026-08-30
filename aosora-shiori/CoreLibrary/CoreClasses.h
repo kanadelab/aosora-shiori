@@ -252,6 +252,7 @@ namespace sakura {
 		ScriptError(const std::string& errorMessage):
 			canCatch(true),
 			hasCallstackInfo(false),
+			errorCode(0),
 			message(errorMessage)
 		{}
 		

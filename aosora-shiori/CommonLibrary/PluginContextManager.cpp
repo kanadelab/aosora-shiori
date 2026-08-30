@@ -391,6 +391,7 @@ namespace sakura {
 
 	void PluginContextManager::SetPluginError(aosora::raw::StringContainer errorMessage, int32_t errorCode) {
 		Reference<PluginError> pluginError = GetCurrentInterpreter().CreateNativeObject<PluginError>(std::string(errorMessage.body, errorMessage.len));
+		pluginError->SetErrorCode(errorCode);
 		PeekContext().GetCallContext().threwError = ScriptValue::Make(pluginError);
 	}
 
@@ -564,7 +565,7 @@ namespace sakura {
 		if (m != nullptr) {
 			Reference<ScriptArray> items = GetCurrentInterpreter().CreateArray();
 			for (auto it : m->GetInternalCollection()) {
-				items->Add(it.second);
+				items->Add(ScriptValue::Make(it.first));
 			}
 			return GetCurrentHandleManager().CreateHandle(ScriptValue::Make(items));
 		}

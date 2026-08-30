@@ -2,6 +2,20 @@
 
 namespace aosora {
 
+	//ValueWrapper の配列から生ハンドルの配列を作る
+	std::vector<raw::ValueHandle> AosoraAccessor::ToHandles(const ValueWrapper* argv, uint32_t argc) {
+		std::vector<raw::ValueHandle> result;
+		if (argv == nullptr) {
+			return result;
+		}
+
+		result.reserve(argc);
+		for (uint32_t i = 0; i < argc; i++) {
+			result.push_back(argv[i].handle);
+		}
+		return result;
+	}
+
 	ValueWrapper::ValueWrapper(const ValueWrapper& inst):
 		accessor(inst.accessor),
 		handle(inst.handle) {

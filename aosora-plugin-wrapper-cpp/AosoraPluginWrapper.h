@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <string>
+#include <vector>
 #include "AosoraPluginRaw.h"
 
 namespace aosora {
@@ -92,6 +93,9 @@ namespace aosora {
 		const raw::AosoraRawAccessor* rawAccessor;
 
 	private:
+		//ValueWrapper の配列から生ハンドルの配列を作る
+		static std::vector<raw::ValueHandle> ToHandles(const ValueWrapper* argv, uint32_t argc);
+
 		static raw::StringContainer ToStringContainer(const std::string& str) {
 			if (str.empty()) {
 				return { nullptr, 0 };
@@ -284,7 +288,9 @@ namespace aosora {
 		}
 
 		ValueWrapper CallFunction(const ValueWrapper& function, const ValueWrapper* argv, uint32_t argc, ValueWrapper* error) const {
-			rawAccessor->CallFunction(function.handle, reinterpret_cast<const raw::ValueHandle*>(argv), argc);
+			//ValueWrapper と ValueHandle はメモリレイアウトが異なるのでハンドルの配列を作り直す
+			std::vector<raw::ValueHandle> handles = ToHandles(argv, argc);
+			rawAccessor->CallFunction(function.handle, handles.empty() ? nullptr : handles.data(), argc);
 
 			if (!rawAccessor->HasLastError()) {
 				return ValueWrapper(rawAccessor, rawAccessor->GetLastReturnValue());
@@ -298,7 +304,9 @@ namespace aosora {
 		}
 
 		ValueWrapper CreateInstance(const ValueWrapper& classType, const ValueWrapper* argv, uint32_t argc, ValueWrapper* error) const {
-			auto handle = rawAccessor->CreateInstance(classType.handle, reinterpret_cast<const raw::ValueHandle*>(argv), argc);
+			//ValueWrapper と ValueHandle はメモリレイアウトが異なるのでハンドルの配列を作り直す
+			std::vector<raw::ValueHandle> handles = ToHandles(argv, argc);
+			auto handle = rawAccessor->CreateInstance(classType.handle, handles.empty() ? nullptr : handles.data(), argc);
 
 			if (!rawAccessor->HasLastError()) {
 				return ValueWrapper(rawAccessor, handle);
